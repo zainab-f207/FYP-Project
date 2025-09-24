@@ -1,0 +1,80 @@
+/* src/components/UserDashboard/UserDropdown.css */
+.user-profile {
+  position: relative;
+  z-index: 10001; /* Ensure the parent has high z-index */
+}
+
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--light-card);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 10px 0;
+  min-width: 180px;
+  z-index: 10010; /* Higher than any other element */
+  margin-top: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.2s ease-out;
+}
+
+.dark-mode .user-dropdown {
+  background: var(--secondary-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item {
+  padding: 12px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: var(--transition);
+  color: var(--text-dark);
+  font-size: 0.95rem;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.dark-mode .dropdown-item {
+  color: var(--text-white);
+}
+
+.dropdown-item:hover {
+  background: var(--light-bg);
+}
+
+.dark-mode .dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item i {
+  width: 16px;
+  text-align: center;
+  color: var(--accent-blue);
+}
+
+.dropdown-item:first-child {
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+}
+
+.dropdown-item:last-child {
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,21 @@
+/* src/components/Modals/ReportModal.css */
+/* Report Modal specific styles */
+.modal-form textarea {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: var(--transition);
+  background: var(--light-bg);
+  color: var(--text-dark);
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+.modal-form textarea:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}

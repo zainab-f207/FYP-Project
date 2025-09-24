@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./CrimeVision/backend/app/training/deep-text-recognition-benchmark"
+    ],
+    "liveServer.settings.port": 5501
+}
