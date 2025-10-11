@@ -1,0 +1,35 @@
+.userManagementSummary {
+  background: linear-gradient(135deg, #eef1f5 0%, #f5f6fa 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  margin-bottom: 35px;
+}
+
+.userTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 18px;
+}
+
+.userTable th, .userTable td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid #e6e9f0;
+}
+
+.userTable th {
+  background: #f9a826;
+  color: white;
+  font-weight: 600;
+}
+
+.active td {
+  color: #1a4f72;
+  font-weight: 600;
+}
+
+.inactive td {
+  color: #888;
+  font-style: italic;
+}

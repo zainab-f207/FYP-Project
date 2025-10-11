@@ -14,22 +14,29 @@ import Statistics from './components/Statistics';
 import Testimonials from './components/Testimonials';
 import Footer from './components/Footer';
 import LoginModal from './components/Modals/LoginModal_updated';
+import ForgotPasswordModal from './components/Modals/ForgotPasswordModal';
 import ReportModal from './components/Modals/ReportModal';
 import DarkModeToggle from './components/DarkModeToggle';
 import BackToTop from './components/BackToTop';
 import UserDashboard from './components/UserDashboard/UserDashboard';
+import AdminDashboard from './components/AdminDashboard/AdminDashboard';
+import SuperAdminDashboard from './components/SuperAdminDashboard/SuperAdminDashboard_updated';
+import ResetPasswordPage from './components/ResetPasswordPage';
+import EmailVerificationPage from './components/EmailVerificationPage';
 import { TokenValidator } from './contexts/TokenValidator';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
 function AppContent() {
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [forgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [selectedArea, setSelectedArea] = useState('');
   const [selectedCrimeType, setSelectedCrimeType] = useState('');
 
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, role } = useAuth();
 
   useEffect(() => {
     // Load dark mode preference from localStorage
@@ -71,6 +78,15 @@ function AppContent() {
     setLoginModalOpen(false);
   };
 
+  const showForgotPasswordModal = () => {
+    setLoginModalOpen(false);
+    setForgotPasswordModalOpen(true);
+  };
+
+  const closeForgotPasswordModal = () => {
+    setForgotPasswordModalOpen(false);
+  };
+
   const showReportModal = () => {
     setReportModalOpen(true);
     closeSidebar();
@@ -80,16 +96,46 @@ function AppContent() {
     setReportModalOpen(false);
   };
 
+  // Check URL parameters and pathname for special pages
+  const urlParams = new URLSearchParams(window.location.search);
+  const pathname = window.location.pathname;
+  const token = urlParams.get('token');
+
+  // Check for email verification page
+  if (pathname.includes('verify-email') && token) {
+    return <EmailVerificationPage />;
+  }
+
+  // Check if this is a password reset page
+  if (pathname.includes('reset-password') && token) {
+    return <ResetPasswordPage />;
+  }
+
   // If user is authenticated, show the dashboard instead of the main website
   if (isAuthenticated) {
+    let DashboardComponent;
+    if (role === 'admin') {
+      DashboardComponent = AdminDashboard;
+    } else if (role === 'superadmin') {
+      DashboardComponent = SuperAdminDashboard;
+    } else {
+      DashboardComponent = UserDashboard;
+    }
+
     return (
       <div className="App">
         <TokenValidator />
-        <UserDashboard />
-        
+        <DashboardComponent />
+
         <LoginModal
           isOpen={loginModalOpen}
           closeModal={closeLoginModal}
+          onForgotPassword={showForgotPasswordModal}
+        />
+
+        <ForgotPasswordModal
+          show={forgotPasswordModalOpen}
+          onHide={closeForgotPasswordModal}
         />
 
         <ReportModal
@@ -152,6 +198,12 @@ function AppContent() {
       <LoginModal
         isOpen={loginModalOpen}
         closeModal={closeLoginModal}
+        onForgotPassword={showForgotPasswordModal}
+      />
+
+      <ForgotPasswordModal
+        show={forgotPasswordModalOpen}
+        onHide={closeForgotPasswordModal}
       />
 
       <ReportModal

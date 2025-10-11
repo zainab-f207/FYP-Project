@@ -21,15 +21,19 @@ SECRET_KEY = os.getenv("SECRET_KEY") or generate_secure_secret_key()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hashed password"""
-    return pwd_context.verify(plain_password, hashed_password)
+    # Bcrypt only supports passwords up to 72 bytes
+    truncated_password = plain_password[:72]
+    return pwd_context.verify(truncated_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """Hash a password for storing"""
-    return pwd_context.hash(password)
+    # Bcrypt only supports passwords up to 72 bytes
+    truncated_password = password[:72]
+    return pwd_context.hash(truncated_password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create a JWT access token"""
@@ -57,3 +61,11 @@ def verify_token(token: str) -> Optional[str]:
         return str(username)
     except JWTError:
         return None
+
+
+def generate_email_verification_token() -> str:
+    return secrets.token_urlsafe(32)
+
+def generate_password_reset_token() -> str:
+    return secrets.token_urlsafe(32)
+

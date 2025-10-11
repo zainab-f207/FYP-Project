@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import HeatmapLayer from "./HeatMapLayer";
-import axios from "axios";
+import apiService from "../services/api";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -61,8 +61,7 @@ export default function CrimeHeatmap() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get("http://127.0.0.1:8000/api/crimes?limit=5000");
-      const data = response.data;
+      const data = await apiService.getCrimes({ limit: 5000 });
       setCrimes(data);
       setHotspots(calculateHotspots(data));
     } catch (err) {

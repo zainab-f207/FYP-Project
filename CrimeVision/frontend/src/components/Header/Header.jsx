@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './Header.css';
 import apiService from '../../services/api';
+import SafeVisionLogo from '../../assets/safevision-logo.svg';
 
 const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, onCrimeSelect }) => {
   const [searchResults, setSearchResults] = useState([]);
@@ -158,9 +159,9 @@ const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, 
       <div className="navbar">
         <div className="logo">
           <div className="logo-icon">
-            <i className="fas fa-shield-alt"></i>
+            <img src={SafeVisionLogo} alt="SafeVision logo" className="logo-img" />
           </div>
-          <span>CrimeVision Pakistan</span>
+          <span>SafeVision</span>
         </div>
 
         <div className="desktop-nav">

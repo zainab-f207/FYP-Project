@@ -1,0 +1,35 @@
+.analyticsPanel {
+  background: linear-gradient(135deg, #f5f6fa 0%, #eef1f5 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  margin-bottom: 35px;
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.chartCard {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(26, 79, 114, 0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chartCard h4 {
+  margin-bottom: 18px;
+  color: #1a4f72;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+}

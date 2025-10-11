@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "dayjs": "^1.11.18",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
+    "qrcode": "^1.5.4",
+    "xlsx": "^0.18.5"
+  }
+}

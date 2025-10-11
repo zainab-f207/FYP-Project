@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import apiService from '../services/apiService';
 
 const AuthContext = createContext();
 
@@ -21,19 +22,12 @@ export const AuthProvider = ({ children }) => {
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
         try {
-          // Verify token with backend
-          const response = await fetch('http://127.0.0.1:8000/auth/me', {
-            headers: {
-              'Authorization': `Bearer ${storedToken}`
-            }
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
+          // Verify token with backend via apiService so VITE_API_BASE_URL is respected
+          const userData = await apiService.getCurrentUser(storedToken).catch(() => null);
+          if (userData) {
             setUser(userData);
             setToken(storedToken);
           } else {
-            // Token is invalid, remove it
             localStorage.removeItem('token');
             setToken(null);
           }
@@ -51,35 +45,19 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('token', data.access_token);
-        setToken(data.access_token);
-
-        // Get user info
-        const userResponse = await fetch('http://127.0.0.1:8000/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${data.access_token}`
-          }
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData);
+      try {
+        const data = await apiService.login({ username, password });
+        if (data && data.access_token) {
+          localStorage.setItem('token', data.access_token);
+          setToken(data.access_token);
+          const userData = await apiService.getCurrentUser(data.access_token).catch(() => null);
+          if (userData) setUser(userData);
+          return { success: true };
         }
-
-        return { success: true };
-      } else {
-        const errorData = await response.json();
-        return { success: false, error: errorData.detail || 'Login failed' };
+        return { success: false, error: 'Login failed' };
+      } catch (error) {
+        console.error('Login error:', error);
+        return { success: false, error: error.message || 'Network error' };
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -89,39 +67,25 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (firstName, lastName, email, password) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ first_name: firstName, last_name: lastName, email, password }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('token', data.access_token);
-        setToken(data.access_token);
-
-        // Get user info
-        const userResponse = await fetch('http://127.0.0.1:8000/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${data.access_token}`
-          }
+      try {
+        const data = await apiService.register({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          password,
         });
 
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData);
+        if (data && data.access_token) {
+          localStorage.setItem('token', data.access_token);
+          setToken(data.access_token);
+          const userData = await apiService.getCurrentUser(data.access_token).catch(() => null);
+          if (userData) setUser(userData);
+          return { success: true, username: data.username, message: data.message || 'Registration successful' };
         }
-
-        return {
-          success: true,
-          username: data.username,
-          message: data.message || 'Registration successful'
-        };
-      } else {
-        const errorData = await response.json();
-        return { success: false, error: errorData.detail || 'Registration failed' };
+        return { success: false, error: 'Registration failed' };
+      } catch (error) {
+        console.error('Registration error:', error);
+        return { success: false, error: error.message || 'Network error' };
       }
     } catch (error) {
       console.error('Registration error:', error);

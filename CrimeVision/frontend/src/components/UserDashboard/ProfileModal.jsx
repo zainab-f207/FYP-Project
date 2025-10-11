@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext_updated';
-import apiService from '../../services/apiService';
+import apiService from '../../services/apiService_updated';
+import QRCode from 'qrcode';
 import styles from './UserDashboard.module.css';
 
 const ProfileModal = ({ isOpen, onClose }) => {
@@ -17,6 +18,10 @@ const ProfileModal = ({ isOpen, onClose }) => {
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [twoFactorSetup, setTwoFactorSetup] = useState(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -32,6 +37,19 @@ const ProfileModal = ({ isOpen, onClose }) => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (twoFactorSetup && twoFactorSetup.uri) {
+      QRCode.toDataURL(twoFactorSetup.uri)
+        .then(url => {
+          setQrCodeUrl(url);
+        })
+        .catch(err => {
+          console.error('Error generating QR code:', err);
+          setError('Failed to generate QR code');
+        });
+    }
+  }, [twoFactorSetup]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -42,6 +60,57 @@ const ProfileModal = ({ isOpen, onClose }) => {
     if (file) {
       setProfilePhoto(file);
       setPreviewPhoto(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSetup2FA = async () => {
+    setTwoFactorLoading(true);
+    setError(null);
+    setQrCodeUrl(null); // Reset QR code URL
+    try {
+      const result = await apiService.setup2FA(token);
+      setTwoFactorSetup(result);
+    } catch (err) {
+      setError(err.message || 'Failed to setup 2FA');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handleVerify2FA = async () => {
+    if (!twoFactorCode.trim()) {
+      setError('Please enter the 2FA code');
+      return;
+    }
+    setTwoFactorLoading(true);
+    setError(null);
+    try {
+      await apiService.verify2FA(token, twoFactorCode);
+      setTwoFactorSetup(null);
+      setTwoFactorCode('');
+      setQrCodeUrl(null);
+      // Refresh user data to get updated 2FA status
+      const updatedUser = await apiService.getCurrentUser(token);
+      setUser(updatedUser);
+    } catch (err) {
+      setError(err.message || 'Failed to verify 2FA code');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    setTwoFactorLoading(true);
+    setError(null);
+    try {
+      await apiService.disable2FA(token);
+      // Refresh user data to get updated 2FA status
+      const updatedUser = await apiService.getCurrentUser(token);
+      setUser(updatedUser);
+    } catch (err) {
+      setError(err.message || 'Failed to disable 2FA');
+    } finally {
+      setTwoFactorLoading(false);
     }
   };
 
@@ -188,6 +257,128 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 className={styles.formInput}
               />
             </div>
+          </div>
+
+          {/* Two-Factor Authentication Section */}
+          <div className={styles.twoFactorSection}>
+            <h3>Two-Factor Authentication</h3>
+            <p className={styles.twoFactorDescription}>
+              Add an extra layer of security to your account by enabling two-factor authentication.
+            </p>
+
+            {user?.two_factor_enabled ? (
+              <div className={styles.twoFactorStatus}>
+                <div className={styles.statusEnabled}>
+                  <i className="fas fa-shield-alt"></i>
+                  <span>Two-Factor Authentication is enabled</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDisable2FA}
+                  disabled={twoFactorLoading}
+                  className={styles.btnDisable2FA}
+                >
+                  {twoFactorLoading ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin"></i> Disabling...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-times"></i> Disable 2FA
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className={styles.twoFactorSetup}>
+                {twoFactorSetup ? (
+                  <div className={styles.twoFactorSetupForm}>
+                    <div className={styles.qrCodeContainer}>
+                      {qrCodeUrl ? (
+                        <img
+                          src={qrCodeUrl}
+                          alt="2FA QR Code"
+                          className={styles.qrCode}
+                        />
+                      ) : (
+                        <div className={styles.qrCodePlaceholder}>
+                          <i className="fas fa-spinner fa-spin"></i>
+                          <p>Generating QR code...</p>
+                        </div>
+                      )}
+                      <p className={styles.qrInstructions}>
+                        Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                      </p>
+                      <p className={styles.secretKey}>
+                        Or manually enter this key: <code>{twoFactorSetup.secret}</code>
+                      </p>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label htmlFor="twoFactorCode">Enter 6-digit code from your app</label>
+                      <input
+                        type="text"
+                        id="twoFactorCode"
+                        value={twoFactorCode}
+                        onChange={(e) => setTwoFactorCode(e.target.value)}
+                        placeholder="000000"
+                        maxLength="6"
+                        className={styles.formInput}
+                        disabled={twoFactorLoading}
+                      />
+                    </div>
+
+                    <div className={styles.twoFactorActions}>
+                      <button
+                        type="button"
+                        onClick={handleVerify2FA}
+                        disabled={twoFactorLoading || !twoFactorCode.trim()}
+                        className={styles.btnPrimary}
+                      >
+                        {twoFactorLoading ? (
+                          <>
+                            <i className="fas fa-spinner fa-spin"></i> Verifying...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-check"></i> Verify & Enable
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTwoFactorSetup(null);
+                          setTwoFactorCode('');
+                          setQrCodeUrl(null);
+                        }}
+                        disabled={twoFactorLoading}
+                        className={styles.btnSecondary}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSetup2FA}
+                    disabled={twoFactorLoading}
+                    className={styles.btnEnable2FA}
+                  >
+                    {twoFactorLoading ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i> Setting up...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-shield-alt"></i> Enable 2FA
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {error && <div className={styles.errorMessage}>{error}</div>}

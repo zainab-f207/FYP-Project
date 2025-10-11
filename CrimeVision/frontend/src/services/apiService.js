@@ -1,6 +1,84 @@
-const API_BASE_URL = 'http://127.0.0.1:8000';
+// Determine backend API base URL.
+// Priority:
+// 1. VITE_API_BASE_URL (explicit override)
+// 2. If running on an IP address or localhost (dev), assume backend is on the same host at port 8000
+// 3. Otherwise (public domains / tunnels like ngrok) use the same origin (no :8000 appended)
+const envApi = import.meta?.env?.VITE_API_BASE_URL;
+let API_BASE_URL;
+if (envApi) {
+  API_BASE_URL = envApi;
+} else {
+  const host = window.location.hostname;
+  const protocol = window.location.protocol;
+  const isIPv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host);
+  const isLocalhost = host === 'localhost' || host === '127.0.0.1';
+  const hasDevPort = !!window.location.port;
 
-export const apiService = {
+  if (isIPv4 || isLocalhost || hasDevPort) {
+    // Common dev case: backend runs on same machine on port 8000
+    API_BASE_URL = `${protocol}//${host}:8000`;
+  } else {
+    // Public domain (ngrok, etc.) — use same origin without forcing :8000
+    API_BASE_URL = `${protocol}//${host}`;
+  }
+}
+
+console.log('apiService using API_BASE_URL =', API_BASE_URL);
+
+const buildQueryString = (params = {}) => {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach(item => {
+        if (item !== undefined && item !== null && item !== '') {
+          searchParams.append(key, item);
+        }
+      });
+      return;
+    }
+
+    if (value !== '') {
+      searchParams.append(key, value);
+    }
+  });
+
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : '';
+};
+
+const normalizeUser = (user) => ({
+  id: user.id,
+  username: user.username,
+  firstName: user.first_name,
+  lastName: user.last_name,
+  email: user.email,
+  role: user.role,
+  permissions: user.permissions || [],
+  homeArea: user.home_area,
+  workArea: user.work_area,
+  alertRadius: user.alert_radius,
+  createdAt: user.created_at,
+  activityLogs: user.activity_logs || [],
+});
+
+const normalizeAdmin = (admin) => ({
+  id: admin.id,
+  username: admin.username,
+  firstName: admin.first_name,
+  lastName: admin.last_name,
+  email: admin.email,
+  role: admin.role,
+  department: admin.department,
+  lastLogin: admin.last_login,
+  permissions: admin.permissions || [],
+});
+
+const apiService = {
   async getAreas() {
     try {
       console.log('Fetching areas from:', `${API_BASE_URL}/api/areas`);
@@ -49,15 +127,91 @@ export const apiService = {
     }
   },
 
+  async getUsers(token, params = {}) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users${buildQueryString(params)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to fetch users');
+      }
+
+      const data = await response.json();
+      return {
+        users: Array.isArray(data.users) ? data.users.map(normalizeUser) : [],
+        total: data.total ?? 0,
+        limit: data.limit ?? params.limit ?? 10,
+        offset: data.offset ?? params.offset ?? 0,
+      };
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
+  },
+
+  async bulkUserActions(token, action, userIds = []) {
+    try {
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        throw new Error('No user IDs provided for bulk action');
+      }
+
+      const searchParams = new URLSearchParams();
+      searchParams.append('action', action);
+      userIds.forEach((id) => searchParams.append('user_ids', id));
+
+      const response = await fetch(`${API_BASE_URL}/admin/user-bulk?${searchParams.toString()}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to perform bulk user action');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error performing bulk user action:', error);
+      throw error;
+    }
+  },
+
+  async updateUserPermissions(token, userId, permissions = []) {
+    try {
+      const searchParams = new URLSearchParams();
+      searchParams.append('user_id', userId);
+      permissions.forEach((permission) => searchParams.append('permissions', permission));
+
+      const response = await fetch(`${API_BASE_URL}/admin/user-roles?${searchParams.toString()}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to update user permissions');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating user permissions:', error);
+      throw error;
+    }
+  },
+
   async getCrimes(filters = {}) {
     try {
-      const params = new URLSearchParams();
-      if (filters.crime_type) params.append('crime_type', filters.crime_type);
-      if (filters.start_date) params.append('start_date', filters.start_date);
-      if (filters.end_date) params.append('end_date', filters.end_date);
-      if (filters.limit) params.append('limit', filters.limit);
-
-      const response = await fetch(`${API_BASE_URL}/api/crimes?${params}`);
+      const response = await fetch(`${API_BASE_URL}/api/crimes${buildQueryString(filters)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch crimes');
       }
@@ -111,17 +265,7 @@ export const apiService = {
   // New function specifically for fetching crimes by area (for map filtering)
   async getCrimesByArea(area, filters = {}) {
     try {
-      const params = new URLSearchParams();
-      if (area) params.append('area', area); // Use backend area filtering
-      if (filters.crime_type) params.append('crime_type', filters.crime_type);
-      if (filters.start_date) params.append('start_date', filters.start_date);
-      if (filters.end_date) params.append('end_date', filters.end_date);
-      if (filters.limit) params.append('limit', filters.limit);
-
-      console.log('Fetching crimes with area filter:', area);
-      console.log('Full URL:', `${API_BASE_URL}/api/crimes?${params}`);
-
-      const response = await fetch(`${API_BASE_URL}/api/crimes?${params}`);
+      const response = await fetch(`${API_BASE_URL}/api/crimes${buildQueryString({ ...filters, area })}`);
       if (!response.ok) {
         throw new Error('Failed to fetch crimes');
       }
@@ -260,8 +404,34 @@ export const apiService = {
     }
   },
 
+  async verifyEmail(token) {
+    try {
+      console.log('Verifying email with token');
+      const response = await fetch(`${API_BASE_URL}/auth/verify-email?token=${encodeURIComponent(token)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Email verification response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Email verification failed:', response.status, errorData);
+        throw new Error(errorData.detail || `Email verification failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Email verification successful:', data);
+      return data;
+    } catch (error) {
+      console.error('Error during email verification:', error);
+      throw error;
+    }
+  },
+
   async getCurrentUser(token) {
-    debugger
     try {
       console.log('Getting current user info');
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
@@ -337,8 +507,388 @@ export const apiService = {
       console.error('Error uploading profile photo:', error);
       throw error;
     }
-}
+  },
+
+  // Admin functions
+  async registerAdmin(adminData, token) {
+    try {
+      console.log('Registering admin:', adminData);
+      const response = await fetch(`${API_BASE_URL}/admin/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(adminData),
+      });
+
+      console.log('Admin registration response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Admin registration failed:', response.status, errorData);
+        throw new Error(errorData.detail || `Admin registration failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Admin registration successful:', data);
+      return data;
+    } catch (error) {
+      console.error('Error during admin registration:', error);
+      throw error;
+    }
+  },
+
+  async getAdmins(token, filters = {}) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/list${buildQueryString(filters)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('Get admins response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Get admins failed:', response.status, errorData);
+        throw new Error(errorData.detail || `Get admins failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Get admins successful:', data);
+      return {
+        admins: Array.isArray(data.admins) ? data.admins.map(normalizeAdmin) : [],
+        total: data.total ?? data.admins?.length ?? 0,
+        limit: data.limit ?? filters.limit ?? 10,
+        offset: data.offset ?? filters.offset ?? 0,
+      };
+    } catch (error) {
+      console.error('Error getting admins:', error);
+      throw error;
+    }
+  },
+
+  async getAdminStats(token) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/stats`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('Get admin stats response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Get admin stats failed:', response.status, errorData);
+        throw new Error(errorData.detail || `Get admin stats failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Get admin stats successful:', data);
+      return {
+        ...data,
+        totalUsers: data.total_users,
+        totalAdmins: data.total_admins,
+        activeReports: data.active_reports,
+        systemHealth: data.system_health,
+        predictionsToday: data.predictions_today,
+        preventedCrimes: data.prevented_crimes,
+      };
+    } catch (error) {
+      console.error('Error getting admin stats:', error);
+      throw error;
+    }
+  },
+
+  async getAdminNotifications(token) {
+    try {
+      console.log('Fetching admin notifications');
+      const response = await fetch(`${API_BASE_URL}/admin/notifications`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('Get admin notifications response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Get admin notifications failed:', response.status, errorData);
+        throw new Error(errorData.detail || `Get admin notifications failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Get admin notifications successful:', data);
+      return Array.isArray(data.notifications)
+        ? data.notifications.map((notification) => ({
+            id: notification.id,
+            type: notification.type,
+            title: notification.title,
+            message: notification.message,
+            timestamp: notification.timestamp,
+            urgent: notification.type === 'warning' || notification.type === 'error' || notification.urgent,
+          }))
+        : [];
+    } catch (error) {
+      console.error('Error getting admin notifications:', error);
+      throw error;
+    }
+  },
+
+  // Reporting functions for new endpoints
+  async getCrimeSummaryReport(token, filters = {}) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports/crime-summary${buildQueryString(filters)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to fetch crime summary report');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching crime summary report:', error);
+      throw error;
+    }
+  },
+
+  async getUserActivityReport(token, filters = {}) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports/user-activity${buildQueryString(filters)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to fetch user activity report');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching user activity report:', error);
+      throw error;
+    }
+  },
+
+  async getSystemHealthReport(token, filters = {}) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports/system-health${buildQueryString(filters)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to fetch system health report');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching system health report:', error);
+      throw error;
+    }
+  },
+
+  async exportCrimeData(token, filters = {}) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports/export-crime-data${buildQueryString(filters)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to export crime data');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `crime_data_export.${filters.format || 'json'}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting crime data:', error);
+      throw error;
+    }
+  },
+
+  // Legacy functions (keeping for backward compatibility)
+  async fetchReportData(token, reportType, startDate, endDate) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/analytics/time-series${buildQueryString({ reportType, startDate, endDate })}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to fetch report data');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+      throw error;
+    }
+  },
+
+  async exportReport(token, reportType, startDate, endDate, format) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/reports/export${buildQueryString({ reportType, startDate, endDate, format })}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to export report');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `report_${reportType}_${startDate}_to_${endDate}.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      throw error;
+    }
+  },
+
+  async enable2FA(token) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/enable-2fa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to enable 2FA');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error enabling 2FA:', error);
+      throw error;
+    }
+  },
+
+  async disable2FA(token) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/disable-2fa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to disable 2FA');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error disabling 2FA:', error);
+      throw error;
+    }
+  },
+
+  async verify2FA(token, code) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-2fa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to verify 2FA');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error verifying 2FA:', error);
+      throw error;
+    }
+  },
+
+  async get2FAStatus(token) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/2fa-status`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to get 2FA status');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error getting 2FA status:', error);
+      throw error;
+    }
+  }
 
 }
 
+export { apiService };
 export default apiService;

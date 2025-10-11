@@ -2,13 +2,12 @@ import React, { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext_updated";
 import "./LoginModal.css";
 
-const LoginModal = ({ isOpen, closeModal }) => {
+const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     firstName: "",
     lastName: "",
-    email: "",
     password: "",
     confirmPassword: "",
     homeArea: "",
@@ -16,6 +15,8 @@ const LoginModal = ({ isOpen, closeModal }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [generatedUsername, setGeneratedUsername] = useState("");
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   const { login, register } = useAuth();
 
@@ -46,9 +47,12 @@ const LoginModal = ({ isOpen, closeModal }) => {
     try {
       if (isLogin) {
         // Login
-        const result = await login(formData.username, formData.password);
+        const result = await login(formData.email, formData.password, requires2FA ? twoFactorCode : null);
         if (result.success) {
           closeModal();
+        } else if (result.requires_2fa) {
+          setRequires2FA(true);
+          setError(""); // Clear any previous error
         } else {
           setError(result.error);
         }
@@ -93,16 +97,17 @@ const LoginModal = ({ isOpen, closeModal }) => {
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setFormData({
-      username: "",
+      email: "",
       firstName: "",
       lastName: "",
-      email: "",
       password: "",
       confirmPassword: "",
       homeArea: ""
     });
     setError("");
     setGeneratedUsername("");
+    setRequires2FA(false);
+    setTwoFactorCode("");
   };
 
   if (!isOpen) return null;
@@ -120,18 +125,18 @@ const LoginModal = ({ isOpen, closeModal }) => {
         <form onSubmit={handleSubmit} className="auth-form">
           {isLogin ? (
             // Login Form
-            <div className="form-group">
-              <label htmlFor="username">Username</label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleInputChange}
-                required
-                disabled={loading}
-              />
-            </div>
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+              disabled={loading}
+            />
+          </div>
           ) : (
             // Registration Form
             <>
@@ -201,7 +206,36 @@ const LoginModal = ({ isOpen, closeModal }) => {
               disabled={loading}
               placeholder="Enter your password"
             />
+            {isLogin && (
+              <div className="forgot-password-link">
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={onForgotPassword}
+                  disabled={loading}
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            )}
           </div>
+
+          {isLogin && requires2FA && (
+            <div className="form-group">
+              <label htmlFor="twoFactorCode">Two-Factor Authentication Code</label>
+              <input
+                type="text"
+                id="twoFactorCode"
+                name="twoFactorCode"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                required
+                disabled={loading}
+                placeholder="Enter your 2FA code"
+                maxLength="6"
+              />
+            </div>
+          )}
 
           {!isLogin && (
             <div className="form-group">

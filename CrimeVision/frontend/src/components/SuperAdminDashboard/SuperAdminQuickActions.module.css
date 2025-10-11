@@ -1,0 +1,40 @@
+.quickActions {
+  background: linear-gradient(135deg, #8B4513 0%, #1a4f72 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  margin-bottom: 35px;
+  color: white;
+}
+
+.actionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.actionBtn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 18px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.3s;
+}
+
+.actionBtn:hover {
+  background: rgba(255,255,255,0.3);
+  transform: translateY(-4px) scale(1.04);
+}
+
+.actionBtn i {
+  font-size: 2rem;
+}

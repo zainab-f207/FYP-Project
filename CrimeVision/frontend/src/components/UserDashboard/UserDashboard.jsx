@@ -3,6 +3,7 @@ import './UserDropdown.css';
 import CrimeMap from '../CrimeMap/CrimeMap_updated';
 import ProfileModal from './ProfileModal';
 import PredictionSection from './PredictionSection';
+import CrimeHeatMap from '../CrimeHeatMap_updated_fixed';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext_updated';
 
@@ -16,6 +17,7 @@ const UserDashboard = () => {
   const [selectedCrimeType, setSelectedCrimeType] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [showMap, setShowMap] = useState(false);
+  const [activePage, setActivePage] = useState('dashboard');
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -82,6 +84,18 @@ const UserDashboard = () => {
     return name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const handleDashboardClick = (e) => {
+    e.preventDefault();
+    setActivePage('dashboard');
+    closeMobileSidebar();
+  };
+
+  const handleHeatmapClick = (e) => {
+    e.preventDefault();
+    setActivePage('crime-heatmap');
+    closeMobileSidebar();
+  };
+
   return (
     <div className={styles.appContainer}>
       <button className={styles.mobileToggle} onClick={toggleMobileSidebar}>
@@ -93,11 +107,11 @@ const UserDashboard = () => {
           <div className={styles.logo}>
             <i className="fas fa-shield-alt"></i>
           </div>
-          <h3>CrimeVision</h3>
+          <h3>SafeVision</h3>
         </div>
 
         <div className={styles.userProfileSidebar}>
-          <img src={user?.profile_picture || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"} alt="User" />
+          <img src={user?.profile_picture ? `${window.location.origin}/${user.profile_picture}` : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"} alt="User" />
           <div className={styles.userInfoSidebar}>
             <h4>{user?.username || 'User Name'}</h4>
             <p>{user?.home_area ? `${user.home_area}, Pakistan` : 'Location not set'}</p>
@@ -106,7 +120,7 @@ const UserDashboard = () => {
 
         <ul className={styles.sidebarMenu}>
           <li>
-            <a href="#" className={styles.active} onClick={closeMobileSidebar}>
+            <a href="#" className={styles.active} onClick={handleDashboardClick}>
               <i className="fas fa-home"></i>
               <span>Dashboard</span>
             </a>
@@ -115,6 +129,12 @@ const UserDashboard = () => {
             <a href="#risk-prediction" onClick={closeMobileSidebar}>
               <i className="fas fa-robot"></i>
               <span>Risk Prediction</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" onClick={handleHeatmapClick}>
+              <i className="fas fa-fire"></i>
+              <span>Crime Heatmap</span>
             </a>
           </li>
           <li>
@@ -167,7 +187,7 @@ const UserDashboard = () => {
             </div>
             <div className="user-profile" onClick={toggleDropdown} tabIndex={0} onBlur={() => setDropdownOpen(false)} style={{position: 'relative', zIndex: 10000}}>
               <div className={styles.userProfile}>
-                <img src={user?.profile_picture || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"} alt="User" />
+                <img src={user?.profile_picture ? `${window.location.origin}/${user.profile_picture}` : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"} alt="User" />
                 <div className={styles.userInfo}>
                   <div>{user?.username || 'User Name'}</div>
                   <small className={styles.role}>{user?.home_area ? `${user.home_area}, Pakistan` : 'Location not set'}</small>
@@ -188,96 +208,107 @@ const UserDashboard = () => {
           </div>
         </div>
 
-        {/* Risk Prediction Tool */}
-        <div id="risk-prediction">
-          <PredictionSection onPredictionComplete={handlePredictionComplete} />
-        </div>
-
-        {predictionResult && (
+        {activePage === 'dashboard' && (
           <>
-            <div className={`${styles.predictionResultCard} ${styles.fadeIn}`}>
-              <div className={styles.predictionResultHeader}>
-                <h3>Prediction Results</h3>
-                <button className={styles.viewOnMapBtn} onClick={handleViewOnMap}>
-                  <i className="fas fa-map-marker-alt"></i> {showMap ? 'Hide Map' : 'View on Map'}
-                </button>
-              </div>
-              
-              <div className={styles.predictionDetails}>
-                <div className={styles.riskScoreDisplay}>
-                  <div className={styles.riskMeter}>
-                    <svg width="120" height="120" viewBox="0 0 120 120">
-                      <circle cx="60" cy="60" r="54" fill="none" stroke="#eee" strokeWidth="8" />
-                      <circle 
-                        cx="60" cy="60" r="54" fill="none" 
-                        stroke={predictionResult.riskLevel === 'High' ? '#dc2626' : predictionResult.riskLevel === 'Medium' ? '#f59e0b' : '#22c55e'}
-                        strokeWidth="8"
-                        strokeDasharray="339.3"
-                        strokeDashoffset={339.3 - (predictionResult.riskPercentage / 100) * 339.3}
-                        transform="rotate(-90 60 60)"
-                      />
-                      <text x="60" y="65" textAnchor="middle" fontSize="14" fill="var(--text-dark)" fontWeight="bold">
-                        {predictionResult.riskPercentage}%
-                      </text>
-                    </svg>
-                  </div>
-                  <div className={`${styles.riskValue} ${styles[predictionResult.riskLevel.toLowerCase()]}`}>
-                    {predictionResult.riskLevel} Risk
-                  </div>
-                </div>
-                
-                <div className={styles.predictionInfo}>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Area:</span>
-                    <span className={styles.infoValue}>{formatAreaName(predictionResult.area)}</span>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Crime Type:</span>
-                    <span className={styles.infoValue}>{predictionResult.crimeType}</span>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Date:</span>
-                    <span className={styles.infoValue}>{new Date(predictionResult.date).toLocaleDateString()}</span>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>Confidence:</span>
-                    <span className={styles.infoValue}>{Math.round((predictionResult.confidence || 0.8) * 100)}%</span>
-                  </div>
-                </div>
-              </div>
+            {/* Risk Prediction Tool */}
+            <div id="risk-prediction">
+              <PredictionSection onPredictionComplete={handlePredictionComplete} />
             </div>
 
-            {/* Map Section - Only shown when user clicks "View on Map" */}
-            {showMap && (
-              <div className={`${styles.mapContainer} ${styles.fadeIn}`}>
-                <div className={styles.mapHeader}>
-                  <h3 className={styles.mapTitle}>Crime Risk Visualization</h3>
-                  <div className={styles.mapControls}>
-                    <div className={styles.predictionFilter}>
-                      <span className={styles.filterLabel}>Showing prediction for:</span>
-                      <span className={styles.filterValue}>
-                        {formatAreaName(selectedArea)} • {selectedCrimeType} • {new Date(selectedDate).toLocaleDateString()}
-                      </span>
+            {predictionResult && (
+              <>
+                <div className={`${styles.predictionResultCard} ${styles.fadeIn}`}>
+                  <div className={styles.predictionResultHeader}>
+                    <h3>Prediction Results</h3>
+                    <button className={styles.viewOnMapBtn} onClick={handleViewOnMap}>
+                      <i className="fas fa-map-marker-alt"></i> {showMap ? 'Hide Map' : 'View on Map'}
+                    </button>
+                  </div>
+                  
+                  <div className={styles.predictionDetails}>
+                    <div className={styles.riskScoreDisplay}>
+                      <div className={styles.riskMeter}>
+                        <svg width="120" height="120" viewBox="0 0 120 120">
+                          <circle cx="60" cy="60" r="54" fill="none" stroke="#eee" strokeWidth="8" />
+                          <circle 
+                            cx="60" cy="60" r="54" fill="none" 
+                            stroke={predictionResult.riskLevel === 'High' ? '#dc2626' : predictionResult.riskLevel === 'Medium' ? '#f59e0b' : '#22c55e'}
+                            strokeWidth="8"
+                            strokeDasharray="339.3"
+                            strokeDashoffset={339.3 - (predictionResult.riskPercentage / 100) * 339.3}
+                            transform="rotate(-90 60 60)"
+                          />
+                          <text x="60" y="65" textAnchor="middle" fontSize="14" fill="var(--text-dark)" fontWeight="bold">
+                            {predictionResult.riskPercentage}%
+                          </text>
+                        </svg>
+                      </div>
+                      <div className={`${styles.riskValue} ${styles[predictionResult.riskLevel.toLowerCase()]}`}>
+                        {predictionResult.riskLevel} Risk
+                      </div>
+                    </div>
+                    
+                    <div className={styles.predictionInfo}>
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Area:</span>
+                        <span className={styles.infoValue}>{formatAreaName(predictionResult.area)}</span>
+                      </div>
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Crime Type:</span>
+                        <span className={styles.infoValue}>{predictionResult.crimeType}</span>
+                      </div>
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Date:</span>
+                        <span className={styles.infoValue}>{new Date(predictionResult.date).toLocaleDateString()}</span>
+                      </div>
+                      <div className={styles.infoItem}>
+                        <span className={styles.infoLabel}>Confidence:</span>
+                        <span className={styles.infoValue}>{Math.round((predictionResult.confidence || 0.8) * 100)}%</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-                
-                <div className={styles.crimeMapWrapper}>
-                  <CrimeMap 
-                    isAuthenticated={true} 
-                    showLoginModal={() => alert('Please login to access advanced features')}
-                    predictionData={predictionResult}
-                    hideControls={true}
-                  />
-                </div>
-              </div>
+
+                {/* Map Section - Only shown when user clicks "View on Map" */}
+                {showMap && (
+                  <div className={`${styles.mapContainer} ${styles.fadeIn}`}>
+                    <div className={styles.mapHeader}>
+                      <h3 className={styles.mapTitle}>Crime Risk Visualization</h3>
+                      <div className={styles.mapControls}>
+                        <div className={styles.predictionFilter}>
+                          <span className={styles.filterLabel}>Showing prediction for:</span>
+                          <span className={styles.filterValue}>
+                            {formatAreaName(selectedArea)} • {selectedCrimeType} • {new Date(selectedDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className={styles.crimeMapWrapper}>
+                      <CrimeMap 
+                        isAuthenticated={true} 
+                        showLoginModal={() => alert('Please login to access advanced features')}
+                        predictionData={predictionResult}
+                        hideControls={true}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
+
+            <DashboardCards styles={styles} />
+            <AlertSection styles={styles} />
+            <RecentReports styles={styles} />
           </>
         )}
 
-        <DashboardCards styles={styles} />
-        <AlertSection styles={styles} />
-        <RecentReports styles={styles} />
+        {activePage === 'crime-heatmap' && (
+          <CrimeHeatMap 
+            isAuthenticated={true} 
+            showLoginModal={() => {}}
+          />
+        )}
       </div>
       <ProfileModal isOpen={profileModalOpen} user={user} onClose={closeProfileModal} />
     </div>

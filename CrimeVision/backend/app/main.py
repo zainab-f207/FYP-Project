@@ -485,6 +485,8 @@ def create_crime(crime: CrimeCreate):
             int(parsed_date.day),
             int(parsed_date.weekday())
         )
+        day_of_year = int(parsed_date.timetuple().tm_yday)
+        is_weekend = 1 if weekday in [5, 6] else 0
 
         logger.info(f"Creating crime: area='{area}', crime_type='{crime_type}', date={date}")
 
@@ -506,21 +508,21 @@ def create_crime(crime: CrimeCreate):
                     crime_type_enc = int(le_crime.transform([matched_crime])[0])
 
                     features_df = pd.DataFrame(
-                        [[area_enc, crime_type_enc, year, month, day, weekday]],
-                        columns=['area_enc', 'crime_type_enc', 'year', 'month', 'day', 'weekday']
+                        [[area_enc, crime_type_enc, year, month, day, weekday, day_of_year, is_weekend]],
+                        columns=['area_enc', 'crime_type_enc', 'year', 'month', 'day', 'weekday', 'day_of_year', 'is_weekend']
                     ).astype(int)
 
-                    logger.info(f"Features to model (create_crime): {features_df.iloc[0].to_list()}")
+                    logger.info(f"Features to model (create_crime): {features_df.iloc[0].to_list()} (dtypes: {features_df.dtypes.to_dict()})")
 
                     pred = model.predict(features_df)[0]
                     pred_proba = model.predict_proba(features_df)[0]
 
                     risk_level = le_risk.inverse_transform([pred])[0]
+                    risk_level_cap = str(risk_level).capitalize()
+                    risk_percentage = calculate_risk_percentage(risk_level_cap, pred_proba.tolist(), le_risk)
                     confidence = float(max(pred_proba))
-                    risk_percentage = int(round(confidence * 100))
 
-                    logger.info(f"create_crime prediction: risk_level={risk_level}, "
-                                f"probabilities={pred_proba.tolist()}, confidence={confidence}")
+                    logger.info(f"create_crime prediction: risk_level={risk_level_cap}, risk_percentage={risk_percentage}%, probabilities={pred_proba.tolist()}, confidence={confidence}")
 
                 except Exception as e:
                     logger.error(f"Encoding or prediction error in create_crime: {e}", exc_info=True)

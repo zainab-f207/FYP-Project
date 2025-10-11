@@ -1,18 +1,19 @@
 /* src/App.css */
 /* src/App.css */
 :root {
-  --primary-dark: #1a1d28;
-  --secondary-dark: #252a3f;
-  --accent-blue: #2563eb;
-  --accent-teal: #0d9488;
-  --accent-red: #dc2626;
-  --light-bg: #f8fafc;
+  /* SafeVision brand tokens */
+  --primary-dark: #1a3a5f; /* deep blue */
+  --primary: #1a3a5f;
+  --secondary: #00a6a6; /* teal */
+  --accent-amber: #ffc107; /* amber for alerts */
+  --danger: #dc2626;
+  --light-bg: #f8f9fa; /* neutral light */
   --light-card: #ffffff;
-  --text-dark: #1e293b;
-  --text-light: #64748b;
-  --text-white: #f1f5f9;
+  --text-dark: #343a40; /* dark gray */
+  --text-light: #6b7280;
+  --text-white: #ffffff;
   --border-radius: 12px;
-  --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
   --transition: all 0.3s ease;
   --sidebar-width: 280px;
 }
@@ -22,7 +23,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Open Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 body {
@@ -82,6 +83,7 @@ body.dark-mode {
   color: var(--text-dark);
   margin-bottom: 15px;
   font-weight: 700;
+  font-family: 'Poppins', 'Open Sans', sans-serif;
 }
 
 .section-title .urdu-text {

@@ -1,19 +1,19 @@
 /* src/components/Header/Header.css */
 /* Enhanced Desktop Header with Glassmorphism */
 .user-dashboard {
-  --primary-dark: #0d2b4b;
-  --primary: #1a4f72;
-  --primary-light: #2d7fb8;
-  --secondary: #f9a826;
-  --accent: #ff6b6b;
-  --success: #1dd1a1;
-  --dark: #2d3436;
-  --light: #f5f6fa;
-  --gray: #dfe6e9;
+  /* SafeVision brand tokens */
+  --primary-dark: #1a3a5f; /* deep blue */
+  --primary: #1a3a5f;
+  --secondary: #00a6a6; /* teal */
+  --accent: #ffc107; /* amber */
+  --success: #22c55e;
+  --dark: #343a40; /* dark gray for text/background */
+  --light: #f8f9fa; /* neutral light */
+  --gray: #d1d5db;
   --sidebar-width: 280px;
   --sidebar-collapsed-width: 80px;
-  --transition-speed: 0.4s;
-  --card-radius: 16px;
+  --transition-speed: 0.3s;
+  --card-radius: 12px;
 }
 
 /* Rest of the CSS remains the same but add .user-dashboard prefix to all selectors */
@@ -72,16 +72,21 @@
 }
 
 .logo-icon {
-  background: var(--accent-blue);
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary) 100%);
   color: white;
-  width: 45px;
-  height: 45px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  transition: var(--transition);
+  transition: var(--transition-speed);
+}
+
+.logo-img {
+  width: 34px;
+  height: 34px;
+  display: block;
 }
 
 /* Desktop Navigation with Dropdowns */
@@ -113,8 +118,8 @@
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--accent-blue);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--secondary);
 }
 
 .nav-link i {
@@ -229,8 +234,8 @@
 .search-dropdown .search-header {
   padding: 10px 15px;
   font-weight: 600;
-  color: var(--accent-blue);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .search-dropdown .search-item {

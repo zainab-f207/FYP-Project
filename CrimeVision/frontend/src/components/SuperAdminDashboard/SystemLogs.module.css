@@ -1,0 +1,51 @@
+.systemLogs {
+  background: linear-gradient(135deg, #f5f6fa 0%, #eef1f5 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  margin-bottom: 35px;
+}
+
+.logList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.logItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #e6e9f0;
+  font-size: 1rem;
+}
+
+.logItem:last-child {
+  border-bottom: none;
+}
+
+.event {
+  font-weight: 600;
+}
+
+.time {
+  color: #888;
+  font-size: 0.95rem;
+}
+
+.success {
+  color: #1dd1a1;
+}
+
+.info {
+  color: #1a4f72;
+}
+
+.error {
+  color: #ff6b6b;
+}
+
+.warning {
+  color: #f9a826;
+}

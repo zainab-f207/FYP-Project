@@ -1,0 +1,62 @@
+.notificationsPanel {
+  background: linear-gradient(135deg, #eef1f5 0%, #f5f6fa 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  padding: 25px;
+  margin-bottom: 35px;
+}
+
+.notificationsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notificationItem {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e6e9f0;
+  transition: background 0.3s;
+}
+
+.notificationItem:last-child {
+  border-bottom: none;
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
+
+.alert {
+  color: #ff6b6b;
+  background: rgba(255,107,107,0.08);
+}
+
+.report {
+  color: #f9a826;
+  background: rgba(249,168,38,0.08);
+}
+
+.system {
+  color: #1a4f72;
+  background: rgba(26,79,114,0.08);
+}
+
+.message {
+  flex: 1;
+  font-size: 1rem;
+  color: #2d3436;
+}
+
+.time {
+  font-size: 0.85rem;
+  color: #888;
+}
