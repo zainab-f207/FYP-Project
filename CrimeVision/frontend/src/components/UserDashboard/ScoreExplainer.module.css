@@ -1,0 +1,351 @@
+/* Score Explainer Component Styles */
+
+/* Modal Styles for Professional Integration */
+.explainerModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.closeButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Legacy Inline Styles */
+.explainerContainer {
+  margin: 20px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.warningBanner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.warningBanner:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.warningBanner i:first-child {
+  font-size: 20px;
+}
+
+.warningBanner span {
+  flex: 1;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.warningBanner i:last-child {
+  font-size: 14px;
+  transition: transform 0.3s ease;
+}
+
+.explainerContent {
+  background: white;
+  padding: 30px;
+  border: 1px solid #e0e0e0;
+  border-top: none;
+}
+
+.explainerContent h3 {
+  margin: 0 0 25px 0;
+  font-size: 22px;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 25px;
+  margin-bottom: 30px;
+}
+
+.scoreCard {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.scoreCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.cardHeader i {
+  font-size: 20px;
+  color: #667eea;
+}
+
+.scoreDisplay {
+  text-align: center;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.scoreBig {
+  font-size: 48px;
+  font-weight: bold;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 5px;
+}
+
+.scoreLabel {
+  font-size: 14px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cardDetails {
+  color: #34495e;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cardDetails p {
+  margin: 10px 0;
+}
+
+.cardDetails strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.detailsBox {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+.detailsBox strong {
+  display: block;
+  margin-bottom: 10px;
+  color: #667eea;
+}
+
+.detailsBox ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.detailsBox li {
+  margin: 5px 0;
+  color: #555;
+}
+
+.explanationBox {
+  background: #f8f9fa;
+  border-left: 4px solid #667eea;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.explanationBox h4 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 18px;
+}
+
+.useCaseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.useCase {
+  display: flex;
+  gap: 15px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.useCase:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.useCaseIcon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.useCaseContent strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-size: 15px;
+}
+
+.useCaseContent p {
+  margin: 5px 0;
+  color: #555;
+  font-size: 14px;
+}
+
+.reason {
+  font-style: italic;
+  color: #777 !important;
+  font-size: 13px !important;
+}
+
+.technicalNote {
+  background: #e8f4fd;
+  border:1px solid #b3d9f2;
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 14px;
+  color: #2c3e50;
+  line-height: 1.6;
+}
+
+.technicalNote i {
+  color: #667eea;
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.technicalNote strong {
+  color: #2c3e50;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .explainerContent {
+    background: #1a1a1a;
+    border-color: #333;
+  }
+
+  .explainerContent h3,
+  .cardDetails,
+  .cardDetails strong,
+  .useCaseContent strong,
+  .technicalNote,
+  .explanationBox h4 {
+    color: #e0e0e0;
+  }
+
+  .scoreCard {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  }
+
+  .scoreDisplay,
+  .detailsBox,
+  .useCase {
+    background: #2c3e50;
+  }
+
+  .explanationBox {
+    background: #2c3e50;
+    border-left-color: #667eea;
+  }
+
+  .technicalNote {
+    background: #2c3e50;
+    border-color: #667eea;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .comparisonGrid,
+  .useCaseGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .explainerContent {
+    padding: 20px;
+  }
+
+  .scoreBig {
+    font-size: 36px;
+  }
+
+  .useCase {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .technicalNote {
+    flex-direction: column;
+    text-align: center;
+  }
+}

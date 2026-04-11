@@ -1,0 +1,52 @@
+﻿python : [33mChecking connectivity to the model hosters, this may take a 
+while. To bypass this check, set `DISABLE_MODEL_SOURCE_CHECK` to `True`.[0m
+At line:1 char:1
++ python test_crime_area_only.py "D:\FYP\Project\CrimeVision\OCRModel\a ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33mChecking c... to `True`.[0m 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-02-14 23:51:16,713 - __main__ - INFO - ===================================
+=============================================
+2026-02-14 23:51:16,713 - __main__ - INFO - TESTING CRIME AREA EXTRACTION: 
+D:\FYP\Project\CrimeVision\OCRModel\app\data\raw\FIR_006.png
+2026-02-14 23:51:16,713 - __main__ - INFO - ===================================
+=============================================
+2026-02-14 23:51:16,713 - __main__ - INFO - Initializing FIR extractor...
+2026-02-14 23:51:16,725 - easyocr.easyocr - WARNING - Using CPU. Note: This 
+module is much faster with a GPU.
+2026-02-14 23:51:32,229 - fir_specialized_ocr - INFO - \u2713 EasyOCR 
+initialized (Urdu + English)
+2026-02-14 23:51:32,244 - easyocr.easyocr - WARNING - Using CPU. Note: This 
+module is much faster with a GPU.
+2026-02-14 23:51:38,562 - fir_specialized_ocr - INFO - \u2713 EasyOCR 
+English-only reader initialized
+2026-02-14 23:51:38,570 - fir_specialized_ocr - ERROR - PaddleOCR init failed: 
+Unknown argument: show_log
+2026-02-14 23:51:38,570 - fir_specialized_ocr - INFO - \u2713 Tesseract 
+available
+2026-02-14 23:51:38,570 - fir_specialized_ocr - INFO - OCR engines available: 
+easyocr, tesseract
+2026-02-14 23:51:45,511 - __main__ - INFO - Image loaded: 7020x9552px (191.8 
+MB)
+2026-02-14 23:51:45,513 - __main__ - INFO - 
+Extracting crime area...
+2026-02-14 23:51:45,513 - fir_specialized_ocr - INFO - 
+==================================================
+2026-02-14 23:51:45,513 - fir_specialized_ocr - INFO - EXTRACTING CRIME AREA 
+(Row 4 - \u062c\u0627\u0626\u06d2 \u0648\u0642\u0648\u0639\u06c1)
+2026-02-14 23:51:45,513 - fir_specialized_ocr - INFO - 
+==================================================
+2026-02-14 23:51:45,527 - fir_specialized_ocr - INFO - [Crime Area] Extracted 
+region: Y[3629:4307] X[2035:4352] = 2317x678px
+2026-02-14 23:51:46,247 - fir_specialized_ocr - INFO - [Crime Area] Attempting 
+4.0x upscale...
+2026-02-14 23:52:26,622 - fir_specialized_ocr - INFO - [Crime Area] \u2713 
+Upscaled 4.0x + denoised + CLAHE: 9268x2712px
+2026-02-14 23:52:33,796 - fir_specialized_ocr - INFO - [Crime Area] 
+Tesseract-PSM6: 45 chars, 31 Urdu
+2026-02-14 23:52:50,413 - fir_specialized_ocr - INFO - [Crime Area] 
+Tesseract-Adaptive: 2453 chars, 1329 Urdu
+2026-02-14 23:52:51,147 - fir_specialized_ocr - INFO - [Crime Area] 
+Tesseract-2x: 55 chars, 34 Urdu

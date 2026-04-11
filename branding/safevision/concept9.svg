@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="hexBase" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a3a5f" />
+      <stop offset="100%" stop-color="#0f2b48" />
+    </linearGradient>
+    <linearGradient id="hexHighlight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00a6a6" />
+      <stop offset="100%" stop-color="#00ffff" />
+    </linearGradient>
+    <linearGradient id="hexAccent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffc107" />
+      <stop offset="100%" stop-color="#ffb347" />
+    </linearGradient>
+    <radialGradient id="backgroundGradient" cx="50%" cy="50%" r="85%">
+      <stop offset="0%" stop-color="#10233d" />
+      <stop offset="100%" stop-color="#0a1929" />
+    </radialGradient>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#backgroundGradient)" />
+  <rect width="800" height="600" fill="#0a1929" opacity="0.08" />
+
+  <g transform="translate(400,260)">
+    <g opacity="0.22" stroke="#0f3a63" stroke-width="12" fill="none">
+      <path d="M0 -230 L200 -115 L200 115 L0 230 L-200 115 L-200 -115 Z" />
+    </g>
+
+    <g transform="translate(0,0)">
+      <!-- Hexagon grid -->
+      <g id="layer1" opacity="0.85">
+        <g transform="translate(-140,-80)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexBase)" stroke="#16314f" stroke-width="3" />
+          <path d="M80 -20 L132 10 L132 70 L80 100 L28 70 L28 10 Z" fill="url(#hexBase)" stroke="#16314f" stroke-width="3" />
+          <path d="M-80 -20 L-28 10 L-28 70 L-80 100 L-132 70 L-132 10 Z" fill="url(#hexBase)" stroke="#16314f" stroke-width="3" />
+        </g>
+        <g transform="translate(0,-120)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexBase)" stroke="#16314f" stroke-width="3" />
+          <path d="M80 -20 L132 10 L132 70 L80 100 L28 70 L28 10 Z" fill="url(#hexBase)" stroke="#16314f" stroke-width="3" />
+          <path d="M-80 -20 L-28 10 L-28 70 L-80 100 L-132 70 L-132 10 Z" fill="url(#hexBase)" stroke="#16314f" stroke-width="3" />
+        </g>
+        <g transform="translate(140,-80)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexBase)" stroke="#16314f" stroke-width="3" />
+        </g>
+      </g>
+
+      <g id="layer2" opacity="0.92">
+        <g transform="translate(-60,20)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexHighlight)" stroke="#1b4a68" stroke-width="3" />
+        </g>
+        <g transform="translate(20,-60)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexHighlight)" stroke="#1b4a68" stroke-width="3" filter="url(#softGlow)" />
+        </g>
+        <g transform="translate(100,40)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexHighlight)" stroke="#1b4a68" stroke-width="3" />
+        </g>
+        <g transform="translate(-120,120)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexHighlight)" stroke="#1b4a68" stroke-width="3" />
+        </g>
+      </g>
+
+      <g id="layer3" opacity="0.95">
+        <g transform="translate(-140,20)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexAccent)" stroke="#704e25" stroke-width="3" />
+        </g>
+        <g transform="translate(60,120)">
+          <path d="M0 -60 L52 -30 L52 30 L0 60 L-52 30 L-52 -30 Z" fill="url(#hexAccent)" stroke="#704e25" stroke-width="3" />
+        </g>
+      </g>
+
+      <!-- Micro visualizations -->
+      <g stroke="#0ef3ff" stroke-width="2" opacity="0.6">
+        <polyline points="-60,-180 -20,-150 20,-110 60,-70" fill="none" />
+        <polyline points="20,20 60,-10 100,30 140,70" fill="none" />
+      </g>
+      <g stroke="#ffc107" stroke-width="2" opacity="0.6">
+        <polyline points="-120,100 -60,140 0,120 60,140" fill="none" />
+      </g>
+      <g fill="#ffffff" opacity="0.75">
+        <circle cx="-20" cy="160" r="6" />
+        <circle cx="100" cy="20" r="5" />
+        <circle cx="-100" cy="-100" r="4" />
+      </g>
+    </g>
+
+    <g opacity="0.25" stroke="#00f5ff" stroke-width="3" stroke-dasharray="20 16">
+      <path d="M0 -210 L180 -105 L180 105 L0 210 L-180 105 L-180 -105 Z" fill="none" />
+    </g>
+  </g>
+
+  <g font-family="'BankGothic', 'Montserrat', sans-serif" text-anchor="middle">
+    <text x="400" y="500" font-size="68" fill="url(#hexHighlight)" stroke="#0e2239" stroke-width="1" letter-spacing="10">SAFEVISION</text>
+    <text x="400" y="540" font-size="24" fill="#94a3b8" letter-spacing="6">Spatial Analysis &amp; Visualization</text>
+  </g>
+</svg>

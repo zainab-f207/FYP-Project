@@ -29,13 +29,13 @@ const Testimonials = () => {
       <div className="section-title">
         <h2>User Testimonials</h2>
         <span className="urdu-text">صارفین کے تاثرات</span>
-        <p>What our users say about CrimeVision Pakistan</p>
+        <p>What our users say about SafeVision Pakistan</p>
       </div>
 
       <div className="testimonial-cards">
         <div className="testimonial-card fade-in">
           <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" className="testimonial-avatar" />
-          <p className="testimonial-text">"CrimeVision helped our community identify high-risk areas and take preventive measures. The prediction tool is remarkably accurate."</p>
+          <p className="testimonial-text">"SafeVision helped our community identify high-risk areas and take preventive measures. The prediction tool is remarkably accurate."</p>
           <p className="testimonial-author">- Ahmed R., Gulberg</p>
         </div>
 

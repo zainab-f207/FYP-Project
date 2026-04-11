@@ -1,0 +1,519 @@
+/* src/components/PredictionMapView/RealPredictionMap.module.css */
+.realPredictionMap {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 1rem 0;
+  backdrop-filter: blur(20px);
+}
+
+.mapControls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--card-border);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.controlGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.controlGroup label {
+  color: var(--text-white);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.styleSelect {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: var(--text-white);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.styleSelect:focus {
+  outline: none;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+.predictionInfo {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.riskBadge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.riskBadge[data-risk="High"] {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.riskBadge[data-risk="Medium"] {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fed7aa;
+}
+
+.riskBadge[data-risk="Low"] {
+  background: #f0fdf4;
+  color: #059669;
+  border: 1px solid #bbf7d0;
+}
+
+.stats {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.mapContainer {
+  position: relative;
+  height: 600px;
+  background: var(--bg-primary);
+}
+
+.mapFallback {
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+  border-radius: 20px;
+  border: 2px dashed var(--card-border);
+}
+
+.fallbackContent {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.fallbackContent i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.fallbackContent h3 {
+  color: var(--text-white);
+  margin-bottom: 0.5rem;
+}
+
+/* Popup Styles */
+.predictionPopup,
+.crimePopup {
+  min-width: 250px;
+  color: var(--text-dark);
+}
+
+.predictionPopup h4,
+.crimePopup h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-dark);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.popupContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.popupItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.popupItem strong {
+  color: var(--text-dark);
+  min-width: 80px;
+}
+
+.riskLevel {
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.riskLevel[data-risk="High"] {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.riskLevel[data-risk="Medium"] {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.riskLevel[data-risk="Low"] {
+  background: #f0fdf4;
+  color: #059669;
+}
+
+.relevanceScore {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* Risk Tooltip */
+.riskTooltip {
+  background: rgba(0, 0, 0, 0.8);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Map Legend */
+.mapLegend {
+  padding: 1.5rem;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--card-border);
+}
+
+.legendTitle {
+  color: var(--text-white);
+  font-weight: 700;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.legendItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.legendMarker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.legendMarker.hotspot {
+  background: #ef4444;
+}
+
+.legendMarker.highRisk {
+  background: #ef4444;
+}
+
+.legendMarker.mediumRisk {
+  background: #f59e0b;
+}
+
+.legendMarker.lowRisk {
+  background: #10b981;
+}
+
+.riskZone {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ef4444;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Custom Marker Animations */
+.prediction-marker {
+  animation: pulse 2s infinite;
+}
+
+.prediction-marker.hotspot {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mapControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .controlGroup {
+    justify-content: space-between;
+  }
+  
+  .predictionInfo {
+    justify-content: center;
+    text-align: center;
+  }
+  
+  .mapContainer {
+    height: 400px;
+  }
+  
+  .legendItems {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .realPredictionMap {
+    margin: 0.5rem;
+    border-radius: 15px;
+  }
+
+  .mapControls {
+    padding: 1rem;
+  }
+
+  .mapContainer {
+    height: 350px;
+  }
+
+  .mapLegend {
+    padding: 1rem;
+  }
+}
+
+/* ── Time slider ─────────────────────────────────────────────────────────── */
+.timeSliderWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 200px;
+  max-width: 340px;
+}
+.sliderLabelTitle {
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: var(--text-white);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.1rem;
+}
+.sliderLabelTitle i { color: var(--accent-teal, #00d4ff); }
+.sliderRow {
+  display: grid;
+  grid-template-columns: 30px 1fr 64px;
+  align-items: center;
+  gap: 0.4rem;
+}
+.sliderLabel { font-size: 0.71rem; color: var(--text-muted); font-weight: 600; }
+.timeSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--card-border, rgba(255,255,255,0.15));
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+}
+.timeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--accent-teal, #00d4ff);
+  border: 2px solid var(--bg-primary, #0f172a);
+  cursor: pointer;
+}
+.timeSlider::-moz-range-thumb {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--accent-teal, #00d4ff);
+  border: none;
+  cursor: pointer;
+}
+.sliderValue {
+  font-size: 0.71rem;
+  font-weight: 700;
+  color: var(--accent-teal, #00d4ff);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ── View toggle ─────────────────────────────────────────────────────────── */
+.mapViewToggle {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--card-border, rgba(255,255,255,0.15));
+}
+.toggleBtn {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: background 0.15s, color 0.15s;
+}
+.toggleBtn:hover { background: rgba(255,255,255,0.07); color: var(--text-white); }
+.toggleBtnActive {
+  background: var(--accent-teal, #00d4ff);
+  color: #0f172a;
+  font-weight: 700;
+}
+.toggleBtn i { font-size: 0.7rem; }
+
+/* ── Prediction Summary Panel ───────────────────────── */
+.predSummaryPanel {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: linear-gradient(135deg, rgba(14,165,233,0.08) 0%, rgba(0,0,0,0.2) 100%);
+  border: 1px solid rgba(14,165,233,0.2);
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.predSummaryLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.predSummaryArea {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.predSummaryCrime {
+  font-size: 0.79rem;
+  color: rgba(255,255,255,0.6);
+}
+.predSummaryDate {
+  font-size: 0.73rem;
+  color: rgba(255,255,255,0.4);
+}
+.predSummaryRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+.predSummaryRisk {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.predSummaryPct {
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.predSummaryRisk[data-risk="High"]   .predSummaryPct { color: #ef4444; }
+.predSummaryRisk[data-risk="Medium"] .predSummaryPct { color: #f59e0b; }
+.predSummaryRisk[data-risk="Low"]    .predSummaryPct { color: #10b981; }
+.predSummaryLevel {
+  font-size: 0.74rem;
+  color: rgba(255,255,255,0.5);
+  align-self: center;
+}
+.predSummaryPeriod {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.38);
+}
+
+/* ── Crime-type filter toggle ────────────────────────── */
+.crimeTypeToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.crimeTypeToggle .sliderLabel { white-space: nowrap; }
+.ctypeBtn {
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: transparent;
+  color: var(--text-muted, rgba(255,255,255,0.5));
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.ctypeBtn.active {
+  background: var(--accent-blue, #0ea5e9);
+  border-color: var(--accent-blue, #0ea5e9);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ── Crime FIR popup (Leaflet override via :global) ────────────── */
+:global(.crime-fir-popup .leaflet-popup-content-wrapper) {
+  padding: 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.25) !important;
+  border: none !important;
+}
+:global(.crime-fir-popup .leaflet-popup-content) {
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+:global(.crime-fir-popup .leaflet-popup-tip) {
+  box-shadow: none !important;
+}

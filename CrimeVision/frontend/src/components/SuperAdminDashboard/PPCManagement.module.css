@@ -1,0 +1,231 @@
+/* PPCManagement.module.css — dark-theme overrides for Ant Design components */
+
+/* ── Wrapper ─────────────────────────────── */
+.ppcWrapper {
+  padding: 0;
+  color: #fff;
+}
+
+/* ── Stat cards (already styled inline, just ensure text is visible) ── */
+.ppcWrapper :global(.ant-statistic-title) {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 13px;
+}
+.ppcWrapper :global(.ant-statistic-content-value) {
+  color: #fff !important;
+  font-size: 24px;
+}
+
+/* ── Controls card ───────────────────────── */
+.ppcWrapper :global(.ant-card) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px;
+}
+.ppcWrapper :global(.ant-card-body) {
+  padding: 12px 16px !important;
+}
+
+/* ── Input ───────────────────────────────── */
+.ppcWrapper :global(.ant-input) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+}
+.ppcWrapper :global(.ant-input::placeholder) {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+.ppcWrapper :global(.ant-input-affix-wrapper) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #fff;
+}
+.ppcWrapper :global(.ant-input-affix-wrapper .ant-input) {
+  background: transparent !important;
+  color: #fff !important;
+}
+.ppcWrapper :global(.ant-input-affix-wrapper .anticon) {
+  color: rgba(255, 255, 255, 0.5);
+}
+.ppcWrapper :global(.ant-input-affix-wrapper:focus),
+.ppcWrapper :global(.ant-input-affix-wrapper-focused) {
+  border-color: #00a6a6 !important;
+  box-shadow: 0 0 0 2px rgba(0, 166, 166, 0.2) !important;
+}
+
+/* ── Select ──────────────────────────────── */
+.ppcWrapper :global(.ant-select-selector) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+}
+.ppcWrapper :global(.ant-select-selection-placeholder) {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+.ppcWrapper :global(.ant-select-arrow) {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.ppcWrapper :global(.ant-select-clear) {
+  background: #1e2d50 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+.ppcWrapper :global(.ant-select-selection-item) {
+  color: #fff !important;
+}
+/* Dropdown popup — needs global (renders outside wrapper) */
+:global(.ant-select-dropdown) {
+  background: #172140 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+:global(.ant-select-item) {
+  color: rgba(255, 255, 255, 0.85) !important;
+  background: transparent !important;
+}
+:global(.ant-select-item-option-active),
+:global(.ant-select-item-option-selected) {
+  background: rgba(0, 166, 166, 0.2) !important;
+  color: #fff !important;
+}
+
+/* ── Table ───────────────────────────────── */
+.ppcWrapper :global(.ant-table) {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.ppcWrapper :global(.ant-table-container) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ppcWrapper :global(.ant-table-thead > tr > th) {
+  background: rgba(26, 58, 95, 0.9) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border-bottom: 1px solid rgba(0, 166, 166, 0.3) !important;
+  font-weight: 600;
+  font-size: 13px;
+}
+.ppcWrapper :global(.ant-table-thead > tr > th::before) {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+.ppcWrapper :global(.ant-table-tbody > tr > td) {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.ppcWrapper :global(.ant-table-tbody > tr:nth-child(even) > td) {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+.ppcWrapper :global(.ant-table-tbody > tr:hover > td) {
+  background: rgba(0, 166, 166, 0.12) !important;
+}
+.ppcWrapper :global(.ant-table-cell-fix-right) {
+  background: #0f1d35 !important;
+}
+.ppcWrapper :global(.ant-table-tbody > tr:hover .ant-table-cell-fix-right) {
+  background: #162947 !important;
+}
+/* Loading overlay */
+.ppcWrapper :global(.ant-table-tbody > tr.ant-table-placeholder > td) {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.ppcWrapper :global(.ant-empty-description) {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* ── Pagination ──────────────────────────── */
+.ppcWrapper :global(.ant-pagination) {
+  margin-top: 12px !important;
+}
+.ppcWrapper :global(.ant-pagination-item) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px;
+}
+.ppcWrapper :global(.ant-pagination-item a) {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+.ppcWrapper :global(.ant-pagination-item-active) {
+  background: #00a6a6 !important;
+  border-color: #00a6a6 !important;
+}
+.ppcWrapper :global(.ant-pagination-item-active a) {
+  color: #fff !important;
+}
+.ppcWrapper :global(.ant-pagination-prev button),
+.ppcWrapper :global(.ant-pagination-next button) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  border-radius: 6px;
+}
+.ppcWrapper :global(.ant-pagination-prev:hover button),
+.ppcWrapper :global(.ant-pagination-next:hover button) {
+  border-color: #00a6a6 !important;
+  color: #00a6a6 !important;
+}
+.ppcWrapper :global(.ant-pagination-disabled button) {
+  opacity: 0.3 !important;
+}
+.ppcWrapper :global(.ant-pagination-total-text) {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+/* Page size changer select */
+.ppcWrapper :global(.ant-pagination-options .ant-select-selector) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+.ppcWrapper :global(.ant-pagination-options .ant-select-arrow) {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.ppcWrapper :global(.ant-pagination-jump-next .ant-pagination-item-container .ant-pagination-item-ellipsis),
+.ppcWrapper :global(.ant-pagination-jump-prev .ant-pagination-item-container .ant-pagination-item-ellipsis) {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* ── Spin / Loading ──────────────────────── */
+.ppcWrapper :global(.ant-spin-dot-item) {
+  background-color: #00a6a6 !important;
+}
+
+/* ── Tags (keep their colors, just ensure they pop) ── */
+.ppcWrapper :global(.ant-tag) {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+/* ── Buttons ─────────────────────────────── */
+.ppcWrapper :global(.ant-btn-default) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+.ppcWrapper :global(.ant-btn-default:hover) {
+  border-color: #00a6a6 !important;
+  color: #00a6a6 !important;
+  background: rgba(0, 166, 166, 0.1) !important;
+}
+.ppcWrapper :global(.ant-btn-sm.ant-btn-default) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+.ppcWrapper :global(.ant-btn-sm.ant-btn-default:hover) {
+  border-color: #00a6a6 !important;
+  color: #00a6a6 !important;
+}
+
+/* ── Space / Row separators ──────────────── */
+.ppcWrapper :global(.ant-space-item) {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Typography inside table ─────────────── */
+.ppcWrapper :global(.ant-typography.ant-typography-secondary) {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.ppcWrapper :global(.ant-typography) {
+  color: rgba(255, 255, 255, 0.85);
+}

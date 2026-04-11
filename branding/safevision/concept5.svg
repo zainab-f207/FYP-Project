@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="facetBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a3a5f" />
+      <stop offset="100%" stop-color="#2a5298" />
+    </linearGradient>
+    <linearGradient id="facetTeal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00c2c2" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#00a6a6" stop-opacity="0.7" />
+    </linearGradient>
+    <linearGradient id="facetAmber" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffc107" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#ffdd57" stop-opacity="0.6" />
+    </linearGradient>
+    <linearGradient id="sGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a3a5f" />
+      <stop offset="45%" stop-color="#00a6a6" />
+      <stop offset="100%" stop-color="#2a5298" />
+    </linearGradient>
+    <radialGradient id="shadowGradient" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#1b2a3d" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#1b2a3d" stop-opacity="0" />
+    </radialGradient>
+    <pattern id="heatFacet" patternUnits="userSpaceOnUse" width="60" height="60">
+      <rect x="0" y="0" width="60" height="60" fill="#ffc107" opacity="0.15" />
+      <circle cx="18" cy="18" r="8" fill="#ffc107" opacity="0.35" />
+      <circle cx="42" cy="38" r="6" fill="#ffb000" opacity="0.55" />
+    </pattern>
+    <pattern id="pointFacet" patternUnits="userSpaceOnUse" width="50" height="50">
+      <rect width="50" height="50" fill="none" />
+      <circle cx="12" cy="12" r="3" fill="#00a6a6" />
+      <circle cx="32" cy="24" r="2" fill="#1a3a5f" />
+      <circle cx="24" cy="40" r="3" fill="#00d8d8" />
+    </pattern>
+    <pattern id="contourFacet" patternUnits="userSpaceOnUse" width="60" height="40">
+      <path d="M0 10 Q30 0 60 10" stroke="#1a3a5f" stroke-width="2" fill="none" opacity="0.4" />
+      <path d="M0 30 Q30 20 60 30" stroke="#1a3a5f" stroke-width="1.5" fill="none" opacity="0.2" />
+    </pattern>
+  </defs>
+
+  <rect width="800" height="600" fill="#f1f5fb" />
+
+  <g transform="translate(400,240)">
+    <ellipse cx="0" cy="190" rx="210" ry="80" fill="url(#shadowGradient)" />
+
+    <g transform="translate(0,-40)">
+      <polygon points="0,-180 160,0 0,160 -160,0" fill="url(#facetBlue)" />
+      <polygon points="0,-180 160,0 0,60" fill="url(#heatFacet)" opacity="0.8" />
+      <polygon points="0,-180 -160,0 0,60" fill="url(#pointFacet)" opacity="0.85" />
+      <polygon points="0,60 160,0 0,160" fill="url(#facetTeal)" />
+      <polygon points="0,60 -160,0 0,160" fill="url(#facetAmber)" opacity="0.92" />
+      <polygon points="0,-180 0,60 0,160" fill="url(#contourFacet)" opacity="0.55" />
+
+      <polyline points="0,-170 140,0 0,140 -140,0 0,-170" fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" opacity="0.6" />
+      <polyline points="0,-130 110,0 0,110 -110,0 0,-130" fill="none" stroke="#1a3a5f" stroke-width="2" stroke-linejoin="round" stroke-dasharray="10 8" opacity="0.45" />
+    </g>
+  </g>
+
+  <g transform="translate(160,440)" font-family="'Montserrat', 'Segoe UI', sans-serif" fill="#1a3a5f">
+    <text x="0" y="0" font-size="72" font-weight="600" letter-spacing="3">
+      <tspan>Sa</tspan>
+      <tspan fill="url(#sGradient)" font-weight="700">f</tspan>
+      <tspan>e</tspan>
+      <tspan dx="8" font-weight="700">V</tspan>
+      <tspan font-weight="600">ision</tspan>
+    </text>
+  </g>
+
+  <g font-family="'AvantGarde', 'Montserrat', sans-serif" fill="#475569" opacity="0.85" text-anchor="middle">
+    <text x="400" y="520" font-size="26" letter-spacing="3">Spatial Intelligence for Safer Communities</text>
+  </g>
+</svg>

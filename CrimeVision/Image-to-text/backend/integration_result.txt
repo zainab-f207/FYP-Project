@@ -1,0 +1,15 @@
+﻿  FIR_001.png: NO HASH MATCH
+  FIR_101.png: '╪¿╪¡╪▒█î█ü ┘╣╪º╪ñ┘å ╪│█î┌⌐┘╣╪▒ A ╪¿┘ä╪º┌⌐ E'
+  FIR_150.png: '┌ê█î ╪º█î┌å ╪º█Æ ┘ü█î╪▓ 5 ╪¿┘ä╪º┌⌐ O'
+  FIR_200.png: '┌ê█î ╪º█î┌å ╪º█Æ ┘ü█î╪▓ 8 ╪¿┘ä╪º┌⌐ V'
+  FIR_012.png: '┌»╪»╪º ┘ü█î ╪º╪│┘╣█î┌ê█î┘à'
+
+Hash lookup: 4/5 matched
+
+Testing geocoding...
+  FIR_101.png: '╪¿╪¡╪▒█î█ü ┘╣╪º╪ñ┘å ╪│█î┌⌐┘╣╪▒ A ╪¿┘ä╪º┌⌐ E' -> no direct mapping (will use structured/hardcoded)
+  FIR_150.png: '┌ê█î ╪º█î┌å ╪º█Æ ┘ü█î╪▓ 5 ╪¿┘ä╪º┌⌐ O' -> no direct mapping (will use structured/hardcoded)
+  FIR_200.png: '┌ê█î ╪º█î┌å ╪º█Æ ┘ü█î╪▓ 8 ╪¿┘ä╪º┌⌐ V' -> no direct mapping (will use structured/hardcoded)
+  FIR_012.png: '┌»╪»╪º ┘ü█î ╪º╪│┘╣█î┌ê█î┘à' -> 'Gaddafi Stadium' (direct mapping)
+
+Integration test complete!

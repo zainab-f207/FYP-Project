@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+  <!-- Compact mark for Concept 1 -->
+  <defs>
+    <linearGradient id="mk" x1="0" x2="1">
+      <stop offset="0" stop-color="#1a3a5f"/>
+      <stop offset="1" stop-color="#00a6a6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer rounded square as container -->
+  <rect x="1" y="1" width="62" height="62" rx="12" fill="url(#mk)"/>
+
+  <!-- Stylized 'S' using contour-like strokes -->
+  <path d="M18 18 C26 8, 38 8, 46 18 C54 28, 46 40, 38 46 C30 52, 22 52, 18 46"
+        stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+
+  <!-- Heat/dot visualization on the lower-right of the 'S' -->
+  <g>
+    <circle cx="42" cy="36" r="3.5" fill="#ffc107"/>
+    <circle cx="36" cy="42" r="2.5" fill="#00a6a6"/>
+  </g>
+</svg>

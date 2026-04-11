@@ -1,0 +1,151 @@
+/* Safety Radar Chart Styles */
+.radarContainer {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.radarSvg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.2));
+  overflow: visible;
+}
+
+/* Grid circles */
+.gridCircle {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 1;
+  opacity: 0;
+  animation: fadeIn 0.6s ease forwards;
+}
+
+/* Radar axes */
+.radarAxis {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 1;
+}
+
+/* Radar area */
+.radarArea {
+  stroke: #00d4ff;
+  stroke-width: 2;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.radarArea.animated {
+  animation: radarPulse 3s ease-in-out infinite, fadeIn 0.8s ease forwards;
+}
+
+/* Data points */
+.dataPoint {
+  opacity: 0;
+  animation: pointAppear 0.6s ease forwards;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+
+/* Center Stats Overlay */
+.centerStats {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.statValue {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 0.6rem;
+  color: #00d4ff;
+  letter-spacing: 2px;
+  font-weight: 700;
+  margin-top: 2px;
+  text-shadow: 0 0 5px rgba(0, 212, 255, 0.4);
+}
+
+/* Icon Badges */
+.axisIconWrapper {
+  width: 30px;
+  height: 30px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.axisIconWrapper:hover {
+  transform: scale(1.1);
+  border-color: #00d4ff;
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+}
+
+.axisIconWrapper i {
+  font-size: 0.9rem;
+  filter: drop-shadow(0 0 2px currentColor);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes radarPulse {
+
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes pointAppear {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .radarContainer {
+    width: 260px;
+    height: 260px;
+  }
+
+  .statValue {
+    font-size: 1.5rem;
+  }
+}

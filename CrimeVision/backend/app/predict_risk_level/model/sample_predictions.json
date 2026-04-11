@@ -1,0 +1,24 @@
+[
+  {
+    "area": "Cantt",
+    "crime_type": "Burglary",
+    "date": "2025-10-07",
+    "predicted_risk": "Medium",
+    "probabilities": [
+      0.21954478775850877,
+      0.003365517798412733,
+      0.7770896944430767
+    ]
+  },
+  {
+    "area": "DHA Phase 5",
+    "crime_type": "Robbery",
+    "date": "2025-10-07",
+    "predicted_risk": "Medium",
+    "probabilities": [
+      0.08053540424585819,
+      0.003552856276956952,
+      0.9159117394771831
+    ]
+  }
+]

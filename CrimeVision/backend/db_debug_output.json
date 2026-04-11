@@ -1,0 +1,102 @@
+{
+  "crimes": [
+    {
+      "id": 25437,
+      "crime_type": "Theft",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "Medium",
+      "crime_date": "2026-03-28"
+    },
+    {
+      "id": 25436,
+      "crime_type": "Murder",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "High",
+      "crime_date": "2026-03-28"
+    },
+    {
+      "id": 25435,
+      "crime_type": "Blackmailing",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "Medium",
+      "crime_date": "2026-03-28"
+    },
+    {
+      "id": 25434,
+      "crime_type": "Blackmailing",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "Medium",
+      "crime_date": "2026-03-27"
+    },
+    {
+      "id": 25433,
+      "crime_type": "Street Crime",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "Medium",
+      "crime_date": "2026-03-27"
+    },
+    {
+      "id": 25432,
+      "crime_type": "Assault",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "High",
+      "crime_date": "2026-03-27"
+    },
+    {
+      "id": 25431,
+      "crime_type": "Attempt to Murder",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "High",
+      "crime_date": "2026-03-27"
+    },
+    {
+      "id": 25430,
+      "crime_type": "Attempt to Murder",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "High",
+      "crime_date": "2026-03-27"
+    },
+    {
+      "id": 25429,
+      "crime_type": "Robbery",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "High",
+      "crime_date": "2026-03-27"
+    },
+    {
+      "id": 25428,
+      "crime_type": "Robbery",
+      "area": "Askari 4, Lahore",
+      "latitude": "31.480000",
+      "longitude": "74.395000",
+      "risk_level": "High",
+      "crime_date": "2026-03-27"
+    }
+  ],
+  "user": {
+    "id": 47,
+    "username": "hafsa.fayyaz969",
+    "home_area": "Askari 4",
+    "home_latitude": "31.56568200",
+    "home_longitude": "74.31418300",
+    "incident_alerts_enabled": 1
+  }
+}

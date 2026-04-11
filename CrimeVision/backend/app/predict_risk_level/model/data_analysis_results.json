@@ -1,0 +1,35 @@
+{
+  "total_records": 50166,
+  "risk_level_distribution": {
+    "Medium": 29065,
+    "Low": 11232,
+    "High": 9869
+  },
+  "top_10_areas": {
+    "Ferozepur Road": 1966,
+    "Liberty Market": 1896,
+    "Township": 1880,
+    "Green Town": 1844,
+    "DHA Phase 4": 1842,
+    "Bahria Orchard": 1828,
+    "Wapda Town": 1813,
+    "DHA Phase 7": 1812,
+    "Allama Iqbal Town": 1808,
+    "Model Town": 1806
+  },
+  "crime_type_distribution": {
+    "Street Crime": 15120,
+    "Robbery": 12283,
+    "Burglary": 10012,
+    "Vehicle Theft": 7672,
+    "Violent Crime": 5078,
+    "murder": 1
+  },
+  "date_range": {
+    "start": "2024-01-01",
+    "end": "2025-09-01"
+  },
+  "deterministic_patterns_count": 41,
+  "unique_areas_count": 29,
+  "unique_crime_types_count": 6
+}

@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "report_type": "crime_summary",
+    "title": "Crime Incident Summary Report",
+    "generated_at": "2025-11-25T01:58:40.816026",
+    "period": {
+      "start_date": "2025-01-01",
+      "end_date": "2025-11-25"
+    },
+    "filters": {
+      "start_date": "2025-01-01",
+      "end_date": "2025-11-25",
+      "report_type": "crime_summary",
+      "format": "json",
+      "title": "",
+      "description": "",
+      "includeCharts": true,
+      "includeStatistics": true,
+      "includeRawData": false,
+      "recipients": [],
+      "schedule": "manual"
+    }
+  },
+  "data": {
+    "summary": {
+      "total_crimes": 168,
+      "areas_affected": 30,
+      "crime_types": 6,
+      "high_risk_crimes": 

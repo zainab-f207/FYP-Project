@@ -1,62 +1,179 @@
+/* ===== Notifications Panel ===== */
 .notificationsPanel {
-  background: linear-gradient(135deg, #eef1f5 0%, #f5f6fa 100%);
+  background: var(--card-bg, rgba(30, 41, 59, 0.85));
+  backdrop-filter: blur(10px);
   border-radius: 16px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-  padding: 25px;
-  margin-bottom: 35px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  padding: 24px;
+  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
+  animation: fadeIn 0.7s ease;
+  transition: background 0.4s ease, border-color 0.4s ease;
 }
 
+/* Panel Header */
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--gray, #334155);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerLeft i {
+  font-size: 1.15rem;
+  color: #1a4f72;
+}
+
+.headerLeft h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+  margin: 0;
+}
+
+.unreadBadge {
+  background: #ff6b6b;
+  color: white;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.markAllRead {
+  font-size: 0.8rem;
+  color: #1a4f72;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.markAllRead:hover {
+  color: #2d7fb8;
+}
+
+/* Notifications List */
 .notificationsList {
   list-style: none;
   margin: 0;
   padding: 0;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.notificationsList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.notificationsList::-webkit-scrollbar-thumb {
+  background: rgba(26, 79, 114, 0.15);
+  border-radius: 4px;
 }
 
 .notificationItem {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 16px 0;
-  border-bottom: 1px solid #e6e9f0;
-  transition: background 0.3s;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: 12px;
+  margin-bottom: 4px;
+  transition: all 0.3s;
+  cursor: pointer;
+  position: relative;
 }
 
-.notificationItem:last-child {
-  border-bottom: none;
+.notificationItem:hover {
+  background: rgba(26, 79, 114, 0.08);
 }
 
+.notificationItem.unread {
+  background: rgba(26, 79, 114, 0.06);
+}
+
+/* Icon styles */
 .icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  transition: transform 0.3s;
 }
 
-.alert {
+.notificationItem:hover .icon {
+  transform: scale(1.08);
+}
+
+.alert .icon {
+  background: rgba(255, 107, 107, 0.1);
   color: #ff6b6b;
-  background: rgba(255,107,107,0.08);
 }
 
-.report {
+.report .icon {
+  background: rgba(249, 168, 38, 0.1);
   color: #f9a826;
-  background: rgba(249,168,38,0.08);
 }
 
-.system {
+.system .icon {
+  background: rgba(26, 79, 114, 0.08);
   color: #1a4f72;
-  background: rgba(26,79,114,0.08);
+}
+
+/* Content */
+.content {
+  flex: 1;
+  min-width: 0;
 }
 
 .message {
-  flex: 1;
-  font-size: 1rem;
-  color: #2d3436;
+  font-size: 0.88rem;
+  color: var(--text-primary, #e2e8f0);
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.unread .message {
+  font-weight: 600;
 }
 
 .time {
-  font-size: 0.85rem;
-  color: #888;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time i {
+  font-size: 0.65rem;
+}
+
+/* Unread Dot */
+.unreadDot {
+  width: 8px;
+  height: 8px;
+  background: #2d7fb8;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
 }

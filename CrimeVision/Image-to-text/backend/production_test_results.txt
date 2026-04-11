@@ -1,0 +1,58 @@
+FIR_002.png: CORRECT | got='انارکلی بازار' | expected='انارکلی بازار'
+FIR_003.png: CORRECT | got='شاہ عالمی مارکیٹ' | expected='شاہ عالمی مارکیٹ'
+FIR_004.png: OTHER_WRONG | got='ارب یگیٹ لزا ری زار روڈ اشن ر وی' | expected='لوہاری گیٹ'
+FIR_005.png: OTHER_WRONG | got='ُ یا' | expected='دہلی گیٹ'
+FIR_006.png: OTHER_WRONG | got='ٰ ال کیٹ پھائی جلاک' | expected='بھاٹی گیٹ'
+FIR_007.png: OTHER_WRONG | got='سو بج  ,و" گے أظم ہچ رھ قرا' | expected='ریگل چوک'
+FIR_008.png: CORRECT | got='نیلا گنبد' | expected='نیلا گنبد'
+FIR_009.png: OTHER_WRONG | got='ال رد لہ الد وڈ' | expected='ہال روڈ'
+FIR_010.png: OTHER_WRONG | got='رن ماکیٹ ا ائم الم ررذ۔۔ ہار ر- - 9. 2ار کی ا' | expected='لبرٹی مارکیٹ'
+FIR_011.png: CORRECT | got='مین بلیوارڈ' | expected='مین بلیوارڈ گلبرگ'
+FIR_012.png: OTHER_WRONG | got='گدائی اط حمءٹروڑبور روڈ تذائی الال م٥ن ے تی 1. 3نو می شخرب' | expected='گدا فی اسٹیڈیم'
+FIR_013.png: OTHER_WRONG | got='جات سل ای ایم رام روڈ کہ رک' | expected='حفیظ سنٹر'
+FIR_014.png: OTHER_WRONG | got='ال اشن مارک الیک لاک وڈ ےکواف' | expected='ماڈل ٹاؤن پارک'
+FIR_015.png: OTHER_WRONG | got='مل انان آرن ملاک زا.._ وشن ےت ما7 2کاو یمر' | expected='فیصل ٹاؤن'
+FIR_016.png: CORRECT | got='گارڈن ٹاؤن' | expected='گارڈن ٹاؤن'
+FIR_017.png: OTHER_WRONG | got='ار 0406 یلاتی. جچت ۔ یٹ' | expected='جوہر ٹاؤن (ایمپوریئم مال)'
+FIR_018.png: CORRECT | got='ٹاؤن شپ' | expected='ٹاؤن شپ'
+FIR_019.png: OTHER_WRONG | got='اشن وڈ ددالش ولس شی یکز ری' | expected='والٹن روڈ'
+FIR_020.png: CORRECT | got='شادمان مارکیٹ' | expected='شادمـان مارکیٹ'
+FIR_021.png: OTHER_WRONG | got='ج مسج مک تج وگ' | expected='جیل روڈ'
+FIR_022.png: CORRECT | got='کینال روڈ' | expected='کینال روڈ'
+FIR_023.png: CORRECT | got='مغلپورہ' | expected='مغلپورہ'
+FIR_024.png: CORRECT | got='ہربنس پورہ' | expected='ہربنس پورہ'
+FIR_025.png: THANA_MATCH | got='شاہدرہ ٹاؤن' | expected='غری شاہو'
+FIR_026.png: CORRECT | got='شاہدرہ ٹاؤن' | expected='شاہدرہ ٹاؤن'
+FIR_027.png: CORRECT | got='راوی روڈ' | expected='راوی روڈ'
+FIR_028.png: OTHER_WRONG | got='مار 2' | expected='شالامار باغ'
+FIR_029.png: OTHER_WRONG | got='اہی یں ام ا ہے ای ا کے 4 ۷ لص' | expected='باغبانپورہ'
+FIR_030.png: OTHER_WRONG | got='ڑرورار سڑزوزار شین ار' | expected='سبزہ زار'
+FIR_031.png: CORRECT | got='علامہ اقبال ٹاؤن' | expected='علامہ اقبال ٹاؤن (کری بلاک مارکیٹ)'
+
+============================================================
+PRODUCTION CLASS TEST RESULTS (first 30)
+============================================================
+Total tested:    30
+Correct:         13/30 (43.3%)
+Thana match:     1/30
+No result:       0/30
+Other wrong:     16/30
+
+Failed images:
+  FIR_004.png: got='ارب یگیٹ لزا ری زار روڈ اشن ر وی' should='لوہاری گیٹ'
+  FIR_005.png: got='ُ یا' should='دہلی گیٹ'
+  FIR_006.png: got='ٰ ال کیٹ پھائی جلاک' should='بھاٹی گیٹ'
+  FIR_007.png: got='سو بج  ,و" گے أظم ہچ رھ قرا' should='ریگل چوک'
+  FIR_009.png: got='ال رد لہ الد وڈ' should='ہال روڈ'
+  FIR_010.png: got='رن ماکیٹ ا ائم الم ررذ۔۔ ہار ر- - 9. 2ار کی ا' should='لبرٹی مارکیٹ'
+  FIR_012.png: got='گدائی اط حمءٹروڑبور روڈ تذائی الال م٥ن ے تی 1. 3نو می شخرب' should='گدا فی اسٹیڈیم'
+  FIR_013.png: got='جات سل ای ایم رام روڈ کہ رک' should='حفیظ سنٹر'
+  FIR_014.png: got='ال اشن مارک الیک لاک وڈ ےکواف' should='ماڈل ٹاؤن پارک'
+  FIR_015.png: got='مل انان آرن ملاک زا.._ وشن ےت ما7 2کاو یمر' should='فیصل ٹاؤن'
+  FIR_017.png: got='ار 0406 یلاتی. جچت ۔ یٹ' should='جوہر ٹاؤن (ایمپوریئم مال)'
+  FIR_019.png: got='اشن وڈ ددالش ولس شی یکز ری' should='والٹن روڈ'
+  FIR_021.png: got='ج مسج مک تج وگ' should='جیل روڈ'
+  FIR_025.png: got='شاہدرہ ٹاؤن' should='غری شاہو'
+  FIR_028.png: got='مار 2' should='شالامار باغ'
+  FIR_029.png: got='اہی یں ام ا ہے ای ا کے 4 ۷ لص' should='باغبانپورہ'
+  FIR_030.png: got='ڑرورار سڑزوزار شین ار' should='سبزہ زار'

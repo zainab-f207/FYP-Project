@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" width="760" height="200" aria-hidden="true">
+  <defs>
+    <linearGradient id="eyeGrad" x1="0" x2="1">
+      <stop offset="0" stop-color="#1a3a5f"/>
+      <stop offset="1" stop-color="#1a3a5f" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="pupilGrad" x1="0" x2="1">
+      <stop offset="0" stop-color="#00a6a6"/>
+      <stop offset="1" stop-color="#00d1d1"/>
+    </linearGradient>
+    <style>
+      .word-regular { font-family: 'Poppins', sans-serif; font-weight: 400; font-size: 48px; fill: #1a3a5f }
+      .word-bold { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 48px; fill: #1a3a5f }
+      .tag { font-family: 'Open Sans', sans-serif; font-size: 14px; fill: #6b7280 }
+    </style>
+  </defs>
+
+  <!-- Optional subtle background grid/coordinates -->
+  <g opacity="0.12" stroke="#f0f2f5" stroke-width="1">
+    <path d="M20 20 L740 20"/>
+    <path d="M20 60 L740 60"/>
+    <path d="M20 100 L740 100"/>
+    <path d="M20 140 L740 140"/>
+    <path d="M20 180 L740 180"/>
+  </g>
+
+  <!-- Eye symbol on the left -->
+  <g transform="translate(28,26)">
+    <!-- Outer eye contour formed by layered contour lines -->
+    <path d="M320 36 C260 10, 180 10, 120 36 C60 62, 60 108, 120 134 C180 160, 260 160, 320 134 C380 108, 380 62, 320 36 Z"
+          fill="none" stroke="url(#eyeGrad)" stroke-width="6" stroke-linejoin="round"/>
+
+    <!-- Inner contour lines to suggest map contours -->
+    <path d="M300 52 C252 34, 188 34, 140 52" stroke="#1a3a5f" stroke-width="2.2" fill="none" opacity="0.7"/>
+    <path d="M270 80 C230 64, 180 64, 140 80" stroke="#1a3a5f" stroke-width="1.6" fill="none" opacity="0.5"/>
+
+    <!-- Pupil as a stylized map/data point (could be a small Lahore outline suggestion) -->
+    <g transform="translate(188,86)">
+      <circle cx="0" cy="0" r="22" fill="url(#pupilGrad)"/>
+      <!-- subtle abstract city/map shape inside pupil using markers -->
+      <g fill="#fff" opacity="0.95">
+        <circle cx="-6" cy="-4" r="3"/>
+        <circle cx="6" cy="2" r="2.5"/>
+        <rect x="-12" y="8" width="6" height="3" rx="1"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- Wordmark, with 'Safe' regular and 'Vision' bold -->
+  <g transform="translate(380,98)">
+    <text x="0" y="-6" class="word-regular">Safe</text>
+    <text x="62" y="-6" class="word-bold">Vision</text>
+    <text x="0" y="26" class="tag">Spatial Analysis &amp; Visualization</text>
+  </g>
+</svg>

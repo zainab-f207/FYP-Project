@@ -1,0 +1,752 @@
+.aiRouteAnalysis {
+    background: linear-gradient(160deg, rgba(10,16,32,0.98) 0%, rgba(17,24,40,0.97) 50%, rgba(10,16,32,0.98) 100%);
+    border-radius: 28px;
+    padding: 2.5rem;
+    animation: fadeInUp 0.7s cubic-bezier(0.22,1,0.36,1);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 24px 64px rgba(0,0,0,0.5);
+}
+
+.inputSection {
+    margin-bottom: 2rem;
+}
+
+.inputSection h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.4rem;
+}
+
+.subtitle {
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 1.6rem;
+    font-size: 0.9rem;
+}
+
+.inputGroup {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.inputWithIcon {
+    position: relative;
+}
+
+.inputWithIcon i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent-teal);
+    font-size: 0.85rem;
+}
+
+.input {
+    width: 100%;
+    padding: 0.9rem 1rem 0.9rem 2.8rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: var(--text-white);
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.12);
+    background: rgba(255,255,255,0.08);
+}
+
+.analyzeBtn {
+    width: 100%;
+    padding: 1.1rem 2rem;
+    background: linear-gradient(135deg, #00d4ff 0%, #3b82f6 50%, #6366f1 100%);
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 4px 20px rgba(0,212,255,0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.analyzeBtn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0));
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.analyzeBtn:hover:not(:disabled)::after {
+    opacity: 1;
+}
+
+.analyzeBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 36px rgba(0,212,255,0.35);
+}
+
+.analyzeBtn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.analyzeBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Comparison section ──────────────────────────────────────── */
+.comparisonSection {
+    margin: 1.5rem 0;
+}
+
+.routeCards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1.2rem;
+}
+
+/* ── Route Card ──────────────────────────────────────────────── */
+.routeCard {
+    background: rgba(15,23,40,0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 0 0 1.4rem 0;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1),
+                box-shadow 0.25s cubic-bezier(0.4,0,0.2,1),
+                border-color 0.25s;
+    color: #ffffff;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Colored top accent bar using CSS custom property --rc */
+.routeCard::before {
+    content: '';
+    display: block;
+    height: 4px;
+    background: var(--rc, #94a3b8);
+    border-radius: 18px 18px 0 0;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 0 16px var(--rc, #94a3b8);
+    opacity: 0.9;
+}
+
+.routeCard:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255,255,255,0.15);
+}
+
+.routeCard.selected {
+    border-color: var(--rc, rgba(255,255,255,0.2));
+    background: rgba(20,30,55,0.95);
+    transform: translateY(-3px);
+}
+
+.routeCard.selected::before {
+    opacity: 1;
+    box-shadow: 0 0 24px var(--rc, #94a3b8);
+}
+
+/* Route card internal padding wrapper */
+.routeCard > *:not(:first-child) {
+    padding: 0 1.4rem;
+}
+
+.routeCard > .routeHeader {
+    padding: 0 1.4rem;
+}
+
+/* ── Route header ─────────────────────────────────────────────── */
+.routeHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 1rem;
+}
+
+.routeLabelPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.85rem;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+}
+
+.secondaryLabelChip {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 10px;
+    padding: 0.15rem 0.5rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.routeObjective {
+    font-size: 0.73rem;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0.2rem 1.4rem 0.65rem;
+    letter-spacing: 0.03em;
+    font-style: italic;
+}
+
+.routeIcon {
+    font-size: 1.5rem;
+}
+
+.recommendedBadge {
+    margin-left: auto;
+    background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(217,119,6,0.2));
+    border: 1px solid rgba(245,158,11,0.45);
+    color: #fbbf24;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+/* ── Route stats grid ────────────────────────────────────────── */
+.routeStats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    margin: 0 1.4rem 1rem;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255,255,255,0.75);
+    font-size: 0.82rem;
+}
+
+.stat i {
+    color: var(--accent-teal);
+    font-size: 0.8rem;
+    width: 14px;
+    text-align: center;
+}
+
+.stat span {
+    color: rgba(255,255,255,0.85) !important;
+}
+
+/* ── Safety score ────────────────────────────────────────────── */
+.safetyScore {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0 1.4rem 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+}
+
+.scoreCircle {
+    width: 58px;
+    height: 58px;
+    border: 3px solid;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    font-weight: 800;
+    background: rgba(255,255,255,0.03);
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.05);
+}
+
+.safetyInfo {
+    flex: 1;
+}
+
+.safetyInfo span {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+    font-size: 0.9rem;
+}
+
+.safetyInfo small {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.78rem;
+}
+
+/* ── Alert cards inside route card ───────────────────────────── */
+.alerts {
+    margin: 0 1.4rem 0.5rem;
+}
+
+.alert {
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    margin-bottom: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.alert.high {
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 3px solid #ef4444;
+    color: rgba(255,255,255,0.85);
+}
+
+.alert.medium {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 3px solid #f59e0b;
+    color: rgba(255,255,255,0.85);
+}
+
+.alert.low {
+    background: rgba(16, 185, 129, 0.08);
+    border-left: 3px solid #10b981;
+    color: rgba(255,255,255,0.85);
+}
+
+.alert.error {
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 3px solid #ef4444;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.alert.warning {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 3px solid #f59e0b;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.detailedAnalysis {
+    margin-top: 1.5rem;
+    padding: 2rem;
+    background: rgba(10,16,30,0.7);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    backdrop-filter: blur(12px);
+}
+
+.detailedAnalysis h3 {
+    color: var(--text-white);
+    margin-bottom: 1.5rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.analysisGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.analysisCard {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 1.2rem;
+    border-radius: 14px;
+}
+
+.analysisCard h4 {
+    color: var(--text-white);
+    margin-bottom: 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.55);
+}
+
+.riskPoints {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.riskPoint {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0.9rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    color: #ffffff;
+    font-size: 0.82rem;
+}
+
+.riskLevel {
+    font-weight: 700;
+}
+
+.noRisks {
+    color: #10b981;
+    text-align: center;
+    padding: 0.8rem;
+    font-size: 0.85rem;
+}
+
+.alertsList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.alertItem {
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+}
+
+.alertItem strong {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--text-white);
+    font-size: 0.85rem;
+}
+
+.alertItem p {
+    margin: 0.3rem 0;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+}
+
+.alertItem small {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.78rem;
+}
+
+/* ── Comparison header ───────────────────────────────────────── */
+.comparisonHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.comparisonTitleRow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.comparisonTitleRow h3 {
+    margin: 0;
+    color: var(--text-white);
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.comparisonIcon {
+    font-size: 1.2rem;
+}
+
+.analysisContext {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.8rem;
+}
+
+.contextDot {
+    color: rgba(255,255,255,0.2);
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.7; }
+}
+
+.mapPlaceBtn {
+    position: absolute;
+    right: 0.7rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.35);
+    border-radius: 8px;
+    padding: 0.45rem 0.75rem;
+    color: var(--accent-teal);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.mapPlaceBtn:hover {
+    background: rgba(59,130,246,0.28);
+    transform: translateY(-50%) scale(1.08);
+}
+
+.placementHint {
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(16,185,129,0.08));
+    border: 1.5px dashed rgba(59,130,246,0.4);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: var(--accent-teal);
+    font-weight: 500;
+    font-size: 0.88rem;
+    animation: pulse 2s infinite;
+}
+.travelTimeRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+    align-items: center;
+}
+
+.timeField {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+}
+
+.timeField i {
+    color: var(--accent-teal);
+    min-width: 14px;
+    font-size: 0.85rem;
+}
+
+.timeField label {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.72rem;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.timeInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-white);
+    font-size: 0.9rem;
+    outline: none;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.timeInput::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+}
+
+/* Night / Evening / Day travel context badge */
+.nightBadge,
+.eveningBadge,
+.dayBadge {
+    grid-column: 1 / -1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+.nightBadge {
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    color: #a5b4fc;
+}
+
+.eveningBadge {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+}
+
+.dayBadge {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #34d399;
+}
+
+/* ── Comparison section header ────────────────────────────────── */
+.comparisonHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.comparisonHeader h3 {
+    margin: 0;
+    color: var(--text-white);
+}
+
+.analysisContext {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+/* ── Areas chips ──────────────────────────────────────────────── */
+.areasRow {
+    margin-top: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.areasLabel {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.73rem;
+}
+
+.areasLabel i {
+    color: var(--accent-teal);
+    margin-right: 0.3rem;
+}
+
+.areaChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.areaChip {
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.22);
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    color: var(--accent-teal);
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.areaChipMore {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.7rem;
+}
+
+/* ── Crime type chips ─────────────────────────────────────────── */
+.crimeTypesRow {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.crimeTypesLabel {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.73rem;
+}
+
+.crimeTypesLabel i {
+    color: #f59e0b;
+    margin-right: 0.3rem;
+}
+
+.crimeChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.crimeChip {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    color: #fca5a5;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.crimeChipMore {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.7rem;
+}
+
+/* Traffic indicator in route stat row */
+.trafficNote {
+    font-size: 0.72rem;
+    color: rgba(251, 191, 36, 0.8);
+    margin-left: 3px;
+}

@@ -1,6 +1,8 @@
+import os
+import re
 from fastapi import HTTPException, BackgroundTasks
 from pydantic import BaseModel
-from typing import Dict, Any, cast
+from typing import Dict, Any, Optional, cast
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -18,7 +20,7 @@ logger = get_logger(__name__)
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USERNAME = "safevision.noreply@gmail.com"  
-SMTP_PASSWORD = "dzik alfk tgxy banc"
+SMTP_PASSWORD = os.getenv('AUTH_EMAIL_PASSWORD', '')
 
 def generate_password_reset_token() -> str:
     """Generate a secure random token for password reset"""
@@ -32,6 +34,62 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+def _get_pw_setting(key: str, default: int) -> int:
+    """Read numeric password settings from system_settings with fallback."""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = %s", (key,))
+        row = cursor.fetchone()
+        if row:
+            return int(cast(Dict[str, Any], row)["setting_value"])
+    except Exception:
+        pass
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return default
+
+def _validate_password_strength_by_role(password: str, role: str = "user") -> Optional[str]:
+    """Validate password policy by role (aligned with auth routes)."""
+    if role == "superadmin":
+        min_len = _get_pw_setting("superadmin_password_min_length", 12)
+        if len(password) < min_len:
+            return f"SuperAdmin password must be at least {min_len} characters"
+        if not re.search(r'[A-Z]', password):
+            return "Password must contain at least one uppercase letter"
+        if not re.search(r'[a-z]', password):
+            return "Password must contain at least one lowercase letter"
+        if not re.search(r'[0-9]', password):
+            return "Password must contain at least one number"
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};:\'\",.<>?/\\|`~]', password):
+            return "SuperAdmin password must contain at least one special character (!@#$%^&*...)"
+    elif role == "admin":
+        min_len = _get_pw_setting("admin_password_min_length", 10)
+        if len(password) < min_len:
+            return f"Admin password must be at least {min_len} characters"
+        if not re.search(r'[A-Z]', password):
+            return "Password must contain at least one uppercase letter"
+        if not re.search(r'[a-z]', password):
+            return "Password must contain at least one lowercase letter"
+        if not re.search(r'[0-9]', password):
+            return "Password must contain at least one number"
+    else:
+        min_len = _get_pw_setting("password_min_length", 8)
+        if len(password) < min_len:
+            return f"Password must be at least {min_len} characters"
+        if not re.search(r'[A-Z]', password):
+            return "Password must contain at least one uppercase letter"
+        if not re.search(r'[a-z]', password):
+            return "Password must contain at least one lowercase letter"
+        if not re.search(r'[0-9]', password):
+            return "Password must contain at least one number"
+    return None
+
 def send_password_reset_email(email: str, first_name: str, reset_token: str):
     """Send password reset email to user"""
     try:
@@ -43,15 +101,15 @@ def send_password_reset_email(email: str, first_name: str, reset_token: str):
 <html>
   <body style="font-family: Arial, sans-serif; background-color: #f8f9fa; padding: 20px;">
     <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2 style="color: #dc3545;">Reset Your CrimeVision Password</h2>
+      <h2 style="color: #dc3545;">Reset Your SafeVision Password</h2>
       <p>Dear {UserName},</p>
-      <p>You have requested to reset your password for your <strong>CrimeVision</strong> account. Click the button below to reset your password:</p>
+      <p>You have requested to reset your password for your <strong>SafeVision</strong> account. Click the button below to reset your password:</p>
       <p style="text-align: center; margin: 30px 0;">
         <a href="{ResetLink}" style="background-color: #dc3545; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
       </p>
       <p>This link will expire in 30 minutes.</p>
       <p>If you did not request this password reset, please ignore this message.</p>
-      <p>Best regards,<br><strong>CrimeVision Team</strong><br>support@crimevision.com</p>
+      <p>Best regards,<br><strong>SafeVision Team</strong><br>support@safevision.com</p>
     </div>
   </body>
 </html>"""
@@ -90,11 +148,11 @@ def send_password_reset_confirmation_email(email: str, first_name: str):
 <html>
   <body style="font-family: Arial, sans-serif; background-color: #f8f9fa; padding: 20px;">
     <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2 style="color: #28a745;">Your CrimeVision Password Has Been Reset</h2>
+      <h2 style="color: #28a745;">Your SafeVision Password Has Been Reset</h2>
       <p>Dear {UserName},</p>
-      <p>This is a confirmation that your password for your <strong>CrimeVision</strong> account has been successfully reset.</p>
+      <p>This is a confirmation that your password for your <strong>SafeVision</strong> account has been successfully reset.</p>
       <p>If you did not perform this action, please contact our support team immediately.</p>
-      <p>Best regards,<br><strong>CrimeVision Team</strong><br>support@crimevision.com</p>
+      <p>Best regards,<br><strong>SafeVision Team</strong><br>support@safevision.com</p>
     </div>
   </body>
 </html>"""
@@ -165,7 +223,7 @@ async def reset_password(request: ResetPasswordRequest, background_tasks: Backgr
     try:
         # Find user by reset token
         cursor.execute(
-            "SELECT id, username, first_name, email, reset_token_expires_at FROM users_info WHERE password_reset_token = %s",
+            "SELECT id, username, first_name, email, role, reset_token_expires_at FROM users_info WHERE password_reset_token = %s",
             (request.token,)
         )
         user = cursor.fetchone()
@@ -177,6 +235,12 @@ async def reset_password(request: ResetPasswordRequest, background_tasks: Backgr
         expires_at = cast(Dict[str, Any], user).get("reset_token_expires_at")
         if expires_at is None or expires_at < datetime.utcnow():
             raise HTTPException(status_code=400, detail="Reset token has expired")
+
+        # Validate against role-specific password policy.
+        user_role = cast(Dict[str, Any], user).get("role") or "user"
+        pw_error = _validate_password_strength_by_role(request.new_password, str(user_role))
+        if pw_error:
+            raise HTTPException(status_code=400, detail=pw_error)
 
         # Hash new password
         new_password_hash = get_password_hash(request.new_password)

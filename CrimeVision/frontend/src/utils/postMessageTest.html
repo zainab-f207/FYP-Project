@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostMessage Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔒 PostMessage Security Test</h1>
+
+    <div class="container">
+        <h2>Test Controls</h2>
+        <button onclick="testPing()">Test Ping</button>
+        <button onclick="testHealthCheck()">Health Check</button>
+        <button onclick="testAuthStatus()">Auth Status</button>
+        <button onclick="testCrimeData()">Crime Data</button>
+        <button onclick="openTestPopup()">Open Test Popup</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="container">
+        <h2>Custom Message Test</h2>
+        <input type="text" id="messageType" placeholder="Message type" value="CUSTOM_TEST">
+        <input type="text" id="messageData" placeholder="Message data (JSON)" value='{"test": "data"}'>
+        <button onclick="sendCustomMessage()">Send Custom Message</button>
+    </div>
+
+    <div class="container">
+        <h2>Security Test</h2>
+        <button onclick="testUnauthorizedOrigin()">Test Unauthorized Origin</button>
+        <button onclick="testMalformedMessage()">Test Malformed Message</button>
+        <button onclick="testLargeMessage()">Test Large Message</button>
+    </div>
+
+    <div class="container">
+        <h2>Event Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script type="module">
+        // Import the postMessage service
+        import postMessageService from './services/postMessageService.js';
+
+        // Initialize the service
+        postMessageService.initialize();
+
+        // Set up logging
+        const logElement = document.getElementById('log');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Register test message handlers
+        postMessageService.on('CUSTOM_TEST', (data, source, origin, requestId) => {
+            log(`Received custom test message: ${JSON.stringify(data)} from ${origin}`, 'success');
+
+            // Respond to the message
+            postMessageService.sendMessage(source, {
+                type: 'CUSTOM_TEST_RESPONSE',
+                data: { received: data, echo: true },
+                requestId
+            }, origin);
+        });
+
+        // Test functions
+        window.testPing = async function() {
+            try {
+                log('Sending ping to parent window...');
+                const response = await postMessageService.sendRequest(
+                    window.parent,
+                    'PING',
+                    null,
+                    '*',
+                    2000
+                );
+                log(`Ping response: ${JSON.stringify(response)}`, 'success');
+            } catch (error) {
+                log(`Ping failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.testHealthCheck = async function() {
+            try {
+                log('Requesting health check...');
+                const response = await postMessageService.sendRequest(
+                    window.parent,
+                    'HEALTH_CHECK',
+                    null,
+                    '*',
+                    3000
+                );
+                log(`Health check response: ${JSON.stringify(response)}`, 'success');
+            } catch (error) {
+                log(`Health check failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.testAuthStatus = async function() {
+            try {
+                log('Requesting auth status...');
+                const response = await postMessageService.sendRequest(
+                    window.parent,
+                    'USER_AUTH_STATUS',
+                    { test: true },
+                    '*',
+                    5000
+                );
+                log(`Auth status: ${JSON.stringify(response)}`, 'success');
+            } catch (error) {
+                log(`Auth status request failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.testCrimeData = async function() {
+            try {
+                log('Requesting crime data...');
+                const response = await postMessageService.sendRequest(
+                    window.parent,
+                    'CRIME_DATA_REQUEST',
+                    { area: 'Test Area', filters: {} },
+                    '*',
+                    10000
+                );
+                log(`Crime data response: ${JSON.stringify(response)}`, 'success');
+            } catch (error) {
+                log(`Crime data request failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.openTestPopup = async function() {
+            try {
+                log('Opening test popup...');
+                // This would normally open a real popup, but for testing we'll simulate
+                const mockPopup = {
+                    postMessage: (msg, origin) => {
+                        log(`Mock popup received: ${JSON.stringify(msg)}`);
+                        // Simulate response
+                        setTimeout(() => {
+                            window.postMessage({
+                                type: 'PONG',
+                                requestId: msg.requestId,
+                                timestamp: Date.now(),
+                                source: 'TestPopup'
+                            }, '*');
+                        }, 500);
+                    },
+                    closed: false,
+                    close: () => { this.closed = true; }
+                };
+
+                const response = await postMessageService.sendRequest(
+                    mockPopup,
+                    'PING',
+                    null,
+                    '*',
+                    2000
+                );
+                log(`Popup test successful: ${JSON.stringify(response)}`, 'success');
+            } catch (error) {
+                log(`Popup test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.sendCustomMessage = function() {
+            const type = document.getElementById('messageType').value;
+            const dataInput = document.getElementById('messageData').value;
+
+            try {
+                const data = JSON.parse(dataInput);
+                log(`Sending custom message: ${type} with data: ${JSON.stringify(data)}`);
+
+                postMessageService.sendMessage(window.parent, {
+                    type: type,
+                    data: data
+                }, '*');
+            } catch (error) {
+                log(`Invalid JSON data: ${error.message}`, 'error');
+            }
+        };
+
+        window.testUnauthorizedOrigin = function() {
+            log('Testing unauthorized origin (simulated)...');
+            // This would be tested by opening the page from a different origin
+            log('Note: This test requires opening from a different domain', 'info');
+        };
+
+        window.testMalformedMessage = function() {
+            log('Testing malformed message handling...');
+            // Send a message without required fields
+            window.postMessage({ invalid: 'message' }, '*');
+            log('Sent malformed message - check console for handling', 'info');
+        };
+
+        window.testLargeMessage = function() {
+            log('Testing large message...');
+            const largeData = 'x'.repeat(1000000); // 1MB string
+            postMessageService.sendMessage(window.parent, {
+                type: 'LARGE_MESSAGE_TEST',
+                data: { payload: largeData }
+            }, '*');
+            log('Sent large message (1MB)', 'info');
+        };
+
+        window.clearLog = function() {
+            logElement.innerHTML = '';
+        };
+
+        // Log initialization
+        log('PostMessage test page loaded and service initialized', 'success');
+        log('Allowed origins: ' + JSON.stringify(postMessageService.allowedOrigins), 'info');
+
+        // Listen for responses
+        postMessageService.on('CUSTOM_TEST_RESPONSE', (data, source, origin) => {
+            log(`Received custom response: ${JSON.stringify(data)} from ${origin}`, 'success');
+        });
+
+    </script>
+</body>
+</html>

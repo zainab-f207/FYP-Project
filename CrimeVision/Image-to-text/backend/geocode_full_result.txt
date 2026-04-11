@@ -1,0 +1,9 @@
+﻿Testing geocoding for 149 unique locations...
+
+Geocoding Coverage:
+  Direct mapping -> Nominatim: 52
+  Hardcoded fallback:          97
+  No resolution:               0
+  Total coverable:             149/149
+
+ALL 149 locations will get coordinates!

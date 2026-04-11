@@ -1,0 +1,194 @@
+/* src/components/UserDashboard/BrowserNotifications.module.css */
+.notificationsContainer {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.notificationsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 10px;
+}
+
+.notificationsHeader h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1.25rem;
+}
+
+.markAllReadBtn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.markAllReadBtn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.markAllReadBtn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.notificationsList {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notificationItem {
+  display: flex;
+  padding: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.notificationItem:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.notificationItem.unread {
+  background: #f0f9ff;
+  border-color: #7dd3fc;
+}
+
+.notificationIcon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: 1.2rem;
+}
+
+.notificationIcon .fa-exclamation-triangle {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.notificationIcon .fa-check-circle {
+  color: #059669;
+  background: #f0fdf4;
+}
+
+.notificationIcon .fa-info-circle {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.notificationContent {
+  flex: 1;
+}
+
+.notificationContent h4 {
+  margin: 0 0 5px 0;
+  color: #1f2937;
+  font-size: 1rem;
+}
+
+.notificationContent p {
+  margin: 0 0 10px 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.notificationMeta {
+  display: flex;
+  gap: 15px;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.safetyScore, .riskLevel, .timestamp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.unreadIndicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+}
+
+.loading .fa-spinner {
+  margin-right: 8px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px;
+  color: #9ca3af;
+}
+
+.emptyState .fa-bell-slash {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+.emptyState p {
+  margin: 0 0 5px 0;
+  font-weight: 500;
+}
+
+.emptyState small {
+  font-size: 0.875rem;
+}
+
+.unreadBadge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .notificationsContainer {
+    padding: 15px;
+  }
+  
+  .notificationItem {
+    padding: 12px;
+  }
+  
+  .notificationMeta {
+    flex-direction: column;
+    gap: 5px;
+  }
+}

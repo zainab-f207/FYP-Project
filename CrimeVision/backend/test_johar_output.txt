@@ -1,0 +1,1 @@
+{'safety_score': 54.0, 'risk_pct': 46.0, 'risk_level': 'Moderate', 'is_high_risk': False, 'total_crimes': 598, 'high_risk_crimes': 164, 'high_risk_crimes_90d': 2, 'medium_risk_crimes_90d': 6, 'last_90_days': 12, 'dominant_crime_type': 'Punishment for Criminal Intimidation (Threats)', 'area_name': 'Unknown', 'source': 'unified_coord_radius'}

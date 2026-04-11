@@ -1,9 +1,16 @@
 .systemLogs {
-  background: linear-gradient(135deg, #f5f6fa 0%, #eef1f5 100%);
-  border-radius: 16px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-  padding: 25px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 28px;
   margin-bottom: 35px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.systemLogs h3,
+.systemLogs h4 {
+  color: var(--text-primary, #fff);
 }
 
 .logList {
@@ -16,9 +23,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid #e6e9f0;
-  font-size: 1rem;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.92rem;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.logItem:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .logItem:last-child {
@@ -27,25 +40,27 @@
 
 .event {
   font-weight: 600;
+  color: var(--text-primary, rgba(255, 255, 255, 0.9));
 }
 
 .time {
-  color: #888;
-  font-size: 0.95rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .success {
-  color: #1dd1a1;
+  color: #22c55e;
 }
 
 .info {
-  color: #1a4f72;
+  color: #0ea5e9;
 }
 
 .error {
-  color: #ff6b6b;
+  color: #ef4444;
 }
 
 .warning {
-  color: #f9a826;
+  color: #f59e0b;
 }

@@ -23,10 +23,14 @@ _APP_ROOT = Path(__file__).resolve().parent.parent
 MODEL_DIR = str(_APP_ROOT / "predict_risk_level" / "model")
 
 # Default fallback values
-_DEFAULT_ALLOWED_ORIGINS = (
-    "http://localhost:5173, http://localhost:5174, "
-    "http://127.0.0.1:5173, http://127.0.0.1:5174"
-)
+_DEFAULT_ALLOWED_ORIGINS = ",".join([
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+])
 _API_TITLE_FALLBACK = "CrimeVision API"
 
 

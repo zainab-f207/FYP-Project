@@ -1,28 +1,94 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './NotificationsPanel.module.css';
+import apiService from '../../services/apiService_updated';
 
-const notifications = [
-  { id: 1, type: 'alert', message: 'New high-risk area detected: Gulberg', time: '5 min ago' },
-  { id: 2, type: 'report', message: 'Crime report submitted by user', time: '30 min ago' },
-  { id: 3, type: 'system', message: 'System update scheduled for tonight', time: '2 hours ago' },
-  { id: 4, type: 'alert', message: 'Alert sent to all users in DHA', time: '1 day ago' },
-];
+const iconMap = {
+  alert: 'fas fa-exclamation-triangle',
+  warning: 'fas fa-exclamation-triangle',
+  report: 'fas fa-file-alt',
+  info: 'fas fa-info-circle',
+  system: 'fas fa-cog',
+  success: 'fas fa-check-circle',
+};
 
-const NotificationsPanel = () => {
+const NotificationsPanel = ({ token, fullView }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [readIds, setReadIds] = useState(new Set());
+
+  useEffect(() => {
+    if (!token) return;
+    const fetchNotifications = async () => {
+      try {
+        setLoading(true);
+        const data = await apiService.getAdminNotifications(token);
+        const items = Array.isArray(data) ? data : (data?.notifications || []);
+        setNotifications(items);
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, [token]);
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+    return `${Math.floor(diff / 86400)} days ago`;
+  };
+
+  const markAllRead = () => {
+    setReadIds(new Set(notifications.map(n => n.id)));
+  };
+
+  const displayed = fullView ? notifications : notifications.slice(0, 5);
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
+
   return (
     <div className={styles.notificationsPanel}>
-      <h3>Notifications</h3>
-      <ul className={styles.notificationsList}>
-        {notifications.map(note => (
-          <li key={note.id} className={`${styles.notificationItem} ${styles[note.type]}`}>
-            <div className={styles.icon}>
-              <i className={`fas fa-${note.type === 'alert' ? 'bell' : note.type === 'report' ? 'file-alt' : 'cog'}`}></i>
-            </div>
-            <div className={styles.message}>{note.message}</div>
-            <div className={styles.time}>{note.time}</div>
-          </li>
-        ))}
-      </ul>
+      <div className={styles.panelHeader}>
+        <div className={styles.headerLeft}>
+          <i className="fas fa-bell"></i>
+          <h3>{fullView ? 'All Notifications' : 'Notifications'}</h3>
+          {unreadCount > 0 && (
+            <span className={styles.unreadBadge}>{unreadCount}</span>
+          )}
+        </div>
+        <a href="#" className={styles.markAllRead} onClick={(e) => { e.preventDefault(); markAllRead(); }}>Mark all read</a>
+      </div>
+      {loading ? (
+        <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>Loading notifications...</p>
+      ) : displayed.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>No notifications</p>
+      ) : (
+        <ul className={styles.notificationsList}>
+          {displayed.map(note => {
+            const type = note.type || 'info';
+            const isUnread = !readIds.has(note.id);
+            return (
+              <li key={note.id} className={`${styles.notificationItem} ${styles[type] || ''} ${isUnread ? styles.unread : ''}`}>
+                <div className={styles.icon}>
+                  <i className={iconMap[type] || 'fas fa-bell'}></i>
+                </div>
+                <div className={styles.content}>
+                  <div className={styles.message}>{note.title || note.message}</div>
+                  {note.message && note.title && <div className={styles.time}>{note.message}</div>}
+                  <div className={styles.time}>
+                    <i className="far fa-clock"></i> {formatTime(note.timestamp || note.time)}
+                  </div>
+                </div>
+                {isUnread && <div className={styles.unreadDot}></div>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 };

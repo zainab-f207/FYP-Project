@@ -17,16 +17,20 @@ import {
 } from 'antd';
 import {
   ApartmentOutlined,
+  CloseCircleOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
+  FilterOutlined,
   LockOutlined,
   ReloadOutlined,
+  SearchOutlined,
   UnlockOutlined,
   UserAddOutlined,
   UserDeleteOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import apiService from '../../services/apiService';
+import apiService from '../../services/apiService_updated';
 import usePaginatedResource from './hooks/usePaginatedResource';
 import { USER_BULK_ACTIONS, USER_PERMISSIONS, USER_ROLES } from './constants/permissions';
 import styles from './SuperAdminDashboard.module.css';
@@ -50,6 +54,8 @@ const AdminManagement = ({ token }) => {
   const [form] = Form.useForm();
   const [selectedAdmins, setSelectedAdmins] = useState([]);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [editModal, setEditModal] = useState({ visible: false, admin: null });
+  const [editForm] = Form.useForm();
   const [isPerformingAction, setIsPerformingAction] = useState(false);
 
   const fetchAdmins = useCallback(
@@ -95,6 +101,30 @@ const AdminManagement = ({ token }) => {
     resetFilters();
   };
 
+  const handleEdit = (admin) => {
+    setEditModal({ visible: true, admin });
+    editForm.setFieldsValue({
+      username: admin.username || '',
+      firstName: admin.firstName || '',
+      lastName: admin.lastName || '',
+      email: admin.email || '',
+      role: admin.role || '',
+      department: admin.department || '',
+      password: '',
+    });
+  };
+
+  const handleEditSubmit = async (values) => {
+    try {
+      await apiService.updateAdmin(token, editModal.admin.id, values);
+      message.success('Admin updated successfully');
+      setEditModal({ visible: false, admin: null });
+      loadData();
+    } catch (error) {
+      message.error(error.message || 'Failed to update admin');
+    }
+  };
+
   const handleAdminAction = (action, adminIdsOverride) => {
     const targetIds = adminIdsOverride ?? selectedAdmins;
 
@@ -114,7 +144,7 @@ const AdminManagement = ({ token }) => {
       onOk: async () => {
         try {
           setIsPerformingAction(true);
-          await apiService.bulkUserActions(token, action, targetIds);
+          await apiService.bulkAdminActions(token, action, targetIds);
           message.success(`Successfully executed ${actionVerb} action`);
           setSelectedAdmins([]);
           loadData();
@@ -133,88 +163,94 @@ const AdminManagement = ({ token }) => {
         title: 'Admin',
         dataIndex: 'username',
         key: 'username',
+        fixed: 'left',
+        width: 220,
         render: (username, record) => (
           <Space direction="vertical" size={0}>
             <Space>
-              <UserAddOutlined />
-              <strong>{username}</strong>
-              <Tag color="default">ID {record.id}</Tag>
+              <UserAddOutlined style={{ color: '#f9a826' }} />
+              <strong style={{ color: '#e0e0e0' }}>{username}</strong>
             </Space>
-            <span className={styles.tableMetaText}>{record.email}</span>
+            <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>{record.email}</span>
           </Space>
         ),
       },
       {
         title: 'Name',
-        dataIndex: 'fullName',
         key: 'fullName',
-        render: (_, record) => `${record.firstName || ''} ${record.lastName || ''}`.trim() || '—',
-      },
-      {
-        title: 'Role',
-        dataIndex: 'role',
-        key: 'role',
-        filters: USER_ROLES.map((role) => ({ text: role.label, value: role.value })),
-        render: (role) => <Tag color="geekblue">{role}</Tag>,
+        width: 160,
+        render: (_, record) => (
+          <span style={{ color: '#d0d0d0' }}>
+            {`${record.firstName || ''} ${record.lastName || ''}`.trim() || '—'}
+          </span>
+        ),
       },
       {
         title: 'Department',
         dataIndex: 'department',
         key: 'department',
-        render: (department) => department || '—',
+        width: 180,
+        render: (department) => (
+          <Tag color="cyan" style={{ fontSize: 12 }}>{department || '—'}</Tag>
+        ),
       },
       {
-        title: 'Last Login',
-        dataIndex: 'lastLogin',
-        key: 'lastLogin',
-        render: (lastLogin) => (lastLogin ? dayjs(lastLogin).format('DD MMM YYYY HH:mm') : '—'),
+        title: 'Role',
+        dataIndex: 'role',
+        key: 'role',
+        width: 100,
+        filters: USER_ROLES.map((role) => ({ text: role.label, value: role.value })),
+        render: (role) => <Tag color="geekblue">{role?.toUpperCase()}</Tag>,
       },
       {
         title: 'Status',
-        dataIndex: 'role',
         key: 'status',
-        render: (role) => (
-          <Badge
-            status={role === 'inactive' ? 'default' : 'processing'}
-            text={role === 'inactive' ? 'Inactive' : 'Active'}
-          />
+        width: 100,
+        render: (_, record) => {
+          const isActive = record.status === 'active' || (record.status !== 'inactive' && record.role !== 'inactive');
+          return (
+            <Badge
+              status={isActive ? 'success' : 'default'}
+              text={<span style={{ color: isActive ? '#1dd1a1' : '#ff6b6b', fontSize: 13 }}>{isActive ? 'Active' : 'Inactive'}</span>}
+            />
+          );
+        },
+      },
+      {
+        title: 'Created',
+        dataIndex: 'createdAt',
+        key: 'createdAt',
+        width: 130,
+        render: (createdAt) => (
+          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+            {createdAt ? dayjs(createdAt).format('DD MMM YYYY') : '—'}
+          </span>
         ),
       },
       {
         title: 'Actions',
         key: 'actions',
+        fixed: 'right',
+        width: 180,
         render: (_, record) => (
-          <Space>
+          <Space size={4}>
             <Tooltip title="View details">
-              <Button type="link" icon={<EyeOutlined />} onClick={() => setSelectedAdmin(record)}>
-                View
-              </Button>
+              <Button size="small" icon={<EyeOutlined />} type="text" style={{ color: '#2d7fb8' }} onClick={() => setSelectedAdmin(record)} />
             </Tooltip>
-            {record.role === 'inactive' ? (
-              <Tooltip title="Activate admin">
-                <Button type="link" icon={<UnlockOutlined />} onClick={() => handleAdminAction('activate', [record.id])}>
-                  Activate
-                </Button>
+            <Tooltip title="Edit admin">
+              <Button size="small" icon={<EditOutlined />} type="text" style={{ color: '#f9a826' }} onClick={() => handleEdit(record)} />
+            </Tooltip>
+            {record.status === 'inactive' || record.role === 'inactive' ? (
+              <Tooltip title="Activate">
+                <Button size="small" icon={<UnlockOutlined />} type="text" style={{ color: '#1dd1a1' }} onClick={() => handleAdminAction('activate', [record.id])} />
               </Tooltip>
             ) : (
-              <Tooltip title="Suspend admin">
-                <Button
-                  type="link"
-                  danger
-                  icon={<LockOutlined />}
-                  onClick={() => handleAdminAction('suspend', [record.id])}
-                >
-                  Suspend
-                </Button>
+              <Tooltip title="Suspend">
+                <Button size="small" icon={<LockOutlined />} type="text" style={{ color: '#ff6b6b' }} onClick={() => handleAdminAction('suspend', [record.id])} />
               </Tooltip>
             )}
-            <Tooltip title="Delete admin">
-              <Button
-                type="link"
-                danger
-                icon={<UserDeleteOutlined />}
-                onClick={() => handleAdminAction('delete', [record.id])}
-              />
+            <Tooltip title="Delete">
+              <Button size="small" icon={<UserDeleteOutlined />} type="text" danger onClick={() => handleAdminAction('delete', [record.id])} />
             </Tooltip>
           </Space>
         ),
@@ -232,13 +268,15 @@ const AdminManagement = ({ token }) => {
             Manage admin accounts and permissions. Use filters to quickly locate specific administrators.
           </p>
         </div>
-        <Space>
-          <Tooltip title="Refresh">
-            <Button icon={<ReloadOutlined />} onClick={() => loadData()}>
-              Refresh
-            </Button>
-          </Tooltip>
-        </Space>
+        <Tooltip title="Refresh data">
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => loadData()}
+            style={{ background: 'rgba(45,127,184,0.15)', border: '1px solid rgba(45,127,184,0.3)', color: '#2d7fb8', borderRadius: 10 }}
+          >
+            Refresh
+          </Button>
+        </Tooltip>
       </div>
 
       <div className={styles.filtersRow}>
@@ -249,11 +287,21 @@ const AdminManagement = ({ token }) => {
           onReset={handleResetFilters}
           className={styles.filtersForm}
         >
-          <Form.Item name="search">
-            <Input.Search allowClear placeholder="Search admin" style={{ width: 220 }} />
+          <Form.Item name="search" style={{ marginBottom: 0 }}>
+            <Input
+              prefix={<SearchOutlined style={{ color: 'rgba(255,255,255,0.3)' }} />}
+              allowClear
+              placeholder="Search admin by name or email"
+              style={{ width: 240, background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10, color: '#e0e0e0' }}
+            />
           </Form.Item>
-          <Form.Item name="role">
-            <Select allowClear placeholder="Role" style={{ width: 160 }}>
+          <Form.Item name="role" style={{ marginBottom: 0 }}>
+            <Select
+              allowClear
+              placeholder="Filter by role"
+              style={{ width: 160 }}
+              classNames={{ popup: { root: 'dark-select-dropdown' } }}
+            >
               {USER_ROLES.map((role) => (
                 <Select.Option key={role.value} value={role.value}>
                   {role.label}
@@ -261,44 +309,68 @@ const AdminManagement = ({ token }) => {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                Apply Filters
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space size={6}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<FilterOutlined />}
+                style={{ borderRadius: 10, background: 'linear-gradient(135deg, #1a4f72, #2d7fb8)', border: 'none', fontWeight: 500 }}
+              >
+                Apply
               </Button>
-              <Button htmlType="reset">Reset</Button>
+              <Button
+                htmlType="reset"
+                icon={<CloseCircleOutlined />}
+                style={{ borderRadius: 10, background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)', color: '#d0d0d0' }}
+              >
+                Reset
+              </Button>
             </Space>
           </Form.Item>
         </Form>
 
         <div className={styles.actionBar}>
-          <Space>
+          {selectedAdmins.length > 0 && (
+            <span className={styles.selectionCount}>{selectedAdmins.length} selected</span>
+          )}
+          <Tooltip title="Activate selected admins">
             <Button
+              size="small"
               icon={<UnlockOutlined />}
               onClick={() => handleAdminAction('activate')}
               disabled={selectedAdmins.length === 0}
               loading={isPerformingAction}
+              style={{ borderRadius: 8, background: selectedAdmins.length > 0 ? 'rgba(29,209,161,0.12)' : undefined, borderColor: selectedAdmins.length > 0 ? 'rgba(29,209,161,0.3)' : undefined, color: selectedAdmins.length > 0 ? '#1dd1a1' : undefined }}
             >
               Activate
             </Button>
+          </Tooltip>
+          <Tooltip title="Suspend selected admins">
             <Button
+              size="small"
               icon={<LockOutlined />}
               onClick={() => handleAdminAction('suspend')}
               disabled={selectedAdmins.length === 0}
               loading={isPerformingAction}
+              style={{ borderRadius: 8, background: selectedAdmins.length > 0 ? 'rgba(249,168,38,0.12)' : undefined, borderColor: selectedAdmins.length > 0 ? 'rgba(249,168,38,0.3)' : undefined, color: selectedAdmins.length > 0 ? '#f9a826' : undefined }}
             >
               Suspend
             </Button>
+          </Tooltip>
+          <Tooltip title="Delete selected admins">
             <Button
+              size="small"
               icon={<UserDeleteOutlined />}
               danger
               onClick={() => handleAdminAction('delete')}
               disabled={selectedAdmins.length === 0}
               loading={isPerformingAction}
+              style={{ borderRadius: 8 }}
             >
               Delete
             </Button>
-          </Space>
+          </Tooltip>
         </div>
       </div>
 
@@ -308,11 +380,14 @@ const AdminManagement = ({ token }) => {
           loading={isLoading}
           columns={columns}
           dataSource={admins}
+          scroll={{ x: 1100 }}
+          size="middle"
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,
             total: pagination.total,
             showSizeChanger: true,
+            style: { marginRight: 16 },
           }}
           onChange={handleTableChange}
           rowSelection={{
@@ -325,34 +400,136 @@ const AdminManagement = ({ token }) => {
         />
       </div>
 
+      {/* ── View Admin Details Drawer ── */}
       <Drawer
-        width={460}
-        title="Admin Details"
+        width={480}
+        title={<span style={{ color: '#e0e0e0', fontWeight: 600 }}>Admin Details</span>}
         open={!!selectedAdmin}
         onClose={() => setSelectedAdmin(null)}
+        styles={{
+          header: { background: 'rgba(10,10,15,0.98)', borderBottom: '1px solid rgba(255,255,255,0.08)' },
+          body: { background: 'rgba(10,10,15,0.98)', padding: '20px 24px' },
+        }}
       >
         {selectedAdmin && (
-          <Descriptions bordered column={1} size="small">
+          <Descriptions
+            bordered
+            column={1}
+            size="small"
+            styles={{ label: { color: '#f9a826', background: 'rgba(255,255,255,0.04)', fontWeight: 500, width: 130 }, content: { color: '#d0d0d0', background: 'rgba(255,255,255,0.02)' } }}
+          >
             <Descriptions.Item label="Username">{selectedAdmin.username}</Descriptions.Item>
             <Descriptions.Item label="Full Name">
               {`${selectedAdmin.firstName || ''} ${selectedAdmin.lastName || ''}`.trim() || '—'}
             </Descriptions.Item>
             <Descriptions.Item label="Email">{selectedAdmin.email || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Role">{selectedAdmin.role || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Department">{selectedAdmin.department || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Last Login">
-              {selectedAdmin.lastLogin ? dayjs(selectedAdmin.lastLogin).format('DD MMM YYYY HH:mm') : '—'}
+            <Descriptions.Item label="Role"><Tag color="geekblue">{selectedAdmin.role?.toUpperCase()}</Tag></Descriptions.Item>
+            <Descriptions.Item label="Department"><Tag color="cyan">{selectedAdmin.department || '—'}</Tag></Descriptions.Item>
+            <Descriptions.Item label="Phone">{selectedAdmin.phone || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Address">{selectedAdmin.address || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Created At">
+              {selectedAdmin.createdAt ? dayjs(selectedAdmin.createdAt).format('DD MMM YYYY HH:mm') : '—'}
             </Descriptions.Item>
             <Descriptions.Item label="Permissions">
               <Space wrap>
-                {(selectedAdmin.permissions || []).map((permission) => (
-                  <Tag key={permission}>{permission}</Tag>
-                ))}
+                {(selectedAdmin.permissions || []).length > 0
+                  ? selectedAdmin.permissions.map((p) => <Tag key={p} color="blue">{p}</Tag>)
+                  : <span style={{ color: 'rgba(255,255,255,0.3)' }}>No permissions</span>}
               </Space>
             </Descriptions.Item>
           </Descriptions>
         )}
       </Drawer>
+
+      {/* ── Edit Admin Modal ── */}
+      <Modal
+        title={<span style={{ color: '#e0e0e0' }}>Edit Admin</span>}
+        open={editModal.visible}
+        onCancel={() => setEditModal({ visible: false, admin: null })}
+        footer={null}
+        destroyOnClose
+        styles={{
+          content: { background: 'rgba(13,20,30,0.98)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 },
+          header: { background: 'transparent', borderBottom: '1px solid rgba(255,255,255,0.08)' },
+        }}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditSubmit}
+          style={{ marginTop: 8 }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="firstName"
+              label={<span style={{ color: '#d0d0d0' }}>First Name</span>}
+              rules={[{ required: true, message: 'Required' }]}
+            >
+              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+            </Form.Item>
+            <Form.Item
+              name="lastName"
+              label={<span style={{ color: '#d0d0d0' }}>Last Name</span>}
+              rules={[{ required: true, message: 'Required' }]}
+            >
+              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+            </Form.Item>
+          </div>
+          <Form.Item
+            name="username"
+            label={<span style={{ color: '#d0d0d0' }}>Username</span>}
+            rules={[{ required: true, message: 'Required' }]}
+          >
+            <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label={<span style={{ color: '#d0d0d0' }}>Email</span>}
+            rules={[
+              { required: true, message: 'Required' },
+              { type: 'email', message: 'Enter a valid email' }
+            ]}
+          >
+            <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label={<span style={{ color: '#d0d0d0' }}>New Password <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: 12 }}>(leave blank to keep current)</span></span>}
+          >
+            <Input.Password
+              placeholder="Enter new password"
+              style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }}
+            />
+          </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="role"
+              label={<span style={{ color: '#d0d0d0' }}>Role</span>}
+              rules={[{ required: true, message: 'Required' }]}
+            >
+              <Select classNames={{ popup: { root: 'dark-select-dropdown' } }} style={{ background: 'transparent' }}>
+                {USER_ROLES.map((role) => (
+                  <Select.Option key={role.value} value={role.value}>
+                    {role.label}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="department"
+              label={<span style={{ color: '#d0d0d0' }}>Department</span>}
+            >
+              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+            </Form.Item>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+            <Button onClick={() => setEditModal({ visible: false, admin: null })}>Cancel</Button>
+            <Button type="primary" htmlType="submit" style={{ background: '#2d7fb8', borderColor: '#2d7fb8' }}>
+              Save Changes
+            </Button>
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };

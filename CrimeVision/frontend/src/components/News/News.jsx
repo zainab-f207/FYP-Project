@@ -51,7 +51,7 @@ const News = () => {
           <div className="news-content">
             <div className="news-date">December 12, 2023</div>
             <h4>Crime Prevention Workshop Success</h4>
-            <p>Over 500 residents participated in the crime prevention workshop organized by CrimeVision in collaboration with local authorities.</p>
+            <p>Over 500 residents participated in the crime prevention workshop organized by SafeVision in collaboration with local authorities.</p>
           </div>
         </div>
 

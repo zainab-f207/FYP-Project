@@ -1,0 +1,348 @@
+﻿.\venv\Scripts\python.exe : [33mChecking connectivity to the model hosters, 
+this may take a while. To bypass this check, set `DISABLE_MODEL_SOURCE_CHECK` 
+to `True`.[0m
+At line:1 char:1
++ .\venv\Scripts\python.exe simple_crime_test.py 2>&1 | Out-File -FileP ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33mChecking c... to `True`.[0m 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+WARNING: Using CPU. Note: This module is much faster with a GPU.
+INFO: \u2713 EasyOCR initialized (Urdu + English)
+WARNING: Using CPU. Note: This module is much faster with a GPU.
+INFO: \u2713 EasyOCR English-only reader initialized
+ERROR: PaddleOCR init failed: Unknown argument: show_log
+INFO: \u2713 Tesseract available
+INFO: OCR engines available: easyocr, tesseract
+INFO: Processing FIR image: 926x1280px
+INFO: 
+\U0001f4c1 Saving debug region images to 'debug_regions/' folder:
+INFO:   \u2713 debug_regions\region_header.png (741x102px)
+INFO:   \u2713 debug_regions\region_thana.png (630x128px)
+INFO:   \u2713 debug_regions\region_date.png (370x76px)
+INFO:   \u2713 debug_regions\region_sections.png (333x359px)
+INFO:   \u2713 debug_regions\full_image_with_regions.png (full image with 
+region boundaries)
+INFO:   \u2713 debug_regions\region_sections_expanded.png (expanded sections 
+region)
+INFO: 
+\U0001f50d Open 'debug_regions/' folder to view region images
+
+INFO: ==================================================
+INFO: EXTRACTING THANA/CRIME AREA
+INFO: ==================================================
+INFO: [Thana] Scanning Row 4 for known thana patterns...
+F:\Image-to-text\backend\venv\Lib\site-packages\torch\utils\data\dataloader.py:
+668: UserWarning: 'pin_memory' argument is set as true but no accelerator is 
+found, then device pinned memory won't be used.
+  warnings.warn(warn_msg)
+INFO: [Thana] Row 4 OCR: 
+\u0627\u0642\u0627\u06ba\u0627\u0624\u0627\u0646\u062a \u0642\u0631\u06278 .2 
+\u0644\u0631\u06cc\u0631\u062a\u0628 \u0632\u0630 \u062f\u0666 \u062f\u0631 
+\u0627\u0631\u0627 \u062a \u0628\u0627\u0644\u0627 
+\u0645\u06c1\u0644\u0644\u062f\u06d2\u0627\u0648\u0631\u062a 
+\u062f\u0627\u0644\u062e\u06c3\u062c\u0644 
+\u06a9\u0627\u0637\u0644\u0627\u0627\u0645\u062e \u0633\u0627\u0645\u06cc 74 
+\u0642\u0641\u062d7\u0627\u06cc\u06a9\u0627 \u0627\u06c1\u06c1\u0646 
+\u06a9\u0627\u06c1 \u0627
+INFO: [Thana] Scanning Row 2 for thana info...
+INFO: [Thana] Row 2 OCR: \u0645\u0646\u0627\u0646 \u0630 \u0644\u0645 
+\u0628\u0627\u062a \u0645\u0627\u0646\u0627 \u0646\u0628\u06314\u0648\u0644 
+\u0646\u062c\u063123 \u062f\u06d5\u06d5\u06c1 4\u0648\u0645 \u0627\u0631 
+\u0631\u0648\u0630\u06c1\u0644\u0627\u0686\u0648\u06ba 
+\u0646\u06cc\u0627\u0641\u0648\u0646 \u0646\u0628\u0631 :4892432-336
+INFO: [Thana] Scanning header region for thana...
+INFO: [Thana] Header OCR: \u060c\u06cc\u06ba\u0642\u0631\u0645 \u0628\u063124- 
+5)1( 3839-202= \u0627\u0628\u0645\u0627\u0644\u06cc\u0627 
+\u0637\u0644\u0627\u06cc \u0686\u0631\u062f \u0646\u0628\u062a \u062c\u0645 
+\u0644\u0627\u0632\u062f\u0627\u0641\u062a \u0648\u06cc\u0633 \u0627\u062a 
+\u0645\u0631\u0631\u062f \u0634\u062f\u0630\u0631\u062f\u0644 54\u0627\u0646 
+\u0628\u062f\u0630\u0628\u062f\u0627\u0631\u06cc
+WARNING: [Thana] \u2717 No known thana pattern found in FIR
+INFO: ==================================================
+INFO: EXTRACTING DATE
+INFO: ==================================================
+INFO: Extracted region: (46,128) to (416,204) = 370x76px
+INFO: Debug: Saved debug_03_date_raw.png
+INFO: Debug: Saved debug_04_date_cleaned.png (RAW - no preprocessing)
+INFO: EasyOCR: 1 text blocks, confidence: 23.2%
+INFO: Tesseract: confidence: 47.4%
+INFO: \u2713 Best result: tesseract (47.4%)
+INFO: Date region text (raw_original): \u0633\u0636
+\u062c\u0627\u062a 12-02-2025 ).(537:!
+>\u062d\u06c1\u062f \u062d\u06c1 3\u0648 \u200e0-18P MA\u200f
+
+INFO: Confidence: 47.4%
+INFO: \u2713 Date found: 12-02-2025
+INFO: ==================================================
+INFO: EXTRACTING SECTIONS (PURE OCR - NO HEAVY PREPROCESSING)
+INFO: ==================================================
+INFO: Extracted region: (370,281) to (703,640) = 333x359px
+INFO: Section region size: 333x359
+INFO: [Strategy 1] EasyOCR ENGLISH-ONLY on RAW image
+INFO: EasyOCR (EN): 8 text blocks, confidence: 39.9%
+INFO:   English-only text: "4892432-336.Fer T 72148 W4 'ekhank;o 7+149 7+302 
+7-379"
+INFO: [PURE OCR] Parsing sections from text (len: 54)
+INFO: [PURE OCR] Raw text: "4892432-336.Fer T 72148 W4 'ekhank;o 7+149 7+302 
+7-379"
+INFO: [PURE OCR] Phone number detected: 4892432-336
+INFO: [PURE OCR] Noise digits to exclude: {'924', '489', '233', '323', '892', 
+'432', '336', '243'}
+INFO: [PURE OCR] Sections with Urdu markers: []
+INFO: [PURE OCR] Prefix digit numbers (7x/2x): ['72148']
+INFO: [PURE OCR] \u2713 From prefix-digit: 148 (from 72148)
+INFO: [PURE OCR] Standalone 3-digit numbers: ['336', '149', '302', '379']
+INFO: [PURE OCR] \u2717 Skipping noise: 336
+INFO: [PURE OCR] \u2713 Standalone section: 149
+INFO: [PURE OCR] \u2713 Standalone section: 302
+INFO: [PURE OCR] \u2713 Standalone section: 379
+INFO: [PURE OCR] Suffixed base numbers: set()
+INFO: [PURE OCR] Before filtering: ['148', '149', '302', '379']
+INFO: [PURE OCR] After filtering: ['148', '149', '302', '379']
+INFO: [PURE OCR] Final sections: ['148', '149', '302', '379']
+INFO:   Sections from English-only: ['148', '149', '302', '379']
+INFO: [Strategy 2] EasyOCR Urdu+English on RAW image
+INFO: EasyOCR: 7 text blocks, confidence: 23.2%
+INFO:   Urdu+English text: '4\u06464892432-336:7 /\u0645: 148\u062a\u0628 
+\u0627\u0642\u0627\u06ba\u0627\u0624\u0646 \u062a \u0642\u0631 {2.8 49\u0627 
+\u062a\u062c -102 ~_179'
+INFO: [PURE OCR] Parsing sections from text (len: 61)
+INFO: [PURE OCR] Raw text: '4\u06464892432-336:7 /\u0645: 148\u062a\u0628 
+\u0627\u0642\u0627\u06ba\u0627\u0624\u0646 \u062a \u0642\u0631 {2.8 49\u0627 
+\u062a\u062c -102 ~_179'
+INFO: [PURE OCR] Phone number detected: 4892432-336
+INFO: [PURE OCR] Noise digits to exclude: {'924', '489', '233', '323', '892', 
+'432', '336', '243'}
+INFO: [PURE OCR] Sections with Urdu markers: ['148']
+INFO: [PURE OCR] \u2713 Section with Urdu marker: 148
+INFO: [PURE OCR] Prefix digit numbers (7x/2x): []
+INFO: [PURE OCR] Standalone 3-digit numbers: ['336', '148', '102', '179']
+INFO: [PURE OCR] \u2717 Skipping noise: 336
+INFO: [PURE OCR] \u2713 Standalone section: 102
+INFO: [PURE OCR] \u2713 Standalone section: 179
+INFO: [PURE OCR] Suffixed base numbers: set()
+INFO: [PURE OCR] Before filtering: ['148', '102', '179']
+INFO: [PURE OCR] After filtering: ['148', '102', '179']
+INFO: [PURE OCR] Final sections: ['102', '148', '179']
+INFO:   Sections from Urdu+English: ['102', '148', '179']
+INFO: [Strategy 3] Tesseract with digit whitelist
+INFO: Tesseract: confidence: 43.1%
+INFO:   Tesseract text: '4892432-3360: \u200f\u06c1\u06cc\u06cc 
+\u0648\u0646\u200e\nyk 
+ELS\n\n8\u0639\u067e\n\n9\u0639\u067e\n\n2\u0639\u067e\n\n9\u0639\u067e\n7 
+\u06c1\u062f\u0631\u067e \u06c1\u0633 \u0631\u06a9\u0641 \u0631\u0648\u0688... 
+:\u062a\u0627\u0644 \u062c\u0627\u0648\u0646 \u0633\u06d2 \u062a\u0642\u0631 
+2.8\n\u0646\u06d2 \u200eSin TIL\u200f\n\nSree 
+\u200f\u0632\u0631\u06cc\u0639\u06c1 \u0641\u0648 \u0646 
+\u0627\u06cc\u067e\u200e treba\n\n:\u062a\u0648 \u06a9\u0648 
+\u06a9\u06cc\u0627 \u0648\u0631\u0627\u062c\u0631\u0627\u0626\u06cc 
+\u0627\u062a\u0627 \u200eLah\u200f\n'
+INFO: [PURE OCR] Parsing sections from text (len: 165)
+INFO: [PURE OCR] Raw text: '4892432-3360: \u200f\u06c1\u06cc\u06cc 
+\u0648\u0646\u200e\nyk 
+ELS\n\n8\u0639\u067e\n\n9\u0639\u067e\n\n2\u0639\u067e\n\n9\u0639\u067e\n7 
+\u06c1\u062f\u0631\u067e \u06c1\u0633 \u0631\u06a9\u0641 \u0631\u0648\u0688... 
+:\u062a\u0627\u0644 \u062c\u0627\u0648\u0646 \u0633\u06d2 \u062a\u0642\u0631 
+2.8\n\u0646\u06d2 \u200eSin TIL\u200f\n\nSree 
+\u200f\u0632\u0631\u06cc\u0639\u06c1 \u0641\u0648 \u0646 
+\u0627\u06cc\u067e\u200e treba\n\n:\u062a\u0648 \u06a9\u0648 
+\u06a9\u06cc\u0627 \u0648\u0631\u0627\u062c\u0631\u0627\u0626\u06cc 
+\u0627\u062a\u0627 \u200eLah\u200f\n'
+INFO: [PURE OCR] Phone number detected: 4892432-3360
+INFO: [PURE OCR] Noise digits to exclude: {'360', '924', '489', '233', '323', 
+'892', '432', '336', '243'}
+INFO: [PURE OCR] Sections with Urdu markers: []
+INFO: [PURE OCR] Prefix digit numbers (7x/2x): []
+INFO: [PURE OCR] Standalone 3-digit numbers: []
+INFO: [PURE OCR] Suffixed base numbers: set()
+INFO: [PURE OCR] Before filtering: []
+INFO: [PURE OCR] After filtering: []
+INFO: [PURE OCR] Final sections: []
+INFO:   Sections from Tesseract: []
+INFO: [Strategy 4] Enhanced preprocessing
+INFO: EasyOCR (EN): 8 text blocks, confidence: 26.2%
+INFO:   Enhanced text: '4892432-336.Fene T} 72148 72J02 W,4n +sd 7+149 7-379'
+INFO: [PURE OCR] Parsing sections from text (len: 52)
+INFO: [PURE OCR] Raw text: '4892432-336.Fene T} 72148 72J02 W,4n +sd 7+149 
+7-379'
+INFO: [PURE OCR] Phone number detected: 4892432-336
+INFO: [PURE OCR] Noise digits to exclude: {'924', '489', '233', '323', '892', 
+'432', '336', '243'}
+INFO: [PURE OCR] Sections with Urdu markers: []
+INFO: [PURE OCR] Prefix digit numbers (7x/2x): ['72148']
+INFO: [PURE OCR] \u2713 From prefix-digit: 148 (from 72148)
+INFO: [PURE OCR] Standalone 3-digit numbers: ['336', '149', '379']
+INFO: [PURE OCR] \u2717 Skipping noise: 336
+INFO: [PURE OCR] \u2713 Standalone section: 149
+INFO: [PURE OCR] \u2713 Standalone section: 379
+INFO: [PURE OCR] Suffixed base numbers: set()
+INFO: [PURE OCR] Before filtering: ['148', '149', '379']
+INFO: [PURE OCR] After filtering: ['148', '149', '379']
+INFO: [PURE OCR] Final sections: ['148', '149', '379']
+INFO:   Sections from enhanced: ['148', '149', '379']
+INFO: [Strategy 5] Digit-optimized preprocessing
+INFO: Tesseract: confidence: 39.2%
+INFO:   Digit-enhanced text: '\u0645\u06a9 \u06a9\u0648\u0646 \u062c\u0631:0 
+2-31 4924\n\u200eWk 
+BEDS\u200f\n\ner\n\n9\u067e\n\n2\u067e\n\n9\u0621\u067e\n\u200epho s\u200f 
+\u062f\u0627\u0632 \u200eFoci\u200f 28\n\u200eCoa TLS\u200f\n\n\u0627\u0628 
+:\u0627\u0644\u062a\u0628 \u06c1\u0622 \u0627\u067e \u0645\u0631 
+\u200eSele\u200f\n\n\u062f\u0642 \u06be\u06a9 \u0631\u06a9\u06cc\u0644 
+\u0631\u0634\u0639 \u200eLaF an\u200f\n'
+INFO: [PURE OCR] Parsing sections from text (len: 132)
+INFO: [PURE OCR] Raw text: '\u0645\u06a9 \u06a9\u0648\u0646 \u062c\u0631:0 
+2-31 4924\n\u200eWk 
+BEDS\u200f\n\ner\n\n9\u067e\n\n2\u067e\n\n9\u0621\u067e\n\u200epho s\u200f 
+\u062f\u0627\u0632 \u200eFoci\u200f 28\n\u200eCoa TLS\u200f\n\n\u0627\u0628 
+:\u0627\u0644\u062a\u0628 \u06c1\u0622 \u0627\u067e \u0645\u0631 
+\u200eSele\u200f\n\n\u062f\u0642 \u06be\u06a9 \u0631\u06a9\u06cc\u0644 
+\u0631\u0634\u0639 \u200eLaF an\u200f\n'
+INFO: [PURE OCR] Noise digits to exclude: set()
+INFO: [PURE OCR] Sections with Urdu markers: []
+INFO: [PURE OCR] Prefix digit numbers (7x/2x): []
+INFO: [PURE OCR] Standalone 3-digit numbers: []
+INFO: [PURE OCR] Suffixed base numbers: set()
+INFO: [PURE OCR] Before filtering: []
+INFO: [PURE OCR] After filtering: []
+INFO: [PURE OCR] Final sections: []
+INFO:   Sections from digit-enhanced: []
+INFO: [Post-processing] Applying OCR corrections
+INFO:   Removing 102 (known noise pattern)
+INFO: [Post-processing] Removing duplicates when suffixed version exists
+INFO:   Suffixed bases found: set()
+INFO: \u2713 FINAL Sections (combined): ['148', '149', '179', '302', '379']
+INFO: ==================================================
+INFO: EXTRACTING CRIME AREA (Row 4 - \u062c\u0627\u0626\u06d2 
+\u0648\u0642\u0648\u0639\u06c1)
+INFO: ==================================================
+INFO: [Crime Area] Region: (18,460) to (583,537) = 565x77px
+INFO: [Crime Area] 2x_denoise_otsu: score=39.0 | \u062f\u0631 \u0627\u0631 
+\u0648\u0639 \u06af\u06af\u0631\u0631\u0648\u0688\u06d4\u06d4 
+\u062a\u0642\u0627\u0644\u0645\u06d5\u0648\u0646 \u06d2 \u062a\u0645 \u067e8 
+2\u06a9\u06be\u0648\u0645\u06cc\u062f\u0631 \u062c\u0648 
+\u0645\u0634\u0631\u0642
+INFO: [Crime Area] 3x_raw_otsu: score=44.0 | \u062f\u062d\u06cc\u062f\u0631 
+\u0627\u0631\u0633 \u06af\u06be\u0631\u0631\u0648\u0688.. 
+\u0627\u0642\u067e\u0627\u0644 \u0645\u0627\u0624\u0646 \u0633\u06d2 
+\u062a\u0631 \u062c8 \u062f\u06a9\u06be\u0648\u0645\u06cc\u062f 
+\u06c1\u0646\u0648\u06d2 \u0645\u0634\u0631\u062a\u06cc
+INFO: [Crime Area] 2x_bilateral_otsu: score=36.0 | \u066d\u062d_\u06d4 
+\u06cc\u062f\u0639 \u06a9\u0631\u0648 \u062a\u0642\u0631 \u0644\u0633 
+\u0645\u0646 \u06d2\u0622 \u067e\u0627 \u062f\u06a9\u06be\u0648 \u0645\u062f 
+\u062c\u062e\u0648 \u0628\u06d2 \u0645\u0634\u0631\u0642\u06cc
+INFO: [Crime Area] 3x_morph_otsu: score=39.0 | \u062f\u0631 \u0627\u0631\u06c1 
+\u0639 \u06af\u0631 \u0631\u0648\u0688 \u062a\u0642\u0627\u0644 
+\u0645\u0627\u0646 \u06d2 \u062a\u0631 \u062c8 
+\u0644\u06a9\u06be\u0648\u0645\u06cc\u062f \u062c\u06c1\u0646\u0648\u06d2 
+\u0645\u0634\u0631\u0642\u06cc
+INFO: [Crime Area] 2x_clahe_otsu: score=36.0 | \u06c1\u0631 \u0627\u0633 
+\u0631\u06a9\u0641\u0631\u0631\u0648\u0688._ :\u0642\u0627\u0644 
+\u062c\u0627\u0624\u0646 \u0633\u06d2 \u062a\u0642\u0631 \u067e\u06cc\u0627 
+\u06a9\u0648 \u0645\u06cc\u062f\u0631 \u062c\u0646\u0648\u0628 
+\u0645\u0634\u0631\u0642\u06cc
+INFO: [Crime Area] raw_gray: score=31.0 | \u062f\u0631 
+\u0627\u0631\u06c1\u0633 \u0631\u06af \u0631\u0648\u0688...\u06d4 
+:\u062a\u0627\u0644 \u062d\u0627\u0648\u0646 \u0633\u06d2 \u062a\u0642\u0631 
+\u0627\u0644\u06a9\u0648 \u0645\u06cc \u062c\u0646\u0648\u0628 \u0634\u0631
+INFO: [Crime Area] Best: 3x_raw_otsu (score=44.0)
+INFO: Crime Area: \u062f\u062d\u06cc\u062f\u0631 \u0627\u0631\u0633 
+\u06af\u06be\u0631\u0631\u0648\u0688.. \u0627\u0642\u067e\u0627\u0644 
+\u0645\u0627\u0624\u0646 \u0633\u06d2 \u062a\u0631 \u062c8 
+\u062f\u06a9\u06be\u0648\u0645\u06cc\u062f \u06c1\u0646\u0648\u06d2 
+\u0645\u0634\u0631\u062a\u06cc
+INFO: ==================================================
+INFO: EXTRACTING POLICE STATION CODE
+INFO: ==================================================
+INFO: Extracted region: (324,76) to (648,179) = 324x103px
+INFO: [PS Code] Found: '1007' from '1007-0920253' (region 1)
+INFO: [PS Code] Found: '1007' from '1007-0920253' (region 1)
+INFO: [PS Code] Fallback 4-digit: '1007' from '1007-0920253' (region 1)
+INFO: [PS Code] Fallback 4-digit: '0920' from '1007-0920253' (region 1)
+INFO: [PS Code] Tesseract found: 1007
+INFO: [PS Code] Tesseract found: 1007
+INFO: [PS Code] Tesseract found: 1007
+INFO: [PS Code] Tesseract fallback 4-digit: 1007
+INFO: [PS Code] Tesseract fallback 4-digit: 2025
+INFO: [PS Code] Found: '1007' from '1007-0925 ' (region 1)
+INFO: [PS Code] Found: '1007' from '1007-0925 ' (region 1)
+INFO: [PS Code] Fallback 4-digit: '1007' from '1007-0925 ' (region 1)
+INFO: [PS Code] Fallback 4-digit: '0925' from '1007-0925 ' (region 1)
+INFO: [PS Code] Tesseract found: 1007
+INFO: [PS Code] Tesseract found: 1007
+INFO: [PS Code] Tesseract found: 1007
+INFO: [PS Code] Tesseract fallback 4-digit: 1007
+INFO: [PS Code] Tesseract fallback 4-digit: 0920
+INFO: [PS Code] Fallback 4-digit: '9154' from 
+'\u062b\u0627\u0644\u0627\u0628\u0644\u0627\u0626  \u0641\u0646\u06cc\u062a 
+\u0686\u0646\u0686\u0644 \u0630\u0646\u0628 
+\u06cc\u0646\u062a\u062c\u0631\u0679 \u0628\u062a\u0630\u0631\u0627\u0645 
+9154' (region 1)
+INFO: Extracted region: (463,25) to (879,102) = 416x77px
+INFO: [PS Code] Found: '3839' from 'LR-\u0628 3839-2025' (region 2)
+INFO: [PS Code] Found: '3839' from 'LR-\u0628 3839-2025' (region 2)
+INFO: [PS Code] Found: '3839' from 'LR-\u0628 3839-2025' (region 2)
+INFO: [PS Code] Fallback 4-digit: '3839' from 'LR-\u0628 3839-2025' (region 2)
+INFO: [PS Code] Fallback 4-digit: '2025' from 'LR-\u0628 3839-2025' (region 2)
+INFO: [PS Code] Tesseract found: 3839
+INFO: [PS Code] Tesseract found: 3839
+INFO: [PS Code] Tesseract found: 2025
+INFO: [PS Code] Tesseract fallback 4-digit: 3839
+INFO: [PS Code] Tesseract fallback 4-digit: 2025
+INFO: [PS Code] Tesseract found: 3839
+INFO: [PS Code] Tesseract found: 3839
+INFO: [PS Code] Tesseract found: 2025
+INFO: [PS Code] Tesseract fallback 4-digit: 3839
+INFO: [PS Code] Tesseract fallback 4-digit: 2025
+INFO: Extracted region: (277,25) to (907,128) = 630x103px
+INFO: [PS Code] Found: '3839' from 'LR-\u0628 3839-2025' (region 3)
+INFO: [PS Code] Found: '3839' from 'LR-\u0628 3839-2025' (region 3)
+INFO: [PS Code] Found: '3839' from 'LR-\u0628 3839-2025' (region 3)
+INFO: [PS Code] Fallback 4-digit: '3839' from 'LR-\u0628 3839-2025' (region 3)
+INFO: [PS Code] Fallback 4-digit: '2025' from 'LR-\u0628 3839-2025' (region 3)
+INFO: [PS Code] Tesseract found: 3839
+INFO: [PS Code] Tesseract found: 3839
+INFO: [PS Code] Tesseract fallback 4-digit: 2443
+INFO: [PS Code] Tesseract fallback 4-digit: 2025
+INFO: [PS Code] Fallback 4-digit: '2313' from '&\u0638\u0627-\u0628 
+\u06a9\u06392 3139' (region 3)
+INFO: [PS Code] Tesseract found: 3839
+INFO: [PS Code] Tesseract found: 3839
+INFO: [PS Code] Tesseract fallback 4-digit: 2403
+INFO: [PS Code] Tesseract fallback 4-digit: 2005
+INFO: [PS Code] Tesseract fallback 4-digit: 1544
+INFO: [PS Code] Tesseract fallback 4-digit: 3999
+INFO: [PS Code] Tesseract fallback 4-digit: 0709
+INFO: [PS Code] Tesseract fallback 4-digit: 5025
+INFO: \u2713 Police Station Code: 3839
+INFO: ==================================================
+INFO: FINAL RESULT
+INFO: ==================================================
+INFO: Crime Date: 12-02-2025
+INFO: Crime Area: \u062f\u062d\u06cc\u062f\u0631 \u0627\u0631\u0633 
+\u06af\u06be\u0631\u0631\u0648\u0688.. \u0627\u0642\u067e\u0627\u0644 
+\u0645\u0627\u0624\u0646 \u0633\u06d2 \u062a\u0631 \u062c8 
+\u062f\u06a9\u06be\u0648\u0645\u06cc\u062f \u06c1\u0646\u0648\u06d2 
+\u0645\u0634\u0631\u062a\u06cc
+INFO: Police Station Code: 3839
+INFO: Sections: ['148', '149', '179', '302', '379']
+INFO: Confidence: 80.0%
+INFO: ==================================================
+Traceback (most recent call last):
+Found 3 test images
+  File "F:\Image-to-text\backend\simple_crime_test.py", line 45, in <module>
+
+============================================================
+TESTING: FIR_001.jpg
+============================================================
+
+--- RESULTS for FIR_001.jpg ---
+Crime Date:  12-02-2025
+    print(f"Crime Area:  {result.get('crime_area', 'N/A')}")
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.
+2544.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 13-17: 
+character maps to <undefined>

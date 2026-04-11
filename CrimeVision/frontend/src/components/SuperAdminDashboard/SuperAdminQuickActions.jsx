@@ -2,10 +2,14 @@
 import React, { useState } from 'react';
 import styles from './SuperAdminQuickActions.module.css';
 
-const SuperAdminQuickActions = () => {
+const SuperAdminQuickActions = ({ onRefresh }) => {
   const [modal, setModal] = useState(null);
 
   const handleAction = (action) => {
+    if (action === 'refresh' && onRefresh) {
+      onRefresh();
+      return;
+    }
     setModal(action);
   };
 
@@ -15,6 +19,10 @@ const SuperAdminQuickActions = () => {
     <div className={styles.quickActions}>
       <h3>SuperAdmin Quick Actions</h3>
       <div className={styles.actionsGrid}>
+        <button className={styles.actionBtn} onClick={() => handleAction('refresh')}>
+          <i className="fas fa-sync-alt"></i>
+          Refresh Data
+        </button>
         <button className={styles.actionBtn} onClick={() => handleAction('approveAdmin')}>
           <i className="fas fa-user-check"></i>
           Approve Admin

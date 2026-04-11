@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <radialGradient id="irisGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00a6a6" stop-opacity="1" />
+      <stop offset="100%" stop-color="#1a3a5f" stop-opacity="1" />
+    </radialGradient>
+    <mask id="contourMask">
+      <rect width="800" height="600" fill="white" />
+      <path d="M150 300 C230 200 370 180 520 300 C370 420 230 400 150 300 Z" fill="black" />
+    </mask>
+    <pattern id="contourPattern" patternUnits="userSpaceOnUse" width="60" height="60" patternTransform="rotate(15)">
+      <path d="M0 0 L60 0" stroke="#1a3a5f" stroke-width="2" opacity="0.25" />
+      <path d="M0 20 L60 20" stroke="#1a3a5f" stroke-width="1" opacity="0.18" />
+      <path d="M0 40 L60 40" stroke="#1a3a5f" stroke-width="2" opacity="0.25" />
+      <path d="M0 60 L60 60" stroke="#1a3a5f" stroke-width="1" opacity="0.18" />
+    </pattern>
+  </defs>
+
+  <rect width="800" height="600" fill="#f5f7fa" />
+
+  <g transform="translate(120,120)">
+    <path d="M160 180 C220 120 320 80 440 80 C560 80 660 120 720 180 C660 240 560 280 440 280 C320 280 220 240 160 180 Z" fill="url(#contourPattern)" stroke="#1a3a5f" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+
+    <path d="M420 20 C260 20 130 140 70 180 L0 232 L70 280 C130 320 260 440 420 440 C580 440 710 320 770 280 L840 232 L770 180 C710 140 580 20 420 20 Z" fill="none" stroke="#1a3a5f" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.2" />
+
+    <circle cx="420" cy="180" r="110" fill="url(#irisGradient)" />
+
+    <circle cx="420" cy="180" r="62" fill="#00a6a6" />
+    <path d="M380 160 L456 160 L468 196 L352 196 Z M404 172 L424 172 L432 188 L396 188 Z" fill="#f8fafc" opacity="0.8" />
+
+    <circle cx="420" cy="180" r="28" fill="#ffc107" />
+
+    <g stroke="#ffffff" stroke-width="6" opacity="0.65">
+      <path d="M320 120 Q370 90 420 110" fill="none" />
+      <path d="M520 240 Q470 260 420 240" fill="none" />
+    </g>
+
+    <g transform="translate(420,180) rotate(18)" opacity="0.35">
+      <line x1="-240" y1="0" x2="240" y2="0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="12 8" />
+      <line x1="0" y1="-240" x2="0" y2="240" stroke="#94a3b8" stroke-width="2" stroke-dasharray="12 8" />
+    </g>
+  </g>
+
+  <g font-family="'Manrope', 'Segoe UI', sans-serif" text-anchor="middle">
+    <text x="400" y="470" font-size="72" fill="#1a3a5f" font-weight="400">Safe<tspan font-weight="700">Vision</tspan></text>
+    <text x="400" y="515" font-size="26" fill="#64748b" letter-spacing="2">Spatial Analysis &amp; Visualization</text>
+  </g>
+</svg>

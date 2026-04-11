@@ -2,6 +2,7 @@ from fastapi import HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Dict, Any, cast
 import smtplib
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
@@ -16,8 +17,8 @@ logger = get_logger(__name__)
 # Email configuration (same as main file)
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_USERNAME = "safevision.noreply@gmail.com"  
-SMTP_PASSWORD = "dzik alfk tgxy banc"
+SMTP_USERNAME = os.getenv('AUTH_EMAIL_USERNAME', 'safevision.noreply@gmail.com')
+SMTP_PASSWORD = os.getenv('AUTH_EMAIL_PASSWORD', 'nyuk dxgu klqx otpz')  # Set this in your environment variables
 
 # Password reset models
 class ForgotPasswordRequest(BaseModel):

@@ -1,0 +1,62 @@
+.reportsPanel { background: var(--card-bg); border-radius: var(--card-radius, 16px); border: 1px solid var(--card-border); overflow: hidden; margin-bottom: 30px; }
+.panelHeader { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--card-border); }
+.headerLeft { display: flex; align-items: center; gap: 14px; }
+.headerIcon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #2d7fb820, #2d7fb810); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #2d7fb8; }
+.headerLeft h3 { font-size: 1.1rem; color: var(--text-primary); font-weight: 600; margin: 0; }
+.headerSub { font-size: 0.8rem; color: var(--text-secondary); margin: 2px 0 0; }
+.headerActions { display: flex; align-items: center; gap: 10px; }
+.exportBtn { padding: 8px 16px; border-radius: 10px; border: 1px solid var(--primary-light); background: transparent; color: var(--primary-light); font-family: 'Poppins', sans-serif; font-size: 0.82rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.3s; }
+.exportBtn:hover:not(:disabled) { background: var(--primary-light); color: white; }
+.exportBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.exportPdf { border-color: #dc2626; color: #dc2626; }
+.exportPdf:hover:not(:disabled) { background: #dc2626; color: white; }
+.exportExcel { border-color: #16a34a; color: #16a34a; }
+.exportExcel:hover:not(:disabled) { background: #16a34a; color: white; }
+.refreshBtn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--light); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
+.refreshBtn:hover { background: var(--primary-light); color: white; border-color: var(--primary-light); }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.filtersRow { display: flex; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--card-border); flex-wrap: wrap; }
+.filterGroup { display: flex; flex-direction: column; gap: 4px; }
+.filterGroup label { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.dateInput, .filterSelect { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--light); color: var(--text-primary); font-family: 'Poppins', sans-serif; font-size: 0.82rem; outline: none; transition: border-color 0.3s; }
+.dateInput:focus, .filterSelect:focus { border-color: var(--primary-light); }
+
+.loadingState { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 12px; color: var(--text-secondary); }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--card-border); border-top-color: var(--primary-light); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+.summaryCards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; padding: 20px 24px; }
+.summaryCard { text-align: center; padding: 16px 10px; border-radius: 12px; background: var(--light); border: 1px solid var(--card-border); }
+.summaryValue { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+.summaryLabel { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; font-weight: 500; }
+
+.chartsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 0 24px 20px; }
+.chartCard { background: var(--light); border-radius: 14px; padding: 18px; border: 1px solid var(--card-border); }
+.chartCard h4 { font-size: 0.9rem; color: var(--text-primary); margin: 0 0 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.chartCard h4 i { color: var(--primary-light); font-size: 0.85rem; }
+.chartBody { height: 220px; position: relative; }
+
+.tableSection { padding: 0 24px 24px; }
+.tableSection h4 { font-size: 0.95rem; color: var(--text-primary); font-weight: 600; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+.tableSection h4 i { color: var(--primary-light); }
+.tableWrapper { overflow-x: auto; border-radius: 12px; border: 1px solid var(--card-border); }
+.dataTable { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.dataTable th { background: var(--light); color: var(--text-secondary); font-weight: 600; padding: 12px 16px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--card-border); }
+.dataTable td { padding: 10px 16px; border-bottom: 1px solid var(--card-border); color: var(--text-primary); }
+.dataTable tbody tr:hover { background: rgba(45, 127, 184, 0.04); }
+.riskBadge { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+.riskHigh { background: rgba(255, 107, 107, 0.12); color: #ff6b6b; }
+.riskMedium { background: rgba(249, 168, 38, 0.12); color: #f9a826; }
+.riskLow { background: rgba(29, 209, 161, 0.12); color: #1dd1a1; }
+.tableNote { text-align: center; font-size: 0.8rem; color: var(--text-muted); padding: 12px; }
+
+.pagination { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--card-border); }
+.pageBtn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--light); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; font-size: 0.85rem; }
+.pageBtn:hover:not(:disabled) { background: var(--primary-light); color: white; border-color: var(--primary-light); }
+.pageBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+.pageInfo { font-size: 0.82rem; color: var(--text-secondary); font-weight: 500; padding: 0 12px; }
+
+@media (max-width: 1200px) { .summaryCards { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .chartsGrid { grid-template-columns: 1fr; } .summaryCards { grid-template-columns: repeat(2, 1fr); } .filtersRow { flex-direction: column; } .pagination { flex-wrap: wrap; } }
+

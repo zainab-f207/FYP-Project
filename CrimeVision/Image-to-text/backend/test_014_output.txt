@@ -1,0 +1,47 @@
+﻿py : [33mChecking connectivity to the model hosters, this may take a while. To bypass 
+this check, set `DISABLE_MODEL_SOURCE_CHECK` to `True`.[0m
+At line:1 char:1
++ py test_crime_area_only.py "D:\FYP\Project\CrimeVision\OCRModel\app\d ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33mChecking c... to `True`.[0m:String) [] 
+   , RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-02-14 22:12:49,893 - __main__ - INFO - 
+================================================================================
+2026-02-14 22:12:49,894 - __main__ - INFO - TESTING CRIME AREA EXTRACTION: 
+D:\FYP\Project\CrimeVision\OCRModel\app\data\raw\FIR_014.png
+2026-02-14 22:12:49,894 - __main__ - INFO - 
+================================================================================
+2026-02-14 22:12:50,966 - __main__ - INFO - Image loaded: 7184x9336px (191.9 MB)
+2026-02-14 22:12:50,966 - __main__ - INFO - Initializing FIR extractor (Tesseract only)...
+2026-02-14 22:12:50,968 - easyocr.easyocr - WARNING - Using CPU. Note: This module is 
+much faster with a GPU.
+2026-02-14 22:12:56,286 - fir_specialized_ocr - INFO - Γ£ô EasyOCR initialized (Urdu + 
+English)
+2026-02-14 22:12:56,287 - easyocr.easyocr - WARNING - Using CPU. Note: This module is 
+much faster with a GPU.
+2026-02-14 22:12:57,587 - fir_specialized_ocr - ERROR - EasyOCR English-only init failed: 
+[enforce fail at alloc_cpu.cpp:121] data. DefaultCPUAllocator: not enough memory: you 
+tried to allocate 411041792 bytes.
+2026-02-14 22:12:57,587 - fir_specialized_ocr - ERROR - PaddleOCR init failed: Unknown 
+argument: use_gpu
+2026-02-14 22:12:57,587 - fir_specialized_ocr - INFO - Γ£ô Tesseract available
+2026-02-14 22:12:57,587 - fir_specialized_ocr - INFO - OCR engines available: easyocr, 
+tesseract
+2026-02-14 22:12:57,587 - __main__ - INFO - 
+Extracting crime area...
+2026-02-14 22:12:57,587 - fir_specialized_ocr - INFO - 
+==================================================
+2026-02-14 22:12:57,587 - fir_specialized_ocr - INFO - EXTRACTING CRIME AREA (Row 4 - 
+╪¼╪º╪ª█Æ ┘ê┘é┘ê╪╣█ü)
+2026-02-14 22:12:57,587 - fir_specialized_ocr - INFO - 
+==================================================
+2026-02-14 22:12:57,587 - fir_specialized_ocr - INFO - [Crime Area] Extracted region: 
+Y[3547:4210] X[2083:4454] = 2371x663px
+2026-02-14 22:12:57,994 - fir_specialized_ocr - INFO - [Crime Area] Attempting 4.0x 
+upscale...
+2026-02-14 22:13:12,459 - fir_specialized_ocr - INFO - [Crime Area] Γ£ô Upscaled 4.0x + 
+denoised + CLAHE: 9484x2652px
+2026-02-14 22:13:14,456 - fir_specialized_ocr - INFO - [Crime Area] Tesseract-PSM6: 59 
+chars, 37 Urdu

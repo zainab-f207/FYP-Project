@@ -1,231 +1,206 @@
-// src/App.js
-import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext_updated';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import Hero from './components/Hero';
-import Features from './components/Features';
-import SafetyTips from './components/SafetyTips';
-import News from './components/News';
-import PredictionTool from './components/PredictionTool';
-import CrimeMap from './components/CrimeMap/CrimeMap_updated';
-import CrimeHeatmap from './components/CrimeHeatMap_updated_fixed';
-import Statistics from './components/Statistics';
-import Testimonials from './components/Testimonials';
-import Footer from './components/Footer';
-import LoginModal from './components/Modals/LoginModal_updated';
-import ForgotPasswordModal from './components/Modals/ForgotPasswordModal';
-import ReportModal from './components/Modals/ReportModal';
-import DarkModeToggle from './components/DarkModeToggle';
-import BackToTop from './components/BackToTop';
-import UserDashboard from './components/UserDashboard/UserDashboard';
-import AdminDashboard from './components/AdminDashboard/AdminDashboard';
-import SuperAdminDashboard from './components/SuperAdminDashboard/SuperAdminDashboard_updated';
-import ResetPasswordPage from './components/ResetPasswordPage';
-import EmailVerificationPage from './components/EmailVerificationPage';
-import { TokenValidator } from './contexts/TokenValidator';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext_updated';
+import { SystemSettingsProvider } from './contexts/SystemSettingsContext';
+import { cleanupInvalidTokens } from './utils/tokenCleanup';
+
+import AppRouter from './components/AppRouter';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
+import { NotificationProvider } from './contexts/NotificationContext';
 
-function AppContent() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const [forgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false);
-  const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [selectedArea, setSelectedArea] = useState('');
-  const [selectedCrimeType, setSelectedCrimeType] = useState('');
+// Initialize token cleanup
+cleanupInvalidTokens();
 
-  const { isAuthenticated, logout, role } = useAuth();
+// Register service worker for push notifications
+const registerServiceWorker = async () => {
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
+      });
+      console.log('✅ Service Worker registered successfully:', registration);
 
-  useEffect(() => {
-    // Load dark mode preference from localStorage
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(savedDarkMode);
+      // Handle updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New content is available, notify user
+              console.log('🔄 New service worker available, consider refreshing');
+            }
+          });
+        }
+      });
 
-    // Apply dark mode class to body
-    if (savedDarkMode) {
-      document.body.classList.add('dark-mode');
+    } catch (error) {
+      console.error('❌ Service Worker registration failed:', error);
     }
-  }, []);
+  } else {
+    console.warn('⚠️ Service Workers not supported in this browser');
+  }
+};
 
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode);
-
-    if (newDarkMode) {
-      document.body.classList.add('dark-mode');
-    } else {
-      document.body.classList.remove('dark-mode');
-    }
-  };
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setSidebarOpen(false);
-  };
-
-  const showLoginModal = () => {
-    setLoginModalOpen(true);
-    closeSidebar();
-  };
-
-  const closeLoginModal = () => {
-    setLoginModalOpen(false);
-  };
-
-  const showForgotPasswordModal = () => {
-    setLoginModalOpen(false);
-    setForgotPasswordModalOpen(true);
-  };
-
-  const closeForgotPasswordModal = () => {
-    setForgotPasswordModalOpen(false);
-  };
-
-  const showReportModal = () => {
-    setReportModalOpen(true);
-    closeSidebar();
-  };
-
-  const closeReportModal = () => {
-    setReportModalOpen(false);
-  };
-
-  // Check URL parameters and pathname for special pages
-  const urlParams = new URLSearchParams(window.location.search);
-  const pathname = window.location.pathname;
-  const token = urlParams.get('token');
-
-  // Check for email verification page
-  if (pathname.includes('verify-email') && token) {
-    return <EmailVerificationPage />;
+// Enhanced error boundary
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { 
+      hasError: false,
+      error: null,
+      errorInfo: null 
+    };
   }
 
-  // Check if this is a password reset page
-  if (pathname.includes('reset-password') && token) {
-    return <ResetPasswordPage />;
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
   }
 
-  // If user is authenticated, show the dashboard instead of the main website
-  if (isAuthenticated) {
-    let DashboardComponent;
-    if (role === 'admin') {
-      DashboardComponent = AdminDashboard;
-    } else if (role === 'superadmin') {
-      DashboardComponent = SuperAdminDashboard;
-    } else {
-      DashboardComponent = UserDashboard;
+  componentDidCatch(error, errorInfo) {
+    console.error('App Error:', error, errorInfo);
+    this.setState({
+      error: error,
+      errorInfo: errorInfo
+    });
+    
+    // Log to error reporting service
+    if (process.env.NODE_ENV === 'production') {
+      // Add your error logging service here
+    }
+  }
+
+  handleReset = () => {
+    this.setState({ 
+      hasError: false,
+      error: null,
+      errorInfo: null 
+    });
+    window.location.href = '/';
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '20px',
+            padding: '3rem',
+            maxWidth: '500px',
+            width: '90%',
+            backdropFilter: 'blur(20px)'
+          }}>
+            <i className="fas fa-exclamation-triangle" style={{
+              fontSize: '4rem',
+              color: '#fbbf24',
+              marginBottom: '1.5rem'
+            }}></i>
+            <h2 style={{
+              color: 'white',
+              marginBottom: '1rem',
+              fontSize: '1.8rem'
+            }}>Something went wrong</h2>
+            <p style={{
+              color: 'rgba(255, 255, 255, 0.8)',
+              marginBottom: '2rem',
+              fontSize: '1.1rem',
+              lineHeight: '1.5'
+            }}>
+              We encountered an unexpected error. Don't worry, your data is safe.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button 
+                onClick={this.handleReset}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                <i className="fas fa-redo" style={{ marginRight: '0.5rem' }}></i>
+                Try Again
+              </button>
+              <button 
+                onClick={() => window.location.reload()}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.background = 'rgba(255, 255, 255, 0.3)';
+                  e.target.style.transform = 'translateY(-2px)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.background = 'rgba(255, 255, 255, 0.2)';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                <i className="fas fa-sync" style={{ marginRight: '0.5rem' }}></i>
+                Reload Page
+              </button>
+            </div>
+          </div>
+        </div>
+      );
     }
 
-    return (
-      <div className="App">
-        <TokenValidator />
-        <DashboardComponent />
-
-        <LoginModal
-          isOpen={loginModalOpen}
-          closeModal={closeLoginModal}
-          onForgotPassword={showForgotPasswordModal}
-        />
-
-        <ForgotPasswordModal
-          show={forgotPasswordModalOpen}
-          onHide={closeForgotPasswordModal}
-        />
-
-        <ReportModal
-          isOpen={reportModalOpen}
-          closeModal={closeReportModal}
-        />
-
-        <DarkModeToggle
-          darkMode={darkMode}
-          toggleDarkMode={toggleDarkMode}
-        />
-
-        <BackToTop />
-      </div>
-    );
+    return this.props.children;
   }
-
-  // Show regular website for non-authenticated users
-  return (
-    <div className="App">
-      <TokenValidator />
-      <Header
-        toggleSidebar={toggleSidebar}
-        showLoginModal={showLoginModal}
-        showReportModal={showReportModal}
-        onAreaSelect={setSelectedArea}
-        onCrimeSelect={setSelectedCrimeType}
-        isAuthenticated={isAuthenticated}
-        onLogout={logout}
-      />
-      <Sidebar
-        isOpen={sidebarOpen}
-        closeSidebar={closeSidebar}
-        showLoginModal={showLoginModal}
-        showReportModal={showReportModal}
-        onAreaSelect={setSelectedArea}
-        onCrimeSelect={setSelectedCrimeType}
-        isAuthenticated={isAuthenticated}
-      />
-      <Hero />
-      <Features />
-      <SafetyTips />
-      <News />
-      <PredictionTool
-        selectedArea={selectedArea}
-        selectedCrimeType={selectedCrimeType}
-        isAuthenticated={isAuthenticated}
-      />
-
-      {/* Show basic crime map for non-logged-in users */}
-      <CrimeMap
-        showLoginModal={showLoginModal}
-        isAuthenticated={isAuthenticated}
-      />
-
-      <Statistics />
-      <Testimonials />
-      <Footer />
-
-      <LoginModal
-        isOpen={loginModalOpen}
-        closeModal={closeLoginModal}
-        onForgotPassword={showForgotPasswordModal}
-      />
-
-      <ForgotPasswordModal
-        show={forgotPasswordModalOpen}
-        onHide={closeForgotPasswordModal}
-      />
-
-      <ReportModal
-        isOpen={reportModalOpen}
-        closeModal={closeReportModal}
-      />
-
-      <DarkModeToggle
-        darkMode={darkMode}
-        toggleDarkMode={toggleDarkMode}
-      />
-
-      <BackToTop />
-    </div>
-  );
 }
 
 function App() {
+  // Register service worker on app load
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <Router>
+        <SystemSettingsProvider>
+          <NotificationProvider>
+            <AuthProvider>
+              <div className="App">
+                <AppRouter />
+              </div>
+            </AuthProvider>
+          </NotificationProvider>
+        </SystemSettingsProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

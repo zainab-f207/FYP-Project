@@ -42,7 +42,7 @@ def validate_name(name: str) -> str:
 def generate_username(first_name: str, last_name: str) -> str:
     base_username = f"{first_name.lower()}.{last_name.lower()}".strip(".")
     username = base_username or (first_name.lower() or last_name.lower())
-
+  
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -59,3 +59,4 @@ def generate_username(first_name: str, last_name: str) -> str:
         cursor.close()
         conn.close()
     return username
+

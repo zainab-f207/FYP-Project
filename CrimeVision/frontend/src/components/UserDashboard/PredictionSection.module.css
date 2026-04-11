@@ -1,197 +1,1323 @@
-/* Remove the risk assessment related styles and keep only form styles */
-
 .predictionSection {
-  background: var(--light-card);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
-  padding: 25px;
-  margin-bottom: 25px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 24px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+    min-height: 500px;
 }
 
-.dark-mode .predictionSection {
-  background: var(--light-card);
+.predictionSection::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    z-index: 2;
+}
+
+.visualBackground {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 600px;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+.backgroundSvg {
+    width: 100%;
+    height: 100%;
+}
+
+.sectionHeader {
+    text-align: center;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.headerIcon {
+    width: 60px;
+    height: 60px;
+    background: var(--gradient-primary);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.5rem;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4);
+}
+
+.sectionTitle {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.sectionSubtitle {
+    font-size: 1rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 .predictionContainer {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
+    display: block;
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
 }
 
 .predictionForm {
-  background: var(--light-bg);
-  padding: 25px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 1.5rem;
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(10px);
+    /* Ensure readability over background */
 }
 
-.dark-mode .predictionForm {
-  background: rgba(15, 23, 42, 0.5);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.formRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.formRow:last-child {
-  margin-bottom: 0;
+.formGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
 }
 
 .formGroup {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
 }
 
 .formGroup label {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--text-dark);
-  font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-white);
+    font-size: 0.9rem;
 }
 
-.dark-mode .formGroup label {
-  color: var(--text-white);
+.formGroup label i {
+    color: var(--accent-teal);
+    width: 16px;
 }
 
-.formGroup input,
-.formGroup select {
-  padding: 12px 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: var(--transition);
-  background: var(--light-bg);
-  color: var(--text-dark);
+.formGroup select,
+.formGroup input {
+    padding: 0.8rem 1rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    color: var(--text-white);
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    width: 100%;
 }
 
-.dark-mode .formGroup input,
-.dark-mode .formGroup select {
-  background: rgba(15, 23, 42, 0.5);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-white);
+.formGroup select:focus,
+.formGroup input:focus {
+    outline: none;
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
 }
 
-.formGroup input:focus,
-.formGroup select:focus {
-  outline: none;
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+.formActions {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 1rem;
+    grid-column: span 2;
 }
 
-.hasValue {
-  border-color: var(--accent-blue) !important;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+.predictBtn {
+    flex: 2;
+    padding: 1rem;
+    background: var(--gradient-primary);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
 }
 
-.btn {
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-  border: none;
-  font-size: 1rem;
+.predictBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 212, 255, 0.4);
 }
 
-.btnPrimary {
-  background: linear-gradient(135deg, var(--accent-blue), var(--primary-dark));
-  color: var(--text-white);
+.predictBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-.btnPrimary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(37, 99, 235, 0.4);
+.resetBtn {
+    flex: 1;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
 }
 
-.btnPrimary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.loading {
-  position: relative;
-  pointer-events: none;
-}
-
-.loading::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  margin: auto;
-  border: 2px solid transparent;
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.resetBtn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-white);
+    border-color: var(--text-muted);
 }
 
 .infoMessage {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--accent-blue);
-  padding: 12px 15px;
-  border-radius: 8px;
-  margin-top: 15px;
-  border-left: 4px solid var(--accent-blue);
+    padding: 0.8rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.infoMessage.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.infoMessage.success {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+/* Prediction Result Styles */
+.predictionResult {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+    border: 1px solid var(--card-border);
+    animation: slideUp 0.5s ease;
+}
+
+.resultHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.resultHeader h4 {
+    color: var(--text-white);
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.riskBadge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    color: white;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.resultDetails {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.riskScore {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.scoreCircle {
+    width: 80px;
+    height: 80px;
+    border: 4px solid;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-white);
+}
+
+.riskInfo p {
+    color: var(--text-white);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.precautions h5 {
+    color: var(--text-white);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.precautions ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.precautions li {
+    color: var(--text-muted);
+    padding: 0.2rem 0;
+    font-size: 0.85rem;
+    position: relative;
+    padding-left: 1rem;
+}
+
+.precautions li::before {
+    content: '•';
+    color: var(--accent-teal);
+    position: absolute;
+    left: 0;
+}
+
+/* ── Safety Advisory (Poisson) ─────────────────────────────────────── */
+.safetyAdvisory {
+    margin-top: 1rem;
+    background: rgba(0, 212, 255, 0.05);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+}
+
+.safetyAdvisory h5 {
+    color: var(--accent-teal, #00d4ff);
+    font-size: 0.9rem;
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.advisoryRow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.83rem;
+    flex-wrap: wrap;
+}
+
+.advisoryLabel {
+    color: var(--text-muted, #94a3b8);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.advisoryValue {
+    color: #22c55e;
+    font-weight: 500;
+}
+
+.advisoryValueWarn {
+    color: #f59e0b;
+    font-weight: 500;
+}
+
+.advisoryUpcoming {
+    margin-top: 0.7rem;
+}
+
+.advisoryUpcomingLabel {
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.82rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.upcomingDates {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.upcomingDateCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.4rem 0.7rem;
+    min-width: 90px;
+    gap: 0.1rem;
+}
+
+.upcomingDay {
+    font-size: 0.72rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.upcomingDate {
+    font-size: 0.78rem;
+    color: var(--text-white, #fff);
+    font-weight: 500;
+}
+
+.upcomingPct {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.estimatedNote {
+    font-size: 0.75rem;
+    color: var(--text-muted, #94a3b8);
+    margin-top: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-style: italic;
+}
+
+.resultActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mapViewBtn {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    color: var(--accent-teal);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.mapViewBtn:hover:not(.disabled) {
+    background: rgba(0, 212, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.mapViewBtn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(100, 116, 139, 0.1);
+    border-color: rgba(100, 116, 139, 0.3);
+    color: var(--text-muted);
+}
+
+.confidenceScore {
+    font-size: 0.8rem;
+    color: var(--accent-teal);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.coordinateWarning {
+    font-size: 0.7rem;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.warningText {
+    color: #ef4444;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .predictionSection {
+        padding: 1.5rem;
+    }
+
+    .formGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .formActions {
+        grid-column: span 1;
+        flex-direction: column;
+    }
+
+    .resultDetails {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .resultHeader {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .resultActions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .visualBackground {
+        width: 300px;
+        height: 300px;
+    }
+}
+
+/* ── Dataset badge ─────────────────────────────────────────────────────── */
+.datasetBadge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+    padding: 0.3rem 0.75rem;
+    background: rgba(0, 212, 255, 0.06);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-radius: 20px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    width: fit-content;
+}
+.datasetBadge i { color: var(--accent-teal, #00d4ff); font-size: 0.8rem; }
+.datasetBadge strong { color: var(--text-white); }
+
+/* ── Trend badge ───────────────────────────────────────────────────────── */
+.trendBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 0.5rem;
+}
+.trendDecreasing { background: rgba(34, 197, 94, 0.12); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.35); }
+.trendIncreasing { background: rgba(220, 38, 38, 0.10); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.30); }
+.trendStable     { background: rgba(245, 158, 11, 0.10); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.30); }
+
+/* ── Insights card ─────────────────────────────────────────────────────── */
+.insightsCard {
+    margin-top: 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+}
+.insightsCardTitle {
+    font-size: 0.81rem;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.insightsCardTitle i { color: var(--accent-teal, #00d4ff); }
+
+/* ── Period bars ───────────────────────────────────────────────────────── */
+.periodBars { display: flex; flex-direction: column; gap: 0.45rem; }
+.periodBarRow {
+    display: grid;
+    grid-template-columns: 20px 76px 1fr 54px auto;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 4px 0;
+}
+.periodIcon { text-align: center; font-size: 0.88rem; }
+.periodName { font-size: 0.77rem; font-weight: 600; color: var(--text-white); }
+.periodBarTrack {
+    height: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.periodBarFill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+.periodPct { font-size: 0.76rem; font-weight: 700; text-align: right; }
+
+/* ── Visit grid ────────────────────────────────────────────────────────── */
+.visitGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+@media (max-width: 600px) { .visitGrid { grid-template-columns: repeat(2, 1fr); } }
+.visitCell {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 0.55rem 0.5rem;
+    border-left: 3px solid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+}
+.visitTime   { font-size: 0.71rem; font-weight: 700; color: var(--text-white); }
+.visitPeriod { font-size: 0.67rem; color: var(--text-muted); }
+.visitPct    { font-size: 1rem; font-weight: 800; margin: 2px 0; }
+.visitBarWrap { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.visitBar { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+/* ── Chips row ─────────────────────────────────────────────────────────── */
+.chipsRow { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.chipRed {
+    background: rgba(220, 38, 38, 0.14);
+    color: #f87171;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* ── Disclaimer ────────────────────────────────────────────────────────── */
+.disclaimerBlock {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 8px;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
+.disclaimerBlock i { color: #f59e0b; font-size: 0.85rem; margin-top: 2px; flex-shrink: 0; }
+.disclaimerBlock p { margin: 0; }
+.disclaimerBlock strong { color: var(--text-white); }
+
+/* ── Form helper text ───────────────────────────────────────────────────── */
+.formHelper {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+  margin: -6px 0 14px;
+  line-height: 1.5;
+}
+
+/* ── Confidence note below Prediction Reliability bar ───────────────────── */
+.confidenceNote {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+/* ── "Risk Interpretation" sub-label ────────────────────────────────────── */
+.riskInterpLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.45);
+  margin: 8px 0 2px;
+}
+.riskInterpLabel strong { color: rgba(255,255,255,0.55); font-weight: 600; }
+
+/* ── Insight subtitle ───────────────────────────────────────────────────── */
+.insightSubtitle {
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.45);
+  margin: -6px 0 10px;
+  font-style: italic;
+}
+
+/* ── Monthly horizontal bar chart ───────────────────────────────────────── */
+.monthlyHbarChart {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 6px 0 2px;
+}
+
+.monthlyHbarRow {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.predictionResult {
-  display: none; /* Hide the result section */
+.monthlyHbarLabel {
+  flex: 0 0 28px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-.emptyState {
+.monthlyHbarTrack {
+  flex: 1;
+  height: 13px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.monthlyHbarFill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #6366f1);
+  border-radius: 7px;
+  transition: width 0.7s ease;
+  min-width: 4px;
+}
+
+.monthlyHbarCount {
+  flex: 0 0 32px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════
+   NEW OVERHAUL CLASSES — prediction result redesign
+   ═══════════════════════════════════════════════════ */
+
+/* ── Metric row: SVG ring + stats ── */
+.metricRow {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.ringWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ringMeta {
   text-align: center;
-  padding: 40px 20px;
-  color: var(--text-light);
+  margin-top: 0.4rem;
 }
 
-.emptyIcon {
-  font-size: 3rem;
-  margin-bottom: 15px;
-  opacity: 0.5;
+.ringAreaName {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-white);
+  max-width: 140px;
+  word-break: break-word;
 }
 
-.emptyState p {
-  font-size: 1rem;
-  margin: 0 0 10px 0;
+/* ── Stats column ── */
+.statsCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
-.emptyState small {
-  font-size: 0.9rem;
-  opacity: 0.7;
+.statBlock {}
+
+.statHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
 }
 
-/* Responsive Design */
-@media (max-width: 992px) {
-  .formRow {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
+.statLabel {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-@media (max-width: 576px) {
-  .predictionSection {
-    padding: 20px;
-  }
-
-  .predictionForm {
-    padding: 20px;
-  }
+.statValue {
+  font-size: 0.92rem;
+  font-weight: 800;
 }
+
+.statBarWrap {
+  height: 6px;
+  background: rgba(255,255,255,0.09);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+
+.statBar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1.1s ease;
+}
+
+.statNote {
+  font-size: 0.71rem;
+  color: rgba(255,255,255,0.38);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Context chips ── */
+.contextChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.contextChip {
+  font-size: 0.71rem;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.11);
+  color: rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.contextChip i {
+  color: var(--accent-teal);
+  font-size: 0.62rem;
+}
+
+/* ── Selected visit time banner ── */
+.selectedTimeBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.07);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-left-width: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.selectedTimeIconBox {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.07);
+  border-radius: 8px;
+  flex-shrink: 0;
+  font-size: 1.15rem;
+}
+
+.selectedTimeBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.selectedTimeTopLabel {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+}
+
+.selectedTimeSub {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-white, #fff);
+}
+
+.selectedTimePctBig {
+  font-size: 1.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* ── Risk interpretation block ── */
+.riskInterpBlock {
+  background: rgba(255,255,255,0.04);
+  border-left: 3px solid rgba(255,255,255,0.13);
+  border-radius: 0 8px 8px 0;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.riskInterpTitle {
+  font-size: 0.71rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 0.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.riskInterpTitle i {
+  color: var(--accent-teal);
+}
+
+.riskInterpText {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.75);
+  margin: 0;
+  line-height: 1.55;
+}
+
+/* ── Period bar active highlight ── */
+.periodBarRowActive {
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.09) inset;
+}
+
+.activeTag {
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.45);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
+
+/* ── Insights sub-tag (period name chip in header) ── */
+.insightsSubtag {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.07);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-weight: 500;
+}
+
+/* ── Visit cell active ── */
+.visitCellActive {
+  background: rgba(255,255,255,0.08) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.14) inset;
+}
+
+.visitActiveTag {
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.45);
+  margin-top: 2px;
+}
+
+/* ── Your Visit Time Risk card ── */
+.visitTimeRiskCard {
+  background: linear-gradient(135deg, rgba(14,165,233,0.07) 0%, rgba(14,165,233,0.02) 100%);
+  border: 1px solid rgba(14,165,233,0.22);
+  border-left: 4px solid;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.75rem;
+}
+.visitTimeRiskHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.6rem;
+}
+.visitTimeRiskIconBox {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.visitTimeRiskTitleCol {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.visitTimeRiskLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.42);
+}
+.visitTimeRiskSub {
+  font-size: 0.93rem;
+  font-weight: 700;
+  color: var(--text-white, #fff);
+}
+.visitTimeRiskPct {
+  font-size: 1.85rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.visitTimeRiskDesc {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.6);
+  margin: 0;
+  line-height: 1.55;
+}
+
+/* ── Hourly Risk Context ── */
+.hourlyRiskContext {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.75rem;
+}
+.hourlyRiskContextTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-white, #fff);
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.hourlyRiskContextTitle i { color: var(--accent-teal, #0ea5e9); }
+.hourlyRiskContextBody {
+  font-size: 0.81rem;
+  color: rgba(255,255,255,0.6);
+  margin: 0 0 0.7rem;
+  line-height: 1.5;
+}
+.hourlyRiskContextStat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.hourlyRiskContextStatLabel {
+  font-size: 0.69rem;
+  color: rgba(255,255,255,0.38);
+  font-weight: 600;
+}
+.hourlyRiskContextBarRow {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.hourlyRiskContextBarTrack {
+  flex: 1;
+  height: 7px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hourlyRiskContextBarFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.9s ease;
+}
+.hourlyRiskContextPct {
+  font-size: 0.84rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Precautions block (replaces plain ul) ── */
+.precautionsBlock {
+  margin: 0.75rem 0;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+}
+
+.precautionsTitle {
+  font-size: 0.81rem;
+  font-weight: 700;
+  color: #f87171;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.precautionsTitle i {
+  color: #f59e0b;
+}
+
+.precautionsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.precautionsList li {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.72);
+  padding-left: 1.1rem;
+  position: relative;
+  line-height: 1.45;
+}
+
+.precautionsList li::before {
+  content: '→';
+  color: var(--accent-teal, #0ea5e9);
+  position: absolute;
+  left: 0;
+  font-size: 0.72rem;
+  top: 0.05em;
+}
+
+/* ═══════════════════════════════════════════════
+   Area Safety Profile Panel
+   ═══════════════════════════════════════════════ */
+.areaProfilePanel {
+  margin-top: 1.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.apLoading {
+  padding: 2rem;
+  text-align: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.95rem;
+}
+
+.apHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1.1rem 1.4rem;
+  background: linear-gradient(135deg, rgba(59,130,246,0.14), rgba(139,92,246,0.09));
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.apHeaderLeft { display: flex; align-items: center; gap: 0.8rem; }
+.apShieldIcon { font-size: 1.6rem; color: #3b82f6; }
+.apTitle { font-size: 1rem; font-weight: 700; color: #e2e8f0; letter-spacing: 0.04em; text-transform: uppercase; }
+.apSubtitle { font-size: 0.82rem; color: rgba(255,255,255,0.45); margin-top: 0.12rem; }
+.apHeaderMeta { font-size: 0.8rem; color: rgba(255,255,255,0.45); }
+
+.apMainGrid {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+@media (max-width: 580px) { .apMainGrid { grid-template-columns: 1fr; } }
+
+.apScoreCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.4rem 0.9rem;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+.apGradeRing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 5px solid currentColor;
+}
+
+.apGradeA { color: #16a34a; }
+.apGradeB { color: #22c55e; }
+.apGradeC { color: #eab308; }
+.apGradeD { color: #f97316; }
+.apGradeF { color: #dc2626; }
+
+.apGradeLetter { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+.apGradeScore  { font-size: 0.7rem; font-weight: 600; opacity: 0.8; }
+
+.apScoreInfo { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; text-align: center; }
+
+.apRiskLevelBadge { padding: 0.25rem 0.8rem; border-radius: 999px; font-size: 0.73rem; font-weight: 700; }
+.apRiskA, .apRiskB { background: rgba(34,197,94,0.18);  color: #22c55e; }
+.apRiskC            { background: rgba(234,179,8,0.18);   color: #eab308; }
+.apRiskD            { background: rgba(249,115,22,0.18);  color: #f97316; }
+.apRiskF            { background: rgba(220,38,38,0.18);   color: #dc2626; }
+
+.apRankingText { font-size: 0.78rem; color: rgba(255,255,255,0.45); font-weight: 600; }
+.apSaferThan   { font-size: 0.76rem; color: rgba(255,255,255,0.45); }
+.apBestTime    { font-size: 0.78rem; color: rgba(255,255,255,0.45); }
+
+.apCrimesCard { padding: 1.15rem 1.3rem; }
+
+.apCardTitle {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 0.8rem;
+}
+
+.apCrimeRow { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem; }
+.apCrimeRank { font-size: 0.7rem; color: rgba(255,255,255,0.4); width: 1rem; text-align: right; flex-shrink: 0; }
+.apCrimeType { font-size: 0.77rem; color: #e2e8f0; width: 120px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apCrimeBarTrack { flex: 1; height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+.apCrimeBarFill  { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.apCrimePct { font-size: 0.7rem; color: rgba(255,255,255,0.4); width: 2.4rem; text-align: right; flex-shrink: 0; }
+
+.apSection { padding: 1.15rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.apSectionTitle {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.apHourlyChart { display: flex; align-items: flex-end; gap: 2px; height: 60px; }
+.apHourCol { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.apHourBarTrack { width: 100%; height: 48px; display: flex; align-items: flex-end; }
+.apHourBarFill  { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; transition: height 0.5s ease; }
+.apHourLabel { font-size: 0.48rem; color: rgba(255,255,255,0.35); margin-top: 3px; white-space: nowrap; }
+
+.apHourlyLegend { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.apLegendSafe { font-size: 0.75rem; color: #16a34a; display: flex; align-items: center; gap: 0.3rem; }
+.apLegendRisk { font-size: 0.75rem; color: #dc2626; display: flex; align-items: center; gap: 0.3rem; }
+
+.apBottomGrid { display: grid; grid-template-columns: 1fr 1fr; }
+@media (max-width: 580px) { .apBottomGrid { grid-template-columns: 1fr; } }
+.apBottomGrid .apSection { border-bottom: none; }
+.apBottomGrid .apSection:first-child { border-right: 1px solid rgba(255,255,255,0.05); }
+
+.apDowChart { display: flex; align-items: flex-end; gap: 3px; height: 60px; }
+.apDowCol { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.apDowBarTrack { width: 100%; height: 48px; display: flex; align-items: flex-end; }
+.apDowBarFill { width: 100%; border-radius: 3px 3px 0 0; transition: height 0.5s ease; }
+.apDowLabel { font-size: 0.56rem; color: rgba(255,255,255,0.35); margin-top: 4px; }
+.apDowSummary { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.6rem; font-size: 0.75rem; color: rgba(255,255,255,0.45); }
+.apDowVs { font-size: 0.69rem; opacity: 0.85; }
+
+.apTrendBadge { display: inline-block; padding: 0.42rem 0.9rem; border-radius: 8px; font-size: 0.84rem; font-weight: 600; margin-bottom: 0.8rem; }
+.apTrendIncreasing { background: rgba(220,38,38,0.14);   color: #fca5a5; }
+.apTrendDecreasing { background: rgba(34,197,94,0.14);   color: #86efac; }
+.apTrendStable     { background: rgba(156,163,175,0.14); color: #d1d5db; }
+
+.apTrendCounts { display: flex; flex-direction: column; gap: 0.38rem; }
+.apTcRow { display: flex; justify-content: space-between; font-size: 0.78rem; color: rgba(255,255,255,0.45); padding: 0.28rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.apTcRow strong { color: #e2e8f0; }
+.apTcSub { font-size: 0.71rem; padding: 0.12rem 0 0.12rem 0.7rem; color: rgba(255,255,255,0.3); border-bottom: none; }
+
+.areaProfileBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.2rem;
+  border: 2px solid #3b82f6;
+  background: transparent;
+  color: #60a5fa;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  flex: 1;
+}
+.areaProfileBtn:hover:not(:disabled) { background: rgba(59,130,246,0.14); color: #93c5fd; }
+.areaProfileBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Crime Pressure Indicator */
+.apPressureBar {
+  display: flex;
+  align-items: center;
+  padding: 0.7rem 1.4rem;
+  background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.apPressureItem { display: flex; flex-direction: column; gap: 0.18rem; flex: 1; min-width: 90px; padding: 0 0.9rem; }
+.apPressureItem:first-child { padding-left: 0; }
+.apPressureItem:last-child  { padding-right: 0; }
+.apPressureLabel { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,0.4); }
+.apPressureValue { font-size: 0.84rem; font-weight: 700; color: #e2e8f0; }
+.apPressureHigh     { color: #dc2626; }
+.apPressureModerate { color: #f97316; }
+.apPressureLow      { color: #22c55e; }
+.apPressureElevated { color: #f97316; }
+.apMomentumRising   { color: #dc2626; font-weight: 600; }
+.apMomentumDeclining{ color: #22c55e; font-weight: 600; }
+.apMomentumStable   { color: rgba(255,255,255,0.45); }
+.apMomentumSub      { font-size: 0.66rem; opacity: 0.65; font-weight: 400; }
+.apPressureDivider  { width: 1px; height: 32px; background: rgba(255,255,255,0.07); flex-shrink: 0; }
+
+/* Numerical score */
+.apScoreLabel { font-size: 0.63rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,0.4); margin-bottom: 0.22rem; }
+.apScoreNumber { display: flex; align-items: baseline; gap: 0.1rem; margin-bottom: 0.45rem; }
+.apScoreVal   { font-size: 2.6rem; font-weight: 800; line-height: 1; color: #e2e8f0; }
+.apScoreDenom { font-size: 0.95rem; font-weight: 600; color: rgba(255,255,255,0.4); }
+.apScoreBarTrack { width: 100%; height: 6px; background: rgba(255,255,255,0.09); border-radius: 3px; overflow: hidden; margin-bottom: 0.7rem; }
+.apScoreBarFill  { height: 100%; border-radius: 3px; transition: width 1s ease; }
+
+/* Visit times */
+.apVisitTimes { display: flex; flex-direction: column; gap: 0.32rem; margin-top: 0.45rem; width: 100%; }
+.apVisitRow   { display: flex; align-items: center; gap: 0.45rem; font-size: 0.75rem; color: rgba(255,255,255,0.45); }
+
+/* Safety Insights */
+.apInsightsSection { border-bottom: none !important; }
+.apInsightList { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.apInsightList li { display: flex; align-items: flex-start; gap: 0.55rem; font-size: 0.8rem; color: rgba(255,255,255,0.5); line-height: 1.5; }
+.apInsightList li i { margin-top: 0.15em; flex-shrink: 0; width: 1em; text-align: center; }
+.apInsightList li strong { color: #e2e8f0; }
+

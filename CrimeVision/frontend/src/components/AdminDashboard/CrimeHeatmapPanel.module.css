@@ -1,0 +1,239 @@
+.heatmapPanel {
+  background: var(--card-bg);
+  border-radius: var(--card-radius, 16px);
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.headerLeft { display: flex; align-items: center; gap: 14px; }
+
+.headerIcon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, #ff6b6b20, #ff6b6b10);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; color: #ff6b6b;
+}
+
+.headerLeft h3 { font-size: 1.1rem; color: var(--text-primary); font-weight: 600; margin: 0; }
+.headerSub { font-size: 0.8rem; color: var(--text-secondary); margin: 2px 0 0; }
+.headerControls { display: flex; align-items: center; gap: 10px; }
+
+.areaSelect {
+  padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12);
+  background: #1e293b; color: #e2e8f0; font-family: 'Poppins', sans-serif;
+  font-size: 0.85rem; cursor: pointer; outline: none; transition: border-color 0.3s;
+}
+.areaSelect option { background: #1e293b; color: #e2e8f0; }
+.areaSelect:focus { border-color: #6366f1; }
+
+.refreshBtn {
+  width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--card-border);
+  background: var(--light); color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.3s;
+}
+.refreshBtn:hover { background: var(--primary-light); color: white; border-color: var(--primary-light); }
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Filter Bar */
+.filterBar {
+  display: flex; align-items: flex-end; gap: 12px; padding: 14px 24px;
+  border-bottom: 1px solid var(--card-border); flex-wrap: wrap;
+}
+.filterGroup { display: flex; flex-direction: column; gap: 4px; }
+.filterGroup label {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.filterGroup label i { font-size: 0.68rem; }
+.filterGroup select, .filterGroup input {
+  padding: 7px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
+  background: #1e293b; color: #e2e8f0; font-family: 'Poppins', sans-serif;
+  font-size: 0.82rem; outline: none; transition: border-color 0.3s; min-width: 120px;
+  color-scheme: dark;
+}
+.filterGroup select option { background: #1e293b; color: #e2e8f0; }
+.filterGroup select:focus, .filterGroup input:focus { border-color: #6366f1; }
+.resetBtn {
+  width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--card-border);
+  background: var(--light); color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.3s; font-size: 0.82rem;
+}
+.resetBtn:hover { background: #ff6b6b; color: white; border-color: #ff6b6b; }
+
+/* View Controls */
+.viewControls {
+  display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+  border-bottom: 1px solid var(--card-border); flex-wrap: wrap;
+}
+.viewToggle { display: flex; gap: 4px; background: var(--light); border-radius: 8px; padding: 3px; }
+.viewBtn {
+  padding: 6px 14px; border-radius: 6px; border: none; background: transparent;
+  color: var(--text-secondary); font-family: 'Poppins', sans-serif; font-size: 0.78rem;
+  font-weight: 500; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; gap: 5px;
+}
+.viewBtn.active { background: var(--primary-light); color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.viewBtn:hover:not(.active) { background: var(--card-border); }
+.checkLabel {
+  display: flex; align-items: center; gap: 6px; font-size: 0.8rem;
+  color: var(--text-secondary); font-weight: 500; cursor: pointer; user-select: none;
+}
+.checkLabel input { accent-color: var(--primary-light); }
+
+/* Stats Row */
+.statsRow {
+  display: flex; gap: 10px; padding: 12px 24px;
+  border-bottom: 1px solid var(--card-border); flex-wrap: wrap;
+}
+.statBadge {
+  display: flex; align-items: center; gap: 6px; padding: 5px 12px;
+  border-radius: 20px; background: var(--light); font-size: 0.78rem;
+  color: var(--text-secondary); font-weight: 500;
+}
+.statBadge i { font-size: 0.72rem; color: var(--primary-light); }
+.highRiskBadge { background: #ef444415; }
+.highRiskBadge i { color: #ef4444; }
+.medRiskBadge { background: #f59e0b15; }
+.medRiskBadge i { color: #f59e0b; }
+.lowRiskBadge { background: #22c55e15; }
+.lowRiskBadge i { color: #22c55e; }
+
+/* Map */
+.mapContainer { position: relative; height: 550px; width: 100%; }
+.mapOverlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  z-index: 1000; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; color: white; gap: 12px;
+}
+.spinner {
+  width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #f9a826; border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+
+/* Legend */
+.legendRow {
+  display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+  border-top: 1px solid var(--card-border);
+}
+.legendTitle { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+.legendItem { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: var(--text-secondary); }
+.legendDot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+/* Empty State */
+.emptyState { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+.emptyState i { font-size: 2.5rem; color: var(--text-muted); margin-bottom: 12px; }
+.emptyState h4 { font-size: 1.1rem; color: var(--text-primary); margin-bottom: 6px; }
+.emptyState p { font-size: 0.85rem; }
+
+/* Popup dark card overrides */
+.crimePopup :global(.leaflet-popup-content-wrapper) {
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  padding: 0;
+  overflow: hidden;
+}
+.crimePopup :global(.leaflet-popup-content) {
+  margin: 0;
+}
+.crimePopup :global(.leaflet-popup-tip) {
+  background: #0f172a;
+}
+.crimePopup :global(.leaflet-popup-close-button) {
+  color: #94a3b8 !important;
+  top: 6px !important;
+  right: 8px !important;
+  font-size: 16px !important;
+}
+.crimePopup :global(.leaflet-popup-close-button:hover) {
+  color: #f1f5f9 !important;
+}
+
+.popupCard {
+  padding: 13px 15px;
+  min-width: 190px;
+  font-family: 'Poppins', sans-serif;
+}
+.popupHeader {
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: 9px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.popupDot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+}
+.popupTitle {
+  font-size: 0.83rem; font-weight: 700; color: #f1f5f9;
+}
+.popupRiskBadge {
+  margin-left: auto; font-size: 0.67rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; border: 1px solid;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.popupRow {
+  margin-bottom: 6px;
+}
+.popupLabel {
+  font-size: 0.65rem; font-weight: 700; color: #64748b;
+  text-transform: uppercase; letter-spacing: 0.6px;
+  display: block; margin-bottom: 1px;
+}
+.popupVal {
+  font-size: 0.80rem; color: #e2e8f0; font-weight: 500;
+}
+.popupUrdu {
+  font-family: 'Noto Nastaliq Urdu', serif; direction: rtl;
+  display: block; font-size: 0.76rem; color: #94a3b8; margin-top: 2px;
+}
+.popupCoords {
+  font-size: 0.68rem; color: #475569; font-weight: 500;
+  padding-top: 6px; margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.popupCrimeTypeList {
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
+}
+
+.popupCrimeTypeItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 3px 0;
+  color: #e2e8f0;
+}
+
+.popupCrimeTypeName {
+  font-size: 0.76rem;
+  line-height: 1.25;
+  color: #e2e8f0;
+}
+
+.popupCrimeTypeCount {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #93c5fd;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .filterBar { flex-direction: column; align-items: stretch; }
+  .viewControls { flex-direction: column; align-items: stretch; }
+  .statsRow { gap: 6px; }
+  .mapContainer { height: 400px; }
+}
+

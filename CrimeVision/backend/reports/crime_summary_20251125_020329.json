@@ -1,0 +1,97 @@
+{
+  "metadata": {
+    "report_type": "crime_summary",
+    "title": "Crime Incident Summary Report",
+    "generated_at": "2025-11-25T02:03:29.541478",
+    "period": {
+      "start_date": "2025-02-01",
+      "end_date": "2025-10-04"
+    },
+    "filters": {
+      "start_date": "2025-02-01",
+      "end_date": "2025-10-04",
+      "report_type": "crime_summary",
+      "format": "json",
+      "title": "",
+      "description": "",
+      "includeCharts": true,
+      "includeStatistics": true,
+      "includeRawData": false,
+      "recipients": [],
+      "schedule": "manual"
+    }
+  },
+  "data": {
+    "summary": {
+      "total_crimes": 166,
+      "areas_affected": 28,
+      "crime_types": 6,
+      "high_risk_crimes": 35.0,
+      "medium_risk_crimes": 131.0,
+      "low_risk_crimes": 0.0
+    },
+    "top_areas": [
+      {
+        "area": "Wapda Town",
+        "count": 11
+      },
+      {
+        "area": "Bahria Town Lahore",
+        "count": 10
+      },
+      {
+        "area": "DHA Phase 3",
+        "count": 10
+      },
+      {
+        "area": "Sabzazar",
+        "count": 10
+      },
+      {
+        "area": "Bahria Orchard",
+        "count": 10
+      },
+      {
+        "area": "DHA Phase 5",
+        "count": 8
+      },
+      {
+        "area": "Johar Town",
+        "count": 8
+      },
+      {
+        "area": "Township",
+        "count": 8
+      },
+      {
+        "area": "Green Town",
+        "count": 8
+      },
+      {
+        "area": "Liberty Market",
+        "count": 8
+      },
+      {
+        "area": "DHA Phase 7",
+        "count": 6
+      },
+      {
+        "area": "Raiwind",
+        "count": 6
+      },
+      {
+        "area": "DHA Phase 4",
+        "count": 6
+      },
+      {
+        "area": "Allama Iqbal Town",
+        "count": 6
+      },
+      {
+        "area": "Muslim Town",
+        "count": 6
+      }
+    ],
+    "trends": [
+      {
+        "date": 

@@ -1,4 +1,5 @@
 // src/components/HeatmapLayer.jsx
+import L from "leaflet";
 import { useMap } from "react-leaflet";
 import { useEffect } from "react";
 import "leaflet.heat";
@@ -8,8 +9,12 @@ export default function HeatmapLayer({ points, radius = 25, blur = 15, maxZoom =
 
   useEffect(() => {
     if (!points || points.length === 0) return;
+    if (typeof L.heatLayer !== 'function') {
+      console.error('leaflet.heat plugin not loaded — heat layer unavailable');
+      return;
+    }
 
-    const heat = window.L.heatLayer(
+    const heat = L.heatLayer(
       points.map(p => [p.lat, p.lng, p.intensity || 1]),
       { 
         radius,

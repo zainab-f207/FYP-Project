@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 160" width="600" height="160" aria-hidden="true">
+  <!-- SafeVision Concept 1: Geometric Map Visualization wordmark -->
+  <defs>
+    <linearGradient id="c1g" x1="0" x2="1">
+      <stop offset="0" stop-color="#1a3a5f"/>
+      <stop offset="1" stop-color="#00a6a6"/>
+    </linearGradient>
+    <linearGradient id="heat" x1="0" x2="1">
+      <stop offset="0" stop-color="#00a6a6"/>
+      <stop offset="1" stop-color="#ffc107"/>
+    </linearGradient>
+    <style>
+      .word { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 42px; fill: #1a3a5f }
+      .tag { font-family: 'Open Sans', sans-serif; font-size: 14px; fill: #6b7280 }
+    </style>
+  </defs>
+
+  <!-- Left symbol: geometric 'S' with contour lines -->
+  <g transform="translate(20,12) scale(0.8)">
+    <!-- Hex-like base grid as subtle geometry -->
+    <g opacity="0.08">
+      <path d="M10 40 L30 30 L50 40 L70 30 L90 40 L110 30" stroke="#1a3a5f" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M8 55 L30 44 L52 55 L74 44 L96 55" stroke="#1a3a5f" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Contour 'S' made of flowing strokes -->
+    <path d="M40 16 C70 -4, 120 -4, 150 16 C180 36, 160 76, 140 96 C120 116, 70 116, 40 96"
+          stroke="url(#c1g)" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Transition to visualization: heat dots -->
+    <g transform="translate(120,60)">
+      <circle cx="0" cy="0" r="6" fill="url(#heat)"/>
+      <circle cx="14" cy="-12" r="4" fill="#ffc107"/>
+      <circle cx="24" cy="8" r="5" fill="#00a6a6"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(220,58)">
+    <text class="word">SafeVision</text>
+    <text x="0" y="26" class="tag">Spatial Analysis &amp; Visualization</text>
+  </g>
+</svg>

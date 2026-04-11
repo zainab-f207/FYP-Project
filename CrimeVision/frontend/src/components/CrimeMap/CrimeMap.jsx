@@ -4,6 +4,8 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { apiService } from "../../services/apiService";
+import { ppcSimpleLabel } from '../../utils/ppcUtils';
+import { useSystemSettings } from '../../contexts/SystemSettingsContext';
 import './CrimeMap.css';
 
 // Fix for default markers
@@ -15,6 +17,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const CrimeMap = ({ showLoginModal, isAuthenticated }) => {
+  const { settings: systemSettings } = useSystemSettings();
   const [crimes, setCrimes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -171,7 +174,7 @@ const CrimeMap = ({ showLoginModal, isAuthenticated }) => {
         <div className="map-wrapper">
           <MapContainer
             center={[31.5204, 74.3587]}
-            zoom={12}
+            zoom={systemSettings?.default_map_zoom || 12}
             style={{ width: "100%", height: "500px" }}
             scrollWheelZoom={true}
             zoomControl={true}
@@ -196,10 +199,19 @@ const CrimeMap = ({ showLoginModal, isAuthenticated }) => {
 
                     <div style={{ marginBottom: "8px" }}>
                       <strong>Type:</strong> {crime.type || crime.crime_type}
+                      {(crime.type || crime.crime_type) && ppcSimpleLabel(crime.type || crime.crime_type) !== (crime.type || crime.crime_type) && (
+                        <span style={{ color: '#6b7280', fontSize: '0.85em', marginLeft: 4 }}>({ppcSimpleLabel(crime.type || crime.crime_type)})</span>
+                      )}
                     </div>
 
                     <div style={{ marginBottom: "8px" }}>
                       <strong>Area:</strong> {crime.area}
+                      {crime.area_translit && crime.area_translit !== crime.area && (
+                        <span style={{ color: '#6b7280', fontStyle: 'italic', display: 'block', fontSize: '0.82em', marginTop: 1 }}>{crime.area_translit}</span>
+                      )}
+                      {crime.area_urdu && (
+                        <span style={{ fontFamily: "'Noto Nastaliq Urdu', serif", direction: 'rtl', display: 'block', fontSize: '0.85em', marginTop: 2 }}>{crime.area_urdu}</span>
+                      )}
                     </div>
 
                     <div style={{ marginBottom: "8px" }}>

@@ -1,0 +1,567 @@
+/* AdminPredictionPanel.module.css */
+
+.panel {
+  padding: 24px;
+  min-height: 100%;
+  color: #e2e8f0;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+/* ── Header ── */
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding: 22px 26px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.18) 0%, rgba(168,85,247,0.10) 100%);
+  border: 1px solid rgba(99,102,241,0.22);
+  border-radius: 14px;
+  backdrop-filter: blur(8px);
+}
+.panelHeaderLeft { display: flex; align-items: center; gap: 16px; }
+.headerIcon {
+  width: 50px; height: 50px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; color: #fff;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+}
+.panelTitle { margin: 0; font-size: 1.35rem; font-weight: 700; color: #f1f5f9; }
+.panelSub   { margin: 4px 0 0; font-size: 0.8rem; color: #94a3b8; }
+.modelBadge {
+  padding: 6px 14px; border-radius: 30px;
+  background: rgba(99,102,241,0.14);
+  border: 1px solid rgba(99,102,241,0.28);
+  font-size: 0.72rem; color: #a5b4fc; font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex; gap: 4px;
+  background: rgba(15,23,42,0.55);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px; padding: 5px;
+  margin-bottom: 24px;
+}
+.tab {
+  flex: 1; padding: 10px 14px;
+  border: none; border-radius: 9px;
+  background: transparent; cursor: pointer;
+  color: #94a3b8; font-size: 0.82rem; font-weight: 500;
+  transition: all 0.18s ease;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.tab:hover { color: #e2e8f0; background: rgba(255,255,255,0.05); }
+.tabActive {
+  background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(168,85,247,0.2));
+  color: #c7d2fe;
+  border: 1px solid rgba(99,102,241,0.3);
+  font-weight: 600;
+}
+
+/* ── Tab body ── */
+.tabBody { display: flex; flex-direction: column; gap: 18px; }
+.metaLoading { text-align: center; padding: 48px; color: #94a3b8; }
+
+/* ── Form grid ── */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 20px;
+  background: rgba(15,23,42,0.5);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+}
+.formField { display: flex; flex-direction: column; gap: 6px; }
+.formField label { font-size: 0.76rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+.formField select,
+.formField input {
+  background: rgba(30,41,59,0.8);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.formField select:focus,
+.formField input:focus   { border-color: #6366f1; }
+.optional { font-weight: 400; color: #64748b; text-transform: none; letter-spacing: 0; }
+
+.errorMsg {
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(220,38,38,0.1); border: 1px solid rgba(220,38,38,0.25);
+  color: #f87171; font-size: 0.83rem;
+}
+
+.runBtn {
+  align-self: flex-start;
+  padding: 11px 26px; border-radius: 9px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none; color: #fff;
+  font-size: 0.88rem; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: opacity 0.18s, transform 0.12s;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+}
+.runBtn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+.runBtn:disabled             { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Result card ── */
+.resultCard {
+  background: rgba(15,23,42,0.6);
+  border: 1px solid rgba(99,102,241,0.18);
+  border-radius: 14px; padding: 22px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.resultHeader { display: flex; align-items: center; justify-content: space-between; }
+.resultTitle  { font-size: 0.9rem; font-weight: 700; color: #e2e8f0; display: flex; align-items: center; gap: 8px; }
+
+.riskBadge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 0.78rem; font-weight: 700;
+}
+.momentumBadge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 16px;
+  font-size: 0.75rem; font-weight: 600; border: 1px solid;
+}
+.momentumSub { opacity: 0.65; font-weight: 400; }
+
+.resultMetrics { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.bigScore { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 100px; }
+.bigScoreNum { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+.bigScoreNum span { font-size: 1rem; font-weight: 400; color: #94a3b8; }
+.bigScoreLabel { font-size: 0.7rem; color: #94a3b8; }
+.bigScoreBar {
+  width: 80px; height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+
+.metaGrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px; flex: 1;
+}
+.metaItem {
+  background: rgba(30,41,59,0.6); border-radius: 9px;
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.metaLabel { font-size: 0.68rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.metaItem strong { font-size: 0.85rem; color: #e2e8f0; }
+
+/* ── Score bar ── */
+.scoreBarWrap { display: flex; align-items: center; gap: 8px; }
+.scoreBarTrack {
+  flex: 1; height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.08); overflow: hidden;
+}
+.scoreBarFill  { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.scoreBarVal   { font-size: 0.78rem; color: #94a3b8; min-width: 28px; }
+
+/* ── Upcoming dates ── */
+.upcomingBlock { display: flex; flex-direction: column; gap: 10px; }
+.blockTitle {
+  font-size: 0.8rem; font-weight: 700; color: #94a3b8;
+  display: flex; align-items: center; gap: 7px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.upcomingRow { display: flex; gap: 12px; flex-wrap: wrap; }
+.upcomingChip {
+  background: rgba(30,41,59,0.7); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 5px; min-width: 130px;
+}
+.upcomingDate { font-size: 0.88rem; font-weight: 700; color: #e2e8f0; }
+.upcomingDay  { font-size: 0.72rem; color: #64748b; }
+
+/* ── Time periods ── */
+.periodBlock { display: flex; flex-direction: column; gap: 10px; }
+.periodRows  { display: flex; flex-direction: column; gap: 7px; }
+.periodRow   { display: flex; align-items: center; gap: 10px; }
+.periodName  { min-width: 90px; font-size: 0.78rem; color: #94a3b8; }
+.periodBarTrack {
+  flex: 1; height: 8px; border-radius: 4px;
+  background: rgba(255,255,255,0.07); overflow: hidden;
+}
+.periodBarFill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.periodPct   { font-size: 0.76rem; color: #94a3b8; min-width: 32px; text-align: right; }
+
+/* ── Multi-Crime Scan ── */
+.scanResults { display: flex; flex-direction: column; gap: 14px; }
+.scanSummary { display: flex; gap: 10px; flex-wrap: wrap; }
+.scanSumChip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 0.78rem; font-weight: 600;
+}
+.scanSumChip i { font-size: 0.5rem; }
+
+.tableWrap { overflow-x: auto; border-radius: 10px; }
+.scanTable {
+  width: 100%; border-collapse: collapse;
+  background: rgba(15,23,42,0.55);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; overflow: hidden;
+  font-size: 0.83rem;
+}
+.scanTable thead tr { background: rgba(30,41,59,0.8); }
+.scanTable th {
+  padding: 11px 14px; text-align: left;
+  font-size: 0.72rem; font-weight: 700; color: #64748b;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.sortTh { cursor: pointer; user-select: none; }
+.sortTh:hover { color: #a5b4fc; }
+.scanTable td {
+  padding: 11px 14px; color: #cbd5e1;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+.scanTable tr:last-child td { border-bottom: none; }
+.scanTable tbody tr:hover { background: rgba(99,102,241,0.06); }
+.rowHigh td { background: rgba(220,38,38,0.04); }
+.rowMed  td { background: rgba(249,115,22,0.04); }
+.rankCell { font-weight: 700; color: #6366f1; }
+
+.inlineBar {
+  display: flex; align-items: center; gap: 8px;
+  min-width: 120px;
+}
+.inlineBarFill {
+  height: 6px; border-radius: 3px;
+  background: #3b82f6;
+  transition: width 0.3s ease;
+}
+.inlineBar span { font-size: 0.78rem; color: #94a3b8; white-space: nowrap; }
+
+/* ── Area Safety Profile ── */
+.profilePanel {
+  display: flex; flex-direction: column; gap: 18px;
+  background: rgba(15,23,42,0.5);
+  border: 1px solid rgba(99,102,241,0.15);
+  border-radius: 14px; padding: 22px;
+}
+.profileHeader {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.profileTitle {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 1.05rem; font-weight: 700; color: #e2e8f0;
+}
+.profileSub { font-size: 0.75rem; color: #64748b; font-weight: 400; margin-left: 4px; }
+.profileHeaderRight { display: flex; align-items: center; gap: 10px; }
+.densityChip {
+  padding: 4px 10px; border-radius: 14px;
+  background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.22);
+  font-size: 0.72rem; color: #a5b4fc; font-weight: 600;
+}
+
+/* KPI row */
+.profileKpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+.kpiBlock {
+  background: rgba(30,41,59,0.6); border-radius: 10px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.kpiLabel  { font-size: 0.65rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.kpiBig    { font-size: 1.6rem; font-weight: 800; color: #e2e8f0; line-height: 1; }
+.kpiBig span { font-size: 0.85rem; font-weight: 400; color: #64748b; }
+.kpiVal    { font-size: 1rem; font-weight: 700; color: #e2e8f0; }
+.kpiSub    { font-size: 0.7rem; color: #64748b; }
+
+/* Visit windows */
+.visitWindows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.visitItem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: 10px; border: 1px solid;
+}
+.visitItem i   { font-size: 1.1rem; flex-shrink: 0; }
+.visitLabel    { font-size: 0.68rem; color: #64748b; margin-bottom: 3px; }
+.visitItem strong { font-size: 0.85rem; color: #e2e8f0; }
+
+/* Top crimes */
+.topCrimesBlock { display: flex; flex-direction: column; gap: 10px; }
+.crimeRow {
+  display: flex; align-items: center; gap: 10px;
+}
+.crimeRank  { min-width: 22px; font-size: 0.75rem; font-weight: 700; color: #6366f1; }
+.crimeType  { min-width: 160px; font-size: 0.82rem; color: #cbd5e1; }
+.crimeBarTrack {
+  flex: 1; height: 7px; border-radius: 3px;
+  background: rgba(255,255,255,0.07); overflow: hidden;
+}
+.crimeBarFill  { height: 100%; border-radius: 3px; }
+.crimePct { font-size: 0.75rem; color: #94a3b8; min-width: 36px; text-align: right; }
+
+/* Trend */
+.trendBlock { display: flex; flex-direction: column; gap: 10px; }
+.trendRows  { display: flex; flex-direction: column; gap: 8px; }
+.trendRow   {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.82rem; color: #94a3b8;
+  padding: 8px 12px; border-radius: 8px;
+  background: rgba(30,41,59,0.4);
+}
+.trendRow strong { color: #e2e8f0; }
+.trendSub   { color: #64748b; font-size: 0.75rem; }
+
+/* Day of week chart */
+.dowBlock { display: flex; flex-direction: column; gap: 10px; }
+.dowChart {
+  display: flex; gap: 8px; align-items: flex-end; height: 80px;
+}
+.dowCol   { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.dowBarTrack { width: 100%; display: flex; align-items: flex-end; height: 62px; }
+.dowBarFill  { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.4s ease; }
+.dowLabel    { font-size: 0.65rem; color: #64748b; }
+.dowSummary  { display: flex; gap: 20px; font-size: 0.78rem; color: #94a3b8; flex-wrap: wrap; }
+.dowSummary strong { color: #e2e8f0; }
+
+/* ── Header right column (badge + data source) ── */
+.headerRight { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.dataSourceLabel {
+  font-size: 0.68rem; color: #475569;
+  display: flex; align-items: center; gap: 5px;
+}
+.dataSourceLabel i { font-size: 0.6rem; }
+
+/* ── Confidence explanation ── */
+.metaExplain {
+  font-size: 0.68rem; color: #64748b; line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   NEW SECTIONS — added for intelligence dashboard improvements
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Historical Comparison / Incident Expectation ── */
+.historicalBlock { display: flex; flex-direction: column; gap: 10px; }
+.hcGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.hcItem {
+  background: rgba(30,41,59,0.6);
+  border-radius: 9px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.hcLabel    { font-size: 0.68rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.hcVal      { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; }
+.hcSub      { font-size: 0.68rem; color: #64748b; }
+.hcDiff     { font-size: 0.88rem; font-weight: 700; }
+.hcDiffUp   { color: #dc2626; }
+.hcDiffDown { color: #22c55e; }
+.hcDiffNormal { color: #9ca3af; }
+
+/* ── Risk Drivers ── */
+.driversBlock { display: flex; flex-direction: column; gap: 10px; }
+.driversList  { display: flex; flex-direction: column; gap: 7px; }
+.driverItem {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: 0.83rem; color: #94a3b8;
+  padding: 9px 12px; border-radius: 8px;
+  background: rgba(30,41,59,0.4);
+  border-left: 2px solid rgba(99,102,241,0.35);
+}
+
+/* ── 7-Day Forecast ── */
+.forecastBlock { display: flex; flex-direction: column; gap: 10px; }
+.forecastRows  { display: flex; flex-direction: column; gap: 6px; }
+.forecastRow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 8px;
+  background: rgba(30,41,59,0.4);
+}
+.forecastDay      { min-width: 34px; font-size: 0.78rem; font-weight: 700; color: #e2e8f0; }
+.forecastDate     { min-width: 90px; font-size: 0.72rem; color: #64748b; }
+.forecastBarTrack { flex: 1; height: 7px; border-radius: 4px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.forecastBarFill  { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.forecastPct      { min-width: 38px; text-align: right; font-size: 0.78rem; font-weight: 700; }
+.forecastBadge    { padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 700; white-space: nowrap; }
+
+/* ── Multi-Crime: Priority Risks ── */
+.prioritySection { display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Multi-Crime: Table header row (title + toggle button) ── */
+.tableHeader {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap;
+}
+.tableCount { font-size: 0.72rem; color: #64748b; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.viewAllBtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 8px;
+  background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);
+  color: #a5b4fc; font-size: 0.76rem; font-weight: 600; cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.viewAllBtn:hover { background: rgba(99,102,241,0.2); color: #c7d2fe; }
+.viewAllBtnBottom {
+  align-self: center;
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 20px; border-radius: 20px;
+  background: rgba(30,41,59,0.7); border: 1px solid rgba(255,255,255,0.09);
+  color: #94a3b8; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.viewAllBtnBottom:hover { background: rgba(99,102,241,0.12); color: #c7d2fe; }
+.priorityGrid    {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.priorityCard {
+  padding: 14px 16px; border-radius: 10px; border: 1px solid;
+  display: flex; flex-direction: column; gap: 6px;
+  transition: transform 0.12s;
+}
+.priorityCard:hover { transform: translateY(-2px); }
+.priorityRank  { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.priorityCrime { font-size: 0.88rem; font-weight: 600; color: #e2e8f0; line-height: 1.3; }
+.priorityPct   { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+
+/* ── Multi-Crime: Bar Chart ── */
+.barChartSection { display: flex; flex-direction: column; gap: 10px; }
+.barChartList    { display: flex; flex-direction: column; gap: 7px; }
+.barChartRow     { display: flex; align-items: center; gap: 10px; }
+.barChartLabel   {
+  min-width: 190px; max-width: 190px;
+  font-size: 0.79rem; color: #cbd5e1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.barChartTrack { flex: 1; height: 10px; border-radius: 5px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.barChartFill  { height: 100%; border-radius: 5px; transition: width 0.4s ease; }
+.barChartPct   { min-width: 40px; text-align: right; font-size: 0.78rem; font-weight: 700; }
+
+/* ── Multi-Crime: Category Grouping ── */
+.categorySection { display: flex; flex-direction: column; gap: 10px; }
+.categoryGroup   { border-radius: 10px; border: 1px solid rgba(255,255,255,0.07); overflow: hidden; }
+.categoryHeader  {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(30,41,59,0.7);
+  font-size: 0.79rem; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.categoryCount { font-size: 0.72rem; color: #a5b4fc; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.categoryRows  { display: flex; flex-direction: column; }
+.categoryRow   {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.82rem; color: #cbd5e1;
+}
+.categoryRow:hover { background: rgba(99,102,241,0.05); }
+
+/* ── Area Profile: Monthly Trend Chart ── */
+.monthlyBlock { display: flex; flex-direction: column; gap: 10px; }
+.monthlyChart {
+  display: flex; gap: 5px; align-items: flex-end;
+  height: 110px; padding: 0 2px;
+}
+.monthlyBar {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; height: 100%; justify-content: flex-end;
+}
+.monthlyBarTrack { width: 100%; display: flex; align-items: flex-end; height: 72px; }
+.monthlyBarFill  {
+  width: 100%; border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  min-height: 4px; transition: height 0.4s ease;
+}
+.monthlyBarLabel { font-size: 0.6rem; color: #64748b; }
+.monthlyBarCount { font-size: 0.6rem; color: #94a3b8; font-weight: 600; }
+
+/* ── Area Profile: Recommended Actions ── */
+.recommendationsBlock { display: flex; flex-direction: column; gap: 10px; }
+.recList { display: flex; flex-direction: column; gap: 8px; }
+.recItem {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 14px; border-radius: 9px;
+  background: rgba(30,41,59,0.5);
+  border: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.83rem; color: #cbd5e1;
+  transition: background 0.12s;
+}
+.recItem:hover { background: rgba(30,41,59,0.7); }
+.recItem i { font-size: 0.88rem; margin-top: 2px; flex-shrink: 0; }
+
+/* ── Time-period model explanation note ── */
+.periodModelNote {
+  margin-top: 10px; padding: 9px 13px;
+  border-radius: 8px; border: 1px solid rgba(99,102,241,0.25);
+  background: rgba(99,102,241,0.07);
+  font-size: 0.77rem; color: #a5b4fc; line-height: 1.5;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.periodModelNote i { margin-top: 2px; flex-shrink: 0; color: #6366f1; }
+
+/* ── Limited-data warning banner ── */
+.limitedDataWarning {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 14px; margin-bottom: 4px;
+  border-radius: 9px; border: 1px solid rgba(245,158,11,0.35);
+  background: rgba(245,158,11,0.08);
+  font-size: 0.82rem; color: #fbbf24; line-height: 1.5;
+}
+.limitedDataWarning i { color: #f59e0b; margin-top: 2px; flex-shrink: 0; }
+
+/* ── Sub-area / Locality Crime Hotspots ── */
+.localityBlock { display: flex; flex-direction: column; gap: 12px; }
+.localitySubtitle { font-size: 0.78rem; color: #64748b; font-weight: 400; }
+.localityTopBadge {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+  padding: 9px 14px; border-radius: 9px;
+  background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.2);
+  font-size: 0.83rem; color: #fca5a5;
+}
+.localityTopBadge i { color: #dc2626; }
+.localityTopBadge strong { color: #f87171; }
+.localityTopBadge span  { color: #94a3b8; }
+.localityTableWrap { overflow-x: auto; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
+.localityTable {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.82rem; color: #cbd5e1;
+}
+.localityTable thead tr { background: rgba(15,23,42,0.7); }
+.localityTable th {
+  padding: 9px 12px; text-align: left;
+  font-size: 0.72rem; font-weight: 700; color: #64748b;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.localityTable tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.1s; }
+.localityTable tbody tr:hover { background: rgba(99,102,241,0.05); }
+.localityRank  { font-size: 0.72rem; color: #475569; padding: 9px 12px; }
+.localityName  { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 9px 12px; }
+.localityTable td { padding: 9px 12px; }
+.localityBarWrap  { display: flex; align-items: center; gap: 8px; min-width: 100px; }
+.localityBarTrack { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.localityBarFill  { height: 100%; border-radius: 3px; }
+.localityRiskTag  {
+  display: inline-block; padding: 2px 8px; border-radius: 12px;
+  font-size: 0.72rem; font-weight: 600;
+}
+.localityDataNote {
+  margin-top: 10px; padding: 8px 12px; border-radius: 8px;
+  background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15);
+  color: rgba(148,163,184,0.85); font-size: 0.75rem; line-height: 1.5;
+}
+.localityDataNote i { margin-right: 6px; color: #6366f1; }

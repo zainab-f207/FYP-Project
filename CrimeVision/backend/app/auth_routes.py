@@ -1,11 +1,27 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from app.password_reset_fixed import forgot_password, reset_password, ForgotPasswordRequest, ResetPasswordRequest
 from app.two_factor import generate_2fa_secret, verify_2fa_code, setup_2fa, enable_2fa, disable_2fa, get_2fa_uri, get_user_2fa_secret
-from app.auth_updated import verify_token
+from app.auth_updated import verify_token, verify_refresh_token, create_access_token
+from fastapi import Request
 from app.core.database import get_db_connection
-from pydantic import BaseModel
 from typing import cast, Dict, Any
+
+router = APIRouter()
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+@router.post("/auth/refresh-token")
+async def refresh_token_endpoint(request: RefreshTokenRequest):
+    """Issue a new access token using a valid refresh token"""
+    username = verify_refresh_token(request.refresh_token)
+    if username is None:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    # Optionally, check if user still exists or is active
+    access_token = create_access_token({"sub": username})
+    return {"access_token": access_token}
 
 # 2FA Models
 class Enable2FARequest(BaseModel):
@@ -36,8 +52,6 @@ def get_user_id_from_username(username: str):
     finally:
         cursor.close()
         conn.close()
-
-router = APIRouter()
 
 @router.post("/auth/forgot-password")
 async def forgot_password_endpoint(request: ForgotPasswordRequest, background_tasks: BackgroundTasks):

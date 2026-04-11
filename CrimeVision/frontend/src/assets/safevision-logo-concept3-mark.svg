@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="72" height="72" aria-hidden="true">
+  <defs>
+    <linearGradient id="eyeMk" x1="0" x2="1">
+      <stop offset="0" stop-color="#1a3a5f"/>
+      <stop offset="1" stop-color="#1a3a5f"/>
+    </linearGradient>
+    <linearGradient id="pupilMk" x1="0" x2="1">
+      <stop offset="0" stop-color="#00a6a6"/>
+      <stop offset="1" stop-color="#00d1d1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- small background grid hint -->
+  <g opacity="0.08" stroke="#f0f2f5" stroke-width="0.8">
+    <path d="M6 18 L66 18"/>
+    <path d="M6 36 L66 36"/>
+    <path d="M6 54 L66 54"/>
+  </g>
+
+  <!-- Eye outer contour -->
+  <path d="M36 8 C26 8, 14 16, 8 28 C4 36, 6 52, 36 60 C66 52, 68 36, 64 28 C58 16, 46 8, 36 8 Z"
+        fill="none" stroke="url(#eyeMk)" stroke-width="2.2" stroke-linejoin="round"/>
+
+  <!-- Pupil / map point -->
+  <g>
+    <circle cx="36" cy="36" r="10" fill="url(#pupilMk)"/>
+    <circle cx="36" cy="36" r="3.2" fill="#fff"/>
+  </g>
+</svg>

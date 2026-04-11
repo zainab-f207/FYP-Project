@@ -1,0 +1,193 @@
+.mapViewContainer {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-white);
+  padding: 20px;
+}
+
+/* Loading Styles */
+.loadingMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 3rem;
+  backdrop-filter: blur(20px);
+}
+
+.loadingMessage i {
+  font-size: 3rem;
+  color: var(--accent-teal);
+  margin-bottom: 1.5rem;
+  animation: spin 1s linear infinite;
+}
+
+.loadingMessage p {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error Styles */
+.errorMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 3rem;
+  backdrop-filter: blur(20px);
+}
+
+.errorMessage i {
+  font-size: 4rem;
+  color: #ef4444;
+  margin-bottom: 1.5rem;
+}
+
+.errorMessage h3 {
+  color: var(--text-white);
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.errorMessage p {
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+.backBtn {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.backBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+}
+
+/* Map Header */
+.mapHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 15px;
+  backdrop-filter: blur(20px);
+}
+
+.backButton {
+  background: var(--bg-primary);
+  border: 1px solid var(--card-border);
+  color: var(--text-white);
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.backButton:hover {
+  border-color: var(--accent-teal);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+}
+
+.headerTitle {
+  text-align: center;
+  flex: 1;
+}
+
+.headerTitle h2 {
+  color: var(--text-white);
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.headerTitle h2 i {
+  color: var(--accent-teal);
+}
+
+.headerTitle p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mapViewContainer {
+    padding: 10px;
+  }
+  
+  .mapHeader {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .headerTitle h2 {
+    font-size: 1.4rem;
+  }
+  
+  .loadingMessage,
+  .errorMessage {
+    padding: 2rem;
+    height: 50vh;
+  }
+  
+  .loadingMessage i,
+  .errorMessage i {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .headerTitle h2 {
+    font-size: 1.2rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .backButton {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+}

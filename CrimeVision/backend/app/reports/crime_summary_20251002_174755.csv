@@ -1,0 +1,33 @@
+Crime Summary Report
+Generated on: 2025-10-02 17:47:55
+
+Summary Statistics:
+Metric,Value
+Total Crimes,50166
+Unique Areas,29
+Unique Crime Types,6
+High Risk %,19.7%
+Medium Risk %,57.9%
+Low Risk %,22.4%
+
+Crimes by Area (Top 10):
+Area,Count
+Ferozepur Road,1966
+Liberty Market,1896
+Township,1880
+Green Town,1844
+DHA Phase 4,1842
+Bahria Orchard,1828
+Wapda Town,1813
+DHA Phase 7,1812
+Allama Iqbal Town,1808
+Model Town,1806
+
+Crimes by Type (Top 10):
+Crime Type,Count
+Street Crime,15120
+Robbery,12283
+Burglary,10012
+Vehicle Theft,7672
+Violent Crime,5078
+murder,1

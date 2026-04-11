@@ -1,0 +1,8 @@
+Input: الل ان ارک اليس ہاک
+  Corrected: ماڈل ٹاؤن پارک -> best match: ماڈل ٹاؤن پارک (score: 1.000)
+Input: الال ڈئن مارک الیک اکر وڈ کاٹ
+  Corrected: ماڈل ٹاؤن مارکیٹ -> best match: ماڈل ٹاؤن مارکیٹ (score: 1.000)
+Input: الل ان ارک
+  Corrected: ماڈل ٹاؤن پارک -> best match: ماڈل ٹاؤن پارک (score: 1.000)
+Input: الل ان ارک اليس ہاک واےعاد
+  Corrected: ماڈل ٹاؤن پارک -> best match: ماڈل ٹاؤن پارک (score: 1.000)

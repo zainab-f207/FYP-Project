@@ -7,6 +7,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useAuth } from "../contexts/AuthContext";
 import { apiService } from "../services/apiService";
+import { useSystemSettings } from "../contexts/SystemSettingsContext";
 
 // Fix for default markers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -60,6 +61,7 @@ export default function CrimeHeatmap({ isAuthenticated, showLoginModal }) {
   const [showHotspots, setShowHotspots] = useState(true);
 
   const { isAuthenticated: authStatus } = useAuth();
+  const { settings: systemSettings } = useSystemSettings();
 
   const fetchCrimes = async () => {
     try {
@@ -294,7 +296,7 @@ export default function CrimeHeatmap({ isAuthenticated, showLoginModal }) {
       {/* Map */}
       <MapContainer
         center={[31.5204, 74.3587]}
-        zoom={12}
+        zoom={systemSettings?.default_map_zoom || 12}
         style={{ width: "100%", height: "100%" }}
         scrollWheelZoom={true}
         zoomControl={true}

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 180" width="700" height="180" aria-hidden="true">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0" x2="1">
+      <stop offset="0" stop-color="#1a3a5f"/>
+      <stop offset="1" stop-color="#1a3a5f" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="markerGrad" x1="0" x2="1">
+      <stop offset="0" stop-color="#00a6a6"/>
+      <stop offset="1" stop-color="#6fe7e7"/>
+    </linearGradient>
+    <style>
+      .word { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 48px; fill: #1a3a5f }
+      .tag { font-family: 'Open Sans', sans-serif; font-size: 14px; fill: #6b7280 }
+    </style>
+  </defs>
+
+  <!-- Shield outline (minimal) -->
+  <g transform="translate(20,12)">
+    <path d="M80 6 C72 6, 30 18, 18 40 C6 62, 10 96, 80 120 C150 96, 154 62, 142 40 C130 18, 88 6, 80 6 Z"
+          fill="none" stroke="url(#shieldGrad)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+
+    <!-- Map marker integrated into shield center -->
+    <g transform="translate(62,34)">
+      <!-- marker body -->
+      <path d="M18 0 C7 0 0 7 0 18 C0 34 18 46 18 46 C18 46 36 34 36 18 C36 7 29 0 18 0 Z" fill="url(#markerGrad)"/>
+      <!-- inner circle -->
+      <circle cx="18" cy="16" r="6" fill="#fff" opacity="0.98"/>
+
+      <!-- pulse ripple (subtle) -->
+      <circle cx="18" cy="16" r="10" fill="none" stroke="#6fe7e7" stroke-width="1.2" opacity="0.6"/>
+    </g>
+
+    <!-- small data viz: three tiny bars left of marker -->
+    <g transform="translate(20,72)">
+      <rect x="0" y="8" width="6" height="20" rx="1" fill="#ffc107"/>
+      <rect x="10" y="4" width="6" height="24" rx="1" fill="#00a6a6"/>
+      <rect x="20" y="0" width="6" height="28" rx="1" fill="#1a3a5f"/>
+    </g>
+  </g>
+
+  <!-- Wordmark to the right -->
+  <g transform="translate(200,78)">
+    <text class="word">SafeVision</text>
+    <text x="0" y="30" class="tag">Spatial Analysis &amp; Visualization</text>
+  </g>
+</svg>

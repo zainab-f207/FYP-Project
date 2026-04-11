@@ -19,14 +19,18 @@ import {
 import {
   ExclamationCircleOutlined,
   EyeOutlined,
+  FilterOutlined,
   LockOutlined,
   ReloadOutlined,
+  SearchOutlined,
   TeamOutlined,
   UnlockOutlined,
   UserDeleteOutlined,
+  EditOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import apiService from '../../services/apiService';
+import apiService from '../../services/apiService_updated';
 import usePaginatedResource from './hooks/usePaginatedResource';
 import { USER_BULK_ACTIONS, USER_PERMISSIONS, USER_ROLES } from './constants/permissions';
 import styles from './SuperAdminDashboard.module.css';
@@ -50,6 +54,8 @@ const UserManagement = ({ token }) => {
   const [form] = Form.useForm();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [editModal, setEditModal] = useState({ visible: false, user: null });
+  const [editForm] = Form.useForm();
   const [permissionsModal, setPermissionsModal] = useState({ visible: false, user: null });
   const [isPerformingBulkAction, setIsPerformingBulkAction] = useState(false);
 
@@ -141,131 +147,123 @@ const UserManagement = ({ token }) => {
     }
   };
 
+  const handleEdit = (user) => {
+    setEditModal({ visible: true, user });
+    editForm.setFieldsValue({
+      username: user.username || '',
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      role: user.role || '',
+      homeArea: user.homeArea || '',
+      workArea: user.workArea || '',
+      alertRadius: user.alertRadius || '',
+      password: '',
+    });
+  };
+
+  const handleEditSubmit = async (values) => {
+    try {
+      await apiService.updateUser(token, editModal.user.id, values);
+      message.success('User updated successfully');
+      setEditModal({ visible: false, user: null });
+      loadData();
+    } catch (error) {
+      message.error(error.message || 'Failed to update user');
+    }
+  };
+
   const columns = useMemo(
     () => [
       {
         title: 'User',
         dataIndex: 'username',
         key: 'username',
+        fixed: 'left',
+        width: 220,
         render: (username, record) => (
           <Space direction="vertical" size={0}>
             <Space>
-              <TeamOutlined />
-              <strong>{username}</strong>
-              <Tooltip title={`User ID: ${record.id}`}>
-                <Tag color="default">ID {record.id}</Tag>
-              </Tooltip>
+              <TeamOutlined style={{ color: '#2d7fb8' }} />
+              <strong style={{ color: '#e0e0e0' }}>{username}</strong>
             </Space>
-            <span className={styles.tableMetaText}>{record.email}</span>
+            <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>{record.email}</span>
           </Space>
         ),
       },
       {
         title: 'Name',
-        dataIndex: 'fullName',
         key: 'fullName',
-        render: (_, record) => `${record.firstName || ''} ${record.lastName || ''}`.trim() || '—',
+        width: 160,
+        render: (_, record) => (
+          <span style={{ color: '#d0d0d0' }}>
+            {`${record.firstName || ''} ${record.lastName || ''}`.trim() || '—'}
+          </span>
+        ),
       },
       {
         title: 'Role',
         dataIndex: 'role',
         key: 'role',
+        width: 110,
         filters: USER_ROLES.map((role) => ({ text: role.label, value: role.value })),
-        render: (role) => <Tag color={ROLE_COLORS[role] || 'default'}>{role}</Tag>,
-      },
-      {
-        title: 'Permissions',
-        key: 'permissions',
-        render: (_, record) => (
-          <Space wrap>
-            {(record.permissions || []).slice(0, 3).map((permission) => (
-              <Tag key={permission}>{permission}</Tag>
-            ))}
-            {(record.permissions || []).length > 3 && <Tag>+{record.permissions.length - 3}</Tag>}
-            <Button
-              size="small"
-              type="link"
-              onClick={() => openPermissionsModal(record)}
-            >
-              Manage
-            </Button>
-          </Space>
-        ),
-      },
-      {
-        title: 'Created At',
-        dataIndex: 'createdAt',
-        key: 'createdAt',
-        render: (createdAt) => (createdAt ? dayjs(createdAt).format('DD MMM YYYY HH:mm') : '—'),
+        render: (role) => <Tag color={ROLE_COLORS[role] || 'default'}>{role?.toUpperCase()}</Tag>,
       },
       {
         title: 'Status',
-        dataIndex: 'role',
         key: 'status',
-        render: (role) => (
-          <Badge status={STATUS_COLORS[role] ? 'success' : 'default'} text={role === 'inactive' ? 'Inactive' : 'Active'} />
+        width: 100,
+        render: (_, record) => (
+          <Badge
+            status={record.role === 'inactive' ? 'default' : 'success'}
+            text={<span style={{ color: record.role === 'inactive' ? '#ff6b6b' : '#1dd1a1', fontSize: 13 }}>{record.role === 'inactive' ? 'Inactive' : 'Active'}</span>}
+          />
+        ),
+      },
+      {
+        title: 'Created',
+        dataIndex: 'createdAt',
+        key: 'createdAt',
+        width: 140,
+        render: (createdAt) => (
+          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+            {createdAt ? dayjs(createdAt).format('DD MMM YYYY') : '—'}
+          </span>
         ),
       },
       {
         title: 'Actions',
         key: 'actions',
+        fixed: 'right',
+        width: 200,
         render: (_, record) => (
-          <Space>
+          <Space size={4}>
             <Tooltip title="View details">
-              <Button icon={<EyeOutlined />} type="link" onClick={() => setSelectedUser(record)}>
-                View
-              </Button>
+              <Button size="small" icon={<EyeOutlined />} type="text" style={{ color: '#2d7fb8' }} onClick={() => setSelectedUser(record)} />
             </Tooltip>
-            <Tooltip title="Edit permissions">
-              <Button icon={<UnlockOutlined />} type="link" onClick={() => openPermissionsModal(record)}>
-                Edit Permissions
-              </Button>
+            <Tooltip title="Edit user">
+              <Button size="small" icon={<EditOutlined />} type="text" style={{ color: '#f9a826' }} onClick={() => handleEdit(record)} />
+            </Tooltip>
+            <Tooltip title="Permissions">
+              <Button size="small" icon={<UnlockOutlined />} type="text" style={{ color: '#1dd1a1' }} onClick={() => openPermissionsModal(record)} />
             </Tooltip>
             {record.role === 'inactive' ? (
-              <Tooltip title="Activate user">
-                <Button
-                  icon={<UnlockOutlined />}
-                  type="link"
-                  onClick={() => handleBulkAction('activate', [record.id])}
-                >
-                  Activate
-                </Button>
+              <Tooltip title="Activate">
+                <Button size="small" icon={<UnlockOutlined />} type="text" style={{ color: '#1dd1a1' }} onClick={() => handleBulkAction('activate', [record.id])} />
               </Tooltip>
             ) : (
-              <Tooltip title="Suspend user">
-                <Button
-                  icon={<LockOutlined />}
-                  danger
-                  type="link"
-                  onClick={() => handleBulkAction('suspend', [record.id])}
-                >
-                  Suspend
-                </Button>
+              <Tooltip title="Suspend">
+                <Button size="small" icon={<LockOutlined />} type="text" style={{ color: '#ff6b6b' }} onClick={() => handleBulkAction('suspend', [record.id])} />
               </Tooltip>
             )}
-            <Tooltip title="Delete user">
-              <Button icon={<UserDeleteOutlined />} danger type="link" onClick={() => handleBulkAction('delete', [record.id])} />
+            <Tooltip title="Delete">
+              <Button size="small" icon={<UserDeleteOutlined />} type="text" danger onClick={() => handleBulkAction('delete', [record.id])} />
             </Tooltip>
           </Space>
         ),
       },
     ],
     [openPermissionsModal]
-  );
-
-  const bulkActionMenu = (
-    <Space>
-      {USER_BULK_ACTIONS.map((action) => (
-        <Button
-          key={action.value}
-          onClick={() => handleBulkAction(action.value)}
-          disabled={selectedRowKeys.length === 0}
-          loading={isPerformingBulkAction}
-        >
-          {action.label}
-        </Button>
-      ))}
-    </Space>
   );
 
   return (
@@ -277,13 +275,15 @@ const UserManagement = ({ token }) => {
             View, filter, and manage all platform users. Use bulk actions for quick operations.
           </p>
         </div>
-        <Space>
-          <Tooltip title="Refresh">
-            <Button icon={<ReloadOutlined />} onClick={() => loadData()}>
-              Refresh
-            </Button>
-          </Tooltip>
-        </Space>
+        <Tooltip title="Refresh data">
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => loadData()}
+            style={{ background: 'rgba(45,127,184,0.15)', border: '1px solid rgba(45,127,184,0.3)', color: '#2d7fb8', borderRadius: 10 }}
+          >
+            Refresh
+          </Button>
+        </Tooltip>
       </div>
 
       <div className={styles.filtersRow}>
@@ -294,11 +294,21 @@ const UserManagement = ({ token }) => {
           onReset={handleResetFilters}
           className={styles.filtersForm}
         >
-          <Form.Item name="search">
-            <Input.Search allowClear placeholder="Search by name or email" style={{ width: 220 }} />
+          <Form.Item name="search" style={{ marginBottom: 0 }}>
+            <Input
+              prefix={<SearchOutlined style={{ color: 'rgba(255,255,255,0.3)' }} />}
+              allowClear
+              placeholder="Search by name or email"
+              style={{ width: 230, background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10, color: '#e0e0e0' }}
+            />
           </Form.Item>
-          <Form.Item name="role">
-            <Select allowClear placeholder="Role" style={{ width: 160 }}>
+          <Form.Item name="role" style={{ marginBottom: 0 }}>
+            <Select
+              allowClear
+              placeholder="Filter by role"
+              style={{ width: 160 }}
+              classNames={{ popup: { root: 'dark-select-dropdown' } }}
+            >
               {USER_ROLES.map((role) => (
                 <Select.Option key={role.value} value={role.value}>
                   {role.label}
@@ -306,17 +316,69 @@ const UserManagement = ({ token }) => {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                Apply Filters
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space size={6}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<FilterOutlined />}
+                style={{ borderRadius: 10, background: 'linear-gradient(135deg, #1a4f72, #2d7fb8)', border: 'none', fontWeight: 500 }}
+              >
+                Apply
               </Button>
-              <Button htmlType="reset">Reset</Button>
+              <Button
+                htmlType="reset"
+                icon={<CloseCircleOutlined />}
+                style={{ borderRadius: 10, background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)', color: '#d0d0d0' }}
+              >
+                Reset
+              </Button>
             </Space>
           </Form.Item>
         </Form>
 
-        <div className={styles.actionBar}>{bulkActionMenu}</div>
+        <div className={styles.actionBar}>
+          {selectedRowKeys.length > 0 && (
+            <span className={styles.selectionCount}>{selectedRowKeys.length} selected</span>
+          )}
+          <Tooltip title="Suspend selected accounts">
+            <Button
+              size="small"
+              icon={<LockOutlined />}
+              onClick={() => handleBulkAction('suspend')}
+              disabled={selectedRowKeys.length === 0}
+              loading={isPerformingBulkAction}
+              style={{ borderRadius: 8, background: selectedRowKeys.length > 0 ? 'rgba(249,168,38,0.12)' : undefined, borderColor: selectedRowKeys.length > 0 ? 'rgba(249,168,38,0.3)' : undefined, color: selectedRowKeys.length > 0 ? '#f9a826' : undefined }}
+            >
+              Suspend
+            </Button>
+          </Tooltip>
+          <Tooltip title="Activate selected accounts">
+            <Button
+              size="small"
+              icon={<UnlockOutlined />}
+              onClick={() => handleBulkAction('activate')}
+              disabled={selectedRowKeys.length === 0}
+              loading={isPerformingBulkAction}
+              style={{ borderRadius: 8, background: selectedRowKeys.length > 0 ? 'rgba(29,209,161,0.12)' : undefined, borderColor: selectedRowKeys.length > 0 ? 'rgba(29,209,161,0.3)' : undefined, color: selectedRowKeys.length > 0 ? '#1dd1a1' : undefined }}
+            >
+              Activate
+            </Button>
+          </Tooltip>
+          <Tooltip title="Delete selected accounts">
+            <Button
+              size="small"
+              icon={<UserDeleteOutlined />}
+              danger
+              onClick={() => handleBulkAction('delete')}
+              disabled={selectedRowKeys.length === 0}
+              loading={isPerformingBulkAction}
+              style={{ borderRadius: 8 }}
+            >
+              Delete
+            </Button>
+          </Tooltip>
+        </div>
       </div>
 
       <div className={styles.tableCard}>
@@ -325,11 +387,14 @@ const UserManagement = ({ token }) => {
           loading={isLoading}
           columns={columns}
           dataSource={users}
+          scroll={{ x: 1000 }}
+          size="middle"
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,
             total: pagination.total,
             showSizeChanger: true,
+            style: { marginRight: 16 },
           }}
           onChange={handleTableChange}
           rowSelection={{
@@ -342,43 +407,163 @@ const UserManagement = ({ token }) => {
         />
       </div>
 
+      {/* ── View User Details Drawer ── */}
       <Drawer
-        width={460}
-        title="User Details"
+        width={480}
+        title={<span style={{ color: '#e0e0e0', fontWeight: 600 }}>User Details</span>}
         open={!!selectedUser}
         onClose={() => setSelectedUser(null)}
+        styles={{
+          header: { background: 'rgba(10,10,15,0.98)', borderBottom: '1px solid rgba(255,255,255,0.08)' },
+          body: { background: 'rgba(10,10,15,0.98)', padding: '20px 24px' },
+        }}
       >
         {selectedUser && (
-          <Descriptions bordered column={1} size="small">
+          <Descriptions
+            bordered
+            column={1}
+            size="small"
+            styles={{ label: { color: '#f9a826', background: 'rgba(255,255,255,0.04)', fontWeight: 500, width: 130 }, content: { color: '#d0d0d0', background: 'rgba(255,255,255,0.02)' } }}
+          >
             <Descriptions.Item label="Username">{selectedUser.username}</Descriptions.Item>
             <Descriptions.Item label="Full Name">
               {`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || '—'}
             </Descriptions.Item>
             <Descriptions.Item label="Email">{selectedUser.email}</Descriptions.Item>
-            <Descriptions.Item label="Role">{selectedUser.role}</Descriptions.Item>
+            <Descriptions.Item label="Role"><Tag color={ROLE_COLORS[selectedUser.role] || 'default'}>{selectedUser.role?.toUpperCase()}</Tag></Descriptions.Item>
             <Descriptions.Item label="Home Area">{selectedUser.homeArea || '—'}</Descriptions.Item>
             <Descriptions.Item label="Work Area">{selectedUser.workArea || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Alert Radius">{selectedUser.alertRadius || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Alert Radius">{selectedUser.alertRadius ? `${selectedUser.alertRadius} km` : '—'}</Descriptions.Item>
             <Descriptions.Item label="Created At">
               {selectedUser.createdAt ? dayjs(selectedUser.createdAt).format('DD MMM YYYY HH:mm') : '—'}
             </Descriptions.Item>
             <Descriptions.Item label="Permissions">
               <Space wrap>
-                {(selectedUser.permissions || []).map((permission) => (
-                  <Tag key={permission}>{permission}</Tag>
-                ))}
+                {(selectedUser.permissions || []).length > 0
+                  ? selectedUser.permissions.map((p) => <Tag key={p} color="blue">{p}</Tag>)
+                  : <span style={{ color: 'rgba(255,255,255,0.3)' }}>No permissions</span>}
               </Space>
             </Descriptions.Item>
           </Descriptions>
         )}
       </Drawer>
 
+      {/* ── Edit User Modal ── */}
       <Modal
-        title={`Manage Permissions${permissionsModal.user ? ` - ${permissionsModal.user.username}` : ''}`}
+        title={<span style={{ color: '#e0e0e0' }}>Edit User Details</span>}
+        open={editModal.visible}
+        onCancel={() => setEditModal({ visible: false, user: null })}
+        footer={null}
+        destroyOnClose
+        styles={{
+          content: { background: 'rgba(13,20,30,0.98)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 },
+          header: { background: 'transparent', borderBottom: '1px solid rgba(255,255,255,0.08)' },
+        }}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditSubmit}
+          style={{ marginTop: 8 }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="firstName"
+              label={<span style={{ color: '#d0d0d0' }}>First Name</span>}
+              rules={[{ required: true, message: 'Required' }]}
+            >
+              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+            </Form.Item>
+            <Form.Item
+              name="lastName"
+              label={<span style={{ color: '#d0d0d0' }}>Last Name</span>}
+              rules={[{ required: true, message: 'Required' }]}
+            >
+              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+            </Form.Item>
+          </div>
+          <Form.Item
+            name="username"
+            label={<span style={{ color: '#d0d0d0' }}>Username</span>}
+            rules={[{ required: true, message: 'Required' }]}
+          >
+            <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label={<span style={{ color: '#d0d0d0' }}>Email</span>}
+            rules={[
+              { required: true, message: 'Required' },
+              { type: 'email', message: 'Enter a valid email' }
+            ]}
+          >
+            <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label={<span style={{ color: '#d0d0d0' }}>New Password <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: 12 }}>(leave blank to keep current)</span></span>}
+          >
+            <Input.Password
+              placeholder="Enter new password"
+              style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="role"
+            label={<span style={{ color: '#d0d0d0' }}>Role</span>}
+            rules={[{ required: true, message: 'Required' }]}
+          >
+            <Select
+              classNames={{ popup: { root: 'dark-select-dropdown' } }}
+              style={{ background: 'transparent' }}
+            >
+              {USER_ROLES.map((role) => (
+                <Select.Option key={role.value} value={role.value}>
+                  {role.label}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="homeArea"
+              label={<span style={{ color: '#d0d0d0' }}>Home Area</span>}
+            >
+              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+            </Form.Item>
+            <Form.Item
+              name="workArea"
+              label={<span style={{ color: '#d0d0d0' }}>Work Area</span>}
+            >
+              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+            </Form.Item>
+          </div>
+          <Form.Item
+            name="alertRadius"
+            label={<span style={{ color: '#d0d0d0' }}>Alert Radius (km)</span>}
+          >
+            <Input type="number" style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+          </Form.Item>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+            <Button onClick={() => setEditModal({ visible: false, user: null })}>Cancel</Button>
+            <Button type="primary" htmlType="submit" style={{ background: '#2d7fb8', borderColor: '#2d7fb8' }}>
+              Save Changes
+            </Button>
+          </div>
+        </Form>
+      </Modal>
+
+      {/* ── Permissions Modal ── */}
+      <Modal
+        title={<span style={{ color: '#e0e0e0' }}>{`Manage Permissions${permissionsModal.user ? ` — ${permissionsModal.user.username}` : ''}`}</span>}
         open={permissionsModal.visible}
         onCancel={() => setPermissionsModal({ visible: false, user: null })}
         footer={null}
         destroyOnClose
+        styles={{
+          content: { background: 'rgba(13,20,30,0.98)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 },
+          header: { background: 'transparent', borderBottom: '1px solid rgba(255,255,255,0.08)' },
+        }}
       >
         <Form
           initialValues={{
@@ -387,11 +572,11 @@ const UserManagement = ({ token }) => {
           onFinish={handlePermissionsSubmit}
           layout="vertical"
         >
-          <Form.Item name="permissions" label="Permissions">
+          <Form.Item name="permissions" label={<span style={{ color: '#d0d0d0' }}>Permissions</span>}>
             <Checkbox.Group style={{ width: '100%' }}>
               <Space direction="vertical">
                 {USER_PERMISSIONS.map((permission) => (
-                  <Checkbox key={permission.value} value={permission.value}>
+                  <Checkbox key={permission.value} value={permission.value} style={{ color: '#d0d0d0' }}>
                     {permission.label}
                   </Checkbox>
                 ))}
@@ -399,12 +584,12 @@ const UserManagement = ({ token }) => {
             </Checkbox.Group>
           </Form.Item>
 
-          <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <Button onClick={() => setPermissionsModal({ visible: false, user: null })}>Cancel</Button>
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" style={{ background: '#2d7fb8', borderColor: '#2d7fb8' }}>
               Save Changes
             </Button>
-          </Space>
+          </div>
         </Form>
       </Modal>
     </div>

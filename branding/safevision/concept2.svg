@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="pulseGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00a6a6" />
+      <stop offset="100%" stop-color="#66d3ff" />
+    </linearGradient>
+    <radialGradient id="markerGlow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#00a6a6" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#00a6a6" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="#f3f7fb" />
+
+  <g transform="translate(180,120)">
+    <path d="M200 0 C90 0 0 80 0 200 C0 320 90 400 200 400 C310 400 400 320 400 200 C400 80 310 0 200 0 Z" fill="none" stroke="#1a3a5f" stroke-width="16" stroke-linejoin="round" />
+
+    <g transform="translate(200,180)">
+      <circle r="120" fill="url(#markerGlow)" opacity="0.45" />
+      <path d="M0 -110 C-66 -110 -120 -58 -120 4 C-120 90 0 200 0 200 C0 200 120 90 120 4 C120 -58 66 -110 0 -110 Z" fill="#00a6a6" />
+      <circle r="46" fill="#fff" />
+      <circle r="30" fill="#ffc107" opacity="0.85" />
+      <circle r="70" fill="none" stroke="url(#pulseGradient)" stroke-width="6" opacity="0.7" />
+      <circle r="95" fill="none" stroke="url(#pulseGradient)" stroke-width="4" opacity="0.5" stroke-dasharray="12 10" />
+    </g>
+
+    <path d="M200 400 C200 400 90 520 90 640" fill="none" stroke="#1a3a5f" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0.0" />
+  </g>
+
+  <g font-family="'Poppins', 'Segoe UI', sans-serif" fill="#1a3a5f" text-anchor="middle">
+    <text x="400" y="460" font-size="68" font-weight="600">SafeVision</text>
+    <text x="400" y="505" font-size="24" fill="#64748b">Spatial Analysis &amp; Visualization</text>
+  </g>
+
+  <g transform="translate(620,140)" opacity="0.35">
+    <circle cx="0" cy="0" r="4" fill="#1a3a5f" />
+    <circle cx="28" cy="-12" r="6" fill="#00a6a6" />
+    <circle cx="58" cy="8" r="8" fill="#ffc107" />
+    <path d="M0 0 Q28 -12 58 8" fill="none" stroke="#1a3a5f" stroke-width="2" stroke-dasharray="6 4" />
+  </g>
+</svg>

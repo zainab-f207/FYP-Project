@@ -1,0 +1,18 @@
+﻿Regular: 52, Structured: 97
+
+Geocode Results: 3 exact + 8 parent + 4 fail = 15 total
+  [FAIL  ] Al Khuderia Housing Block F         -> NO RESULT
+  [exact ] Anarkali Bazaar                     -> (31.5648, 74.3127)
+  [exact ] Old Anarkali Road                   -> (31.5641, 74.3089)
+  [FAIL  ] Ichhra Market                       -> NO RESULT
+  [parent] Eden Abad Block C                   -> (31.4127, 74.2144)
+  [exact ] Askari 10 Block C                   -> (31.4936, 74.3263)
+  [parent] Askari 6 Block E                    -> (31.5250, 74.3622)
+  [FAIL  ] Bahria Town Sector C Block C        -> NO RESULT
+  [FAIL  ] Bahria Town Sector F Block G        -> NO RESULT
+  [parent] LDA City Sector 3 Block H           -> (31.5720, 74.2906)
+  [parent] WAPDA Town Phase 1 Block C          -> (31.4369, 74.2700)
+  [parent] DHA Phase 1 Block T                 -> (31.4829, 74.3948)
+  [parent] DHA Phase 3 Block T                 -> (31.4740, 74.3774)
+  [parent] DHA Phase 5 Block D                 -> (31.4623, 74.4135)
+  [parent] DHA Phase 7 Block R                 -> (31.4520, 74.4870)

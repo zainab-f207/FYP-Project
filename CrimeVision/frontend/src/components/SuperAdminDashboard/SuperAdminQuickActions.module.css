@@ -1,40 +1,76 @@
 .quickActions {
-  background: linear-gradient(135deg, #8B4513 0%, #1a4f72 100%);
-  border-radius: 16px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-  padding: 25px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 28px 30px;
   margin-bottom: 35px;
   color: white;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.quickActions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--secondary), var(--accent), var(--secondary));
+}
+
+.quickActions::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(0, 166, 166, 0.08) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .actionsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
-  margin-top: 18px;
+  gap: 16px;
+  margin-top: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .actionBtn {
-  background: rgba(255,255,255,0.15);
-  border: none;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   color: white;
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 600;
-  padding: 18px 0;
+  padding: 20px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  transition: background 0.3s, transform 0.3s;
+  transition: all 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+  backdrop-filter: blur(8px);
 }
 
 .actionBtn:hover {
-  background: rgba(255,255,255,0.3);
-  transform: translateY(-4px) scale(1.04);
+  background: rgba(0, 166, 166, 0.15);
+  border-color: rgba(0, 166, 166, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 166, 166, 0.15);
 }
 
 .actionBtn i {
-  font-size: 2rem;
+  font-size: 1.8rem;
+  filter: drop-shadow(0 0 8px rgba(0, 166, 166, 0.4));
+}
+
+.actionBtn span {
+  font-size: 0.82rem;
+  opacity: 0.9;
+  letter-spacing: 0.02em;
 }

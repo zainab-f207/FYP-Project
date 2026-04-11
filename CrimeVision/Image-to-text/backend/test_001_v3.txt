@@ -1,0 +1,99 @@
+﻿python : [33mChecking connectivity to the model hosters, this may take a 
+while. To bypass this check, set `DISABLE_MODEL_SOURCE_CHECK` to `True`.[0m
+At line:1 char:1
++ python test_crime_area_only.py "D:\FYP\Project\CrimeVision\OCRModel\a ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33mChecking c... to `True`.[0m 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-02-15 00:01:47,532 - __main__ - INFO - ===================================
+=============================================
+2026-02-15 00:01:47,532 - __main__ - INFO - TESTING CRIME AREA EXTRACTION: 
+D:\FYP\Project\CrimeVision\OCRModel\app\data\raw\FIR_001.png
+2026-02-15 00:01:47,532 - __main__ - INFO - ===================================
+=============================================
+2026-02-15 00:01:47,532 - __main__ - INFO - Initializing FIR extractor...
+2026-02-15 00:01:47,532 - easyocr.easyocr - WARNING - Using CPU. Note: This 
+module is much faster with a GPU.
+2026-02-15 00:01:51,006 - fir_specialized_ocr - INFO - \u2713 EasyOCR 
+initialized (Urdu + English)
+2026-02-15 00:01:51,008 - easyocr.easyocr - WARNING - Using CPU. Note: This 
+module is much faster with a GPU.
+2026-02-15 00:01:52,908 - fir_specialized_ocr - INFO - \u2713 EasyOCR 
+English-only reader initialized
+2026-02-15 00:01:52,910 - fir_specialized_ocr - ERROR - PaddleOCR init failed: 
+Unknown argument: use_gpu
+2026-02-15 00:01:52,910 - fir_specialized_ocr - INFO - \u2713 Tesseract 
+available
+2026-02-15 00:01:52,910 - fir_specialized_ocr - INFO - OCR engines available: 
+easyocr, tesseract
+2026-02-15 00:01:54,782 - __main__ - INFO - Image loaded: 3704x5120px (54.3 MB)
+2026-02-15 00:01:54,782 - __main__ - INFO - 
+Extracting crime area...
+2026-02-15 00:01:54,782 - fir_specialized_ocr - INFO - 
+==================================================
+2026-02-15 00:01:54,782 - fir_specialized_ocr - INFO - EXTRACTING CRIME AREA 
+(Row 4 - \u062c\u0627\u0626\u06d2 \u0648\u0642\u0648\u0639\u06c1)
+2026-02-15 00:01:54,782 - fir_specialized_ocr - INFO - 
+==================================================
+2026-02-15 00:01:54,799 - fir_specialized_ocr - INFO - [Crime Area] Extracted 
+region: Y[1945:2309] X[1074:2296] = 1222x364px
+2026-02-15 00:01:55,099 - fir_specialized_ocr - INFO - [Crime Area] Attempting 
+4.0x upscale...
+2026-02-15 00:01:58,988 - fir_specialized_ocr - INFO - [Crime Area] \u2713 
+Upscaled 4.0x + denoised + CLAHE: 4888x1456px
+2026-02-15 00:02:00,148 - fir_specialized_ocr - INFO - [Crime Area] 
+Tesseract-PSM6: 82 chars, 57 Urdu
+2026-02-15 00:02:05,548 - fir_specialized_ocr - INFO - [Crime Area] 
+Tesseract-Adaptive: 2284 chars, 1248 Urdu
+2026-02-15 00:02:06,065 - fir_specialized_ocr - INFO - [Crime Area] 
+Tesseract-2x: 87 chars, 59 Urdu
+F:\Image-to-text\backend\venv\Lib\site-packages\torch\utils\data\dataloader.py:
+668: UserWarning: 'pin_memory' argument is set as true but no accelerator is 
+found, then device pinned memory won't be used.
+  warnings.warn(warn_msg)
+2026-02-15 00:02:13,130 - fir_specialized_ocr - INFO - [Crime Area] 
+EasyOCR-Enhanced: 71 chars, 54 Urdu
+2026-02-15 00:02:13,364 - urdu_location_dictionary - INFO - [Fuzzy] 
+Word-corrected match: '\u062f\u0627\u062a\u0627 \u062f\u0631\u0628\u0627\u0631 
+\u0633\u0631\u06a9\u0644\u0631 \u0631\u0648\u0688' (score: 0.889, orig: 0.178)
+2026-02-15 00:02:13,381 - fir_specialized_ocr - INFO - [Crime Area] 
+Tesseract-PSM6: cleaned='\u0627\u0691\u06be \u06c1\u0627\u0631 \u06af\u0631 
+\u0631\u0648\u0646 \u062a\u0627\u0644 \u0646\u06d2 \u0631\u0628\u0627\u062c 
+\u0648\u0631 \u06be\u06f2 \u0631\u0648\u0628 \u0631\u0642 ' -> 
+corrected='\u062f\u0627\u062a\u0627 \u062f\u0631\u0628\u0627\u0631 
+\u0633\u0631\u06a9\u0644\u0631 \u0631\u0648\u0688' (match: 1.000, orig_sim: 
+0.178, adj: 0.178)
+2026-02-15 00:02:13,434 - urdu_location_dictionary - WARNING - [Fuzzy] 
+Word-corrected '\u0633\u0648\u0633\u0627\u0626\u0679\u06cc' rejected: scores 
+too low (corrected: 0.583, orig: 0.047)
+2026-02-15 00:02:13,434 - urdu_location_dictionary - WARNING - [Fuzzy] No 
+reliable match found (best scores: initial=0.137, corrected=0.583)
+2026-02-15 00:02:13,465 - fir_specialized_ocr - INFO - [Crime Area] 
+Tesseract-2x: cleaned='\u0627\u0628\u0627\u0632\u062f\u06c1\u0627\u0631\u0643 
+\u0631\u0628 \u0642\u0627\u0644\u062c\u0627\u0627\u0646\u06d2 23 2,8 
+\u06a9\u0631 \u06cc\u0631 \u062c\u0648\u067e\u0628 ' -> 
+corrected='\u062f\u0627\u062a\u0627 \u062f\u0631\u0628\u0627\u0631' (match: 
+1.000, orig_sim: 0.087, adj: 0.087)
+2026-02-15 00:02:13,515 - urdu_location_dictionary - WARNING - [Fuzzy] No 
+reliable match found (best scores: initial=0.240, corrected=0.462)
+2026-02-15 00:02:13,515 - fir_specialized_ocr - INFO - [Crime Area] Winner: 
+Tesseract-PSM6 -> '\u062f\u0627\u062a\u0627 \u062f\u0631\u0628\u0627\u0631 
+\u0633\u0631\u06a9\u0644\u0631 \u0631\u0648\u0688' (score: 0.178)
+2026-02-15 00:02:13,531 - __main__ - INFO - 
+===============================================================================
+=
+2026-02-15 00:02:13,531 - __main__ - INFO - RESULT
+2026-02-15 00:02:13,531 - __main__ - INFO - ===================================
+=============================================
+2026-02-15 00:02:13,531 - __main__ - INFO - \u2713 Crime Area: 
+\u062f\u0627\u062a\u0627 \u062f\u0631\u0628\u0627\u0631 
+\u0633\u0631\u06a9\u0644\u0631 \u0631\u0648\u0688
+2026-02-15 00:02:13,531 - __main__ - INFO -   Length: 20 chars
+2026-02-15 00:02:13,531 - __main__ - INFO -   Urdu chars: 17
+2026-02-15 00:02:13,531 - __main__ - INFO - ===================================
+=============================================
+
+SUCCESS!
+Crime Area: ╪»╪º╪¬╪º ╪»╪▒╪¿╪º╪▒ ╪│╪▒┌⌐┘ä╪▒ ╪▒┘ê┌ê

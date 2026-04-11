@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import apiService from '../services/apiService';
+import apiService from '../services/apiService_updated';
+import { requestLocationPermission } from '../services/LocationPermission';
 
 const AuthContext = createContext();
 
@@ -23,7 +24,13 @@ export const AuthProvider = ({ children }) => {
       if (storedToken) {
         try {
           // Verify token with backend via apiService so VITE_API_BASE_URL is respected
-          const userData = await apiService.getCurrentUser(storedToken).catch(() => null);
+          const userData = await apiService.getCurrentUser(storedToken).catch((err) => {
+            if (err && err.message && err.message.includes('401')) {
+              // 401 means not logged in, do not show error
+              return null;
+            }
+            throw err;
+          });
           if (userData) {
             setUser(userData);
             setToken(storedToken);
@@ -32,7 +39,10 @@ export const AuthProvider = ({ children }) => {
             setToken(null);
           }
         } catch (error) {
-          console.error('Auth check failed:', error);
+          // Only log unexpected errors
+          if (!error.message || !error.message.includes('401')) {
+            console.error('Auth check failed:', error);
+          }
           localStorage.removeItem('token');
           setToken(null);
         }
@@ -52,6 +62,21 @@ export const AuthProvider = ({ children }) => {
           setToken(data.access_token);
           const userData = await apiService.getCurrentUser(data.access_token).catch(() => null);
           if (userData) setUser(userData);
+
+          // Request location permission after successful login
+          console.log("📍 Requesting location permission after login...");
+          try {
+            const locationGranted = await requestLocationPermission();
+            if (locationGranted) {
+              console.log("✅ Location permission granted after login");
+            } else {
+              console.log("⚠️ Location permission not granted, but login successful");
+            }
+          } catch (locationError) {
+            console.warn("⚠️ Location permission request failed, but login successful:", locationError);
+            // Don't fail login if location permission fails
+          }
+
           return { success: true };
         }
         return { success: false, error: 'Login failed' };

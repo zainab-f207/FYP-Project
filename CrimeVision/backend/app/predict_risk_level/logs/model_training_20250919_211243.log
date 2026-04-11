@@ -1,0 +1,73 @@
+2025-09-19 21:12:43,631 - __main__ - INFO - === CRIME RISK MODEL TRAINING STARTED ===
+2025-09-19 21:12:43,631 - __main__ - INFO - Script started at: 2025-09-19 21:12:43.631569
+2025-09-19 21:12:43,787 - mysql.connector - INFO - package: mysql.connector.plugins
+2025-09-19 21:12:43,788 - mysql.connector - INFO - plugin_name: caching_sha2_password
+2025-09-19 21:12:43,796 - mysql.connector - INFO - AUTHENTICATION_PLUGIN_CLASS: MySQLCachingSHA2PasswordAuthPlugin
+2025-09-19 21:12:43,915 - __main__ - INFO - Total records to load: 50166
+2025-09-19 21:12:43,915 - __main__ - INFO - Loading data in chunks of 10000...
+2025-09-19 21:12:43,984 - __main__ - INFO - Loaded chunk 1, total records: 10000
+2025-09-19 21:12:44,106 - __main__ - INFO - Loaded chunk 2, total records: 20000
+2025-09-19 21:12:44,223 - __main__ - INFO - Loaded chunk 3, total records: 30000
+2025-09-19 21:12:44,338 - __main__ - INFO - Loaded chunk 4, total records: 40000
+2025-09-19 21:12:44,455 - __main__ - INFO - Loaded chunk 5, total records: 50000
+2025-09-19 21:12:44,511 - __main__ - INFO - Loaded chunk 6, total records: 60000
+2025-09-19 21:12:44,556 - __main__ - INFO - Loaded 50166 records with risk_level from database
+2025-09-19 21:12:44,559 - __main__ - INFO - === DATA DISTRIBUTION ANALYSIS ===
+2025-09-19 21:12:44,566 - __main__ - INFO - Risk level distribution:
+{'Medium': 29065, 'Low': 11232, 'High': 9869}
+2025-09-19 21:12:44,571 - __main__ - INFO - Top 10 areas:
+{'Ferozepur Road': 1966, 'Liberty Market': 1896, 'Township': 1880, 'Green Town': 1844, 'DHA Phase 4': 1842, 'Bahria Orchard': 1828, 'Wapda Town': 1813, 'DHA Phase 7': 1812, 'Allama Iqbal Town': 1808, 'Model Town': 1806}
+2025-09-19 21:12:44,573 - __main__ - INFO - Total unique areas: 29
+2025-09-19 21:12:44,576 - __main__ - INFO - Crime type distribution:
+{'Street Crime': 15120, 'Robbery': 12283, 'Burglary': 10012, 'Vehicle Theft': 7672, 'Violent Crime': 5078, 'murder': 1}
+2025-09-19 21:12:44,576 - __main__ - INFO - Total unique crime types: 6
+2025-09-19 21:12:44,580 - __main__ - INFO - Date range: 2024-01-01 to 2025-09-01
+2025-09-19 21:12:44,580 - __main__ - INFO - === ANALYZING DETERMINISTIC PATTERNS ===
+2025-09-19 21:12:44,591 - __main__ - INFO - Using 50,000 sample for deterministic pattern analysis
+2025-09-19 21:12:44,628 - __main__ - INFO - Highly deterministic patterns (>90%): 41
+2025-09-19 21:12:44,636 - __main__ - INFO - Diverse patterns (no risk level > 70%): 20
+2025-09-19 21:12:44,641 - __main__ - INFO - Found 41 highly deterministic area-crime-risk patterns
+2025-09-19 21:12:44,641 - __main__ - INFO - Creating memory-optimized visualizations...
+2025-09-19 21:12:44,646 - __main__ - INFO - Using 20,000 sample for visualizations
+2025-09-19 21:12:45,658 - __main__ - INFO - Data distribution analysis saved to model/data_distribution_analysis.png
+2025-09-19 21:12:45,738 - __main__ - INFO - Data analysis results saved to model/data_analysis_results.json
+2025-09-19 21:12:45,820 - __main__ - INFO - Adding 10.0% noise to break deterministic patterns...
+2025-09-19 21:12:48,695 - __main__ - INFO - Added targeted noise to break deterministic patterns
+2025-09-19 21:12:48,722 - __main__ - INFO - Risk level distribution after processing: {'Medium': 29509, 'Low': 11726, 'High': 8930}
+2025-09-19 21:12:48,723 - __main__ - INFO - Feature matrix shape: (50165, 8)
+2025-09-19 21:12:49,404 - __main__ - INFO - Train accuracy: 95.39%
+2025-09-19 21:12:49,404 - __main__ - INFO - Test accuracy: 95.17%
+2025-09-19 21:12:49,404 - __main__ - INFO - Overfitting gap: 0.22%
+2025-09-19 21:12:49,476 - __main__ - INFO - Weighted Precision: 0.951
+2025-09-19 21:12:49,476 - __main__ - INFO - Weighted Recall: 0.952
+2025-09-19 21:12:49,476 - __main__ - INFO - Weighted F1-Score: 0.951
+2025-09-19 21:12:49,477 - __main__ - INFO - 
+Classification Report:
+2025-09-19 21:12:49,509 - __main__ - INFO -               precision    recall  f1-score   support
+
+        High       0.90      0.83      0.86      2679
+         Low       0.96      0.96      0.96      3518
+      Medium       0.96      0.98      0.97      8853
+
+    accuracy                           0.95     15050
+   macro avg       0.94      0.93      0.93     15050
+weighted avg       0.95      0.95      0.95     15050
+
+2025-09-19 21:12:49,514 - __main__ - INFO - Confusion Matrix:
+[[2219  123  337]
+ [ 108 3391   19]
+ [ 131    9 8713]]
+2025-09-19 21:12:49,763 - __main__ - INFO - Model performance visualization saved to model/model_performance.png
+2025-09-19 21:12:49,764 - __main__ - INFO - Detailed performance metrics saved to model/performance_metrics.json
+2025-09-19 21:12:49,823 - __main__ - INFO - Model saved as model/random_forest_model.joblib
+2025-09-19 21:12:49,823 - __main__ - INFO - 
+=== SAMPLE PREDICTIONS ===
+2025-09-19 21:12:49,832 - __main__ - INFO - Cantt + Burglary: Medium (probs: [0.22  0.003 0.777])
+2025-09-19 21:12:49,839 - __main__ - INFO - DHA Phase 5 + Robbery: Medium (probs: [0.081 0.004 0.916])
+2025-09-19 21:12:49,841 - __main__ - INFO - Sample predictions saved to model/sample_predictions.json
+2025-09-19 21:12:49,841 - __main__ - INFO - 
+=== TRAINING SUMMARY ===
+2025-09-19 21:12:49,841 - __main__ - INFO - Final Model Accuracy: 0.952
+2025-09-19 21:12:49,841 - __main__ - INFO - Overfitting Gap: 0.002
+2025-09-19 21:12:49,841 - __main__ - INFO - Total Training Time: 0:00:06.209459
+2025-09-19 21:12:49,842 - __main__ - INFO - Training completed successfully!
