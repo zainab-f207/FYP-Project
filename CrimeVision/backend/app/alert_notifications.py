@@ -185,12 +185,43 @@ class AlertNotificationSystem:
             if conn and conn.is_connected():
                 conn.close()
 
+    def _get_system_setting_int(self, key: str, default: int, min_value: int = 1, max_value: int = 3650) -> int:
+        """Read an integer system setting with safe bounds and fallback."""
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = %s", (key,))
+            row = cast(Optional[Dict[str, Any]], cursor.fetchone())
+            raw = row.get("setting_value") if row else default
+            parsed = int(raw)
+            return max(min_value, min(max_value, parsed))
+        except Exception:
+            return default
+        finally:
+            if cursor:
+                cursor.close()
+            if conn and conn.is_connected():
+                conn.close()
+
     async def get_real_safety_data(self, latitude: float, longitude: float, radius_km: float = 1.0) -> Dict[str, Any]:
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
+
+            alert_last_30_window_days = self._get_system_setting_int("alert_last_30_window_days", 30, min_value=1, max_value=3650)
+            alert_last_90_window_days = self._get_system_setting_int("alert_last_90_window_days", 90, min_value=1, max_value=3650)
+            alert_recent_half_window_days = self._get_system_setting_int("alert_recent_half_window_days", 182, min_value=1, max_value=3650)
+            alert_history_window_days = self._get_system_setting_int("alert_history_window_days", 365, min_value=30, max_value=3650)
+
+            now_utc = datetime.utcnow()
+            cutoff_30 = now_utc - timedelta(days=alert_last_30_window_days)
+            cutoff_90 = now_utc - timedelta(days=alert_last_90_window_days)
+            cutoff_recent_half = now_utc - timedelta(days=alert_recent_half_window_days)
+            cutoff_history = now_utc - timedelta(days=alert_history_window_days)
 
             # Convert ALL inputs to float
             lat_float = float(latitude)
@@ -202,18 +233,29 @@ class AlertNotificationSystem:
                     COUNT(*) as total_crimes,
                     SUM(CASE WHEN risk_level = 'High' THEN 1 ELSE 0 END) as high_risk_count,
                     SUM(CASE WHEN risk_level = 'Medium' THEN 1 ELSE 0 END) as medium_risk_count,
-                    SUM(CASE WHEN crime_date >= (NOW() - INTERVAL 90 DAY) AND risk_level = 'High' THEN 1 ELSE 0 END) as high_risk_count_90d,
-                    SUM(CASE WHEN crime_date >= (NOW() - INTERVAL 90 DAY) AND risk_level = 'Medium' THEN 1 ELSE 0 END) as medium_risk_count_90d,
+                    SUM(CASE WHEN crime_date >= %s AND risk_level = 'High' THEN 1 ELSE 0 END) as high_risk_count_90d,
+                    SUM(CASE WHEN crime_date >= %s AND risk_level = 'Medium' THEN 1 ELSE 0 END) as medium_risk_count_90d,
                     COUNT(DISTINCT crime_type) as unique_crime_types,
-                    SUM(CASE WHEN crime_date >= (NOW() - INTERVAL 30 DAY) THEN 1 ELSE 0 END) as last_30_days,
-                    SUM(CASE WHEN crime_date >= (NOW() - INTERVAL 90 DAY) THEN 1 ELSE 0 END) as last_90_days,
-                    SUM(CASE WHEN crime_date >= (NOW() - INTERVAL 182 DAY) THEN 1 ELSE 0 END) as recent_half,
-                    SUM(CASE WHEN crime_date <  (NOW() - INTERVAL 182 DAY) THEN 1 ELSE 0 END) as older_half
+                    SUM(CASE WHEN crime_date >= %s THEN 1 ELSE 0 END) as last_30_days,
+                    SUM(CASE WHEN crime_date >= %s THEN 1 ELSE 0 END) as last_90_days,
+                    SUM(CASE WHEN crime_date >= %s THEN 1 ELSE 0 END) as recent_half,
+                    SUM(CASE WHEN crime_date <  %s THEN 1 ELSE 0 END) as older_half
                 FROM crimes
                 WHERE SQRT(POW(111.32 * (CAST(latitude AS DECIMAL(10,6)) - %s), 2) +
                           POW(111.32 * (%s - CAST(longitude AS DECIMAL(10,6))) * COS(CAST(latitude AS DECIMAL(10,6)) / 57.3), 2)) <= %s
-                  AND crime_date >= (NOW() - INTERVAL 365 DAY)
-            """, (lat_float, lon_float, radius_float))
+                  AND crime_date >= %s
+            """, (
+                cutoff_90,
+                cutoff_90,
+                cutoff_30,
+                cutoff_90,
+                cutoff_recent_half,
+                cutoff_recent_half,
+                lat_float,
+                lon_float,
+                radius_float,
+                cutoff_history,
+            ))
 
             crime_stats = cursor.fetchone()
             crime_stats_dict = cast(Dict[str, Any], crime_stats) if crime_stats else {}
@@ -265,7 +307,7 @@ class AlertNotificationSystem:
                 'recent_count': recent_half,
                 'older_count': older_half,
                 'time_risk_score': time_risk_score,
-            }, 365)
+            }, alert_history_window_days)
 
             risk_pct = float(risk_summary.get('risk_score', 50.0))
             safety_score = float(risk_summary.get('safety_score', 50.0))
@@ -388,11 +430,13 @@ class AlertNotificationSystem:
             # 🎯 User Goal: "You just entered danger" structure
             _is_hist = "historical" in risk_lvl.lower() or (risk_pct <= 35 and "Proximity" in getattr(alert, 'alert_trigger_reason', ''))
             _time_str = (time_label or "night").lower()
+            radius_km = float(getattr(alert, 'radius_km', 1.0) or 1.0)
+            radius_label = f"{radius_km:g}"
             
             if location_type == "CURRENT" or 'movement' in alert_type_str.lower():
                 if _is_hist:
                     title = "🚨 High-Risk Area Nearby"
-                    body  = f"You are within 1 km of a historically high-risk zone in {area_display_name}. Risk is higher at {_time_str}."
+                    body  = f"You are within {radius_label} km of a historically high-risk zone in {area_display_name}. Risk is higher at {_time_str}."
                 else:
                     title = "🚨 Entered High-Risk Zone"
                     body  = f"Recent high-risk incidents detected near your location in {area_display_name}. Stay alert — especially at {_time_str}."
@@ -736,6 +780,7 @@ class AlertNotificationSystem:
                         'username': user_data.get('username'),
                         'risk_level': canonical_risk_level,
                         'area_name_raw': display_area, # USE NORMALIZED NAME HERE
+                        'radius_km': getattr(alert, 'radius_km', None),
                         'safety_score': canonical_safety_score,
                         'risk_pct': real_risk_pct,
                         'total_crimes_365': total_365d,

@@ -1,0 +1,218 @@
+26:As opposed to traditional systems that only process the verified crimes, the SafeVision will process the First Information Reports (FIRs) but will always draw a line between reported cases and confirmed crimes. The platform allows citizens, administrators and law enforcement agencies to monitor, predict and act on safety issues in a single interface.
+27:The architecture of the platform includes three different levels of access SuperAdmin, Admin and User; it is written in FastAPI to provide a high-performance backend, React.js to have a responsive frontend interface, and MySQL to have secure and scalable data storage. SuperAdmins have complete control over the system including user control, registration of the administrator, validation of the FIR data, and access to classified records. Both SuperAdmins and Admins use a multi-layered AI-based prediction engine that integrates Poisson probability modeling with Random Forest classification to facilitate both the support of manual and multi-crime prediction by date, area, and incident type. The user interface offers interactive incident heatmaps which display route suggestions that prioritize safety along with real-time navigation and contact location sharing through messaging features and automated alerts for high-risk zones and expected incidents which users receive through email and browser notifications.
+240:5.2.4OCR Processing Hardware Notes71
+252:6.5OCR and FIR Processing Testing74
+281:3. 8:    SafeVision - Use Case 7: Administrative Monitoring and Reporting…………………...37
+289:4. 7:    SafeVision - Admin Dashboard………………………………………………………….52
+300:4. 18  SafeVision - Data Flow Diagram (Level 2: Prediction and Route Safety)……………….63
+319:Table 13:SafeVision - Administrative Monitoring and Reporting36
+320:Table 14:SafeVision - OCR FIR Processing37
+400:No Single Administrative Instruments:Authorities need a unified system which lets them handle incidents while studying data patterns and managing their response operations.
+406:Engineer a multi-role structure (SuperAdmin, Admin, and User) to guarantee regulated data access and secure role-based dealings, with fitting authorizations for each user category.
+407:Implement a three-tiered AI prediction system which combines Poisson probability statistical methods with Random Forest Classifier machine learning to identify patterns and critical areas and potential future risks with high accuracy and reliability.
+408:Develop an automated system to extract records which employs Optical Character Recognition (OCR) for Urdu FIR documents to automatically extract essential details including offense type and location and date and time, thereby eliminating the need for manual record entry.
+409:Establish a monitoring system that continuously checks the database to identify new incidents occurring near user-designated areas which include their home and workplace, and it will send instant alerts through both browser push notifications and email, using a smart mechanism to manage the volume of alerts.
+411:Uses electronic mail and browser notifications to deliver automatic danger alerts which direct users to specific map sections showing nearby threats and hazardous areas.
+412:Establishes a data verification process which improves trust in submitted incident reports and analytical results through administrative approval protocols.
+415:The design and construction of an intelligent web-based safety system which integrates incident management with predictive analysis and real-time alert systems forms the complete range of this investigation. The platform features interactive dashboard tools which enable users andsupervisors and super administrators to access safety metrics and hazard visualizations through geospatial charts and security metric displays, while it provides separate sections for incident management and system configuration. The system includes an OCR-based element which allows users to upload FIR documents, through which it achieves automatic data extraction and device-optimized performance with its adaptable design.
+416:The backend uses FastAPI-based RESTful architecture to create secure and expandable data management systems which enable role-based entitlement checking for official authorization verification. The system provides direct notification services which use VAPID to send browser push notifications and SMTP to deliver email messages, while it operates continuous system monitoring from its background functions. The study investigates AI integration through a multi-tier prediction system which combines Poisson probabilities with Random Forest classification and a risk evaluation method based on quantity and recency and severity and trajectory patterns and time elements. The system includes a multi-engine OCR pathway which enables spatial charting through geocoding while its structured MySQL repository supports users and incidents and notifications and spatial inquiries. The system produces an active platform which provides intelligent risk forecasting and automated FIR processing and forward-looking alerts and complete data-driven safety assessment tools.
+422:Hazard Administration:Teams should identify critical technical challenges that will affect their work on OCR accuracy and geospatial computation in their initial stage of the project.
+427:Backend: FastAPI provides fast API service through its asynchronous model which automatically creates API documentation
+428:Frontend: React.js delivers a dynamic user interface which updates in real-time to provide an active user experience
+429:Database: MySQL provides secure data storage which can be expanded while supporting location-based search functionality.
+430:AI/ML: Scikit-learn serves as the tool for deploying Random Forest models through its custom-built Poisson likelihood computation capabilities.
+431:OCR: EasyOCR and Tesseract enable users to recognize Urdu text through their combined capabilities
+435:Multi-Tier Intelligence: SafeVision achieves system reliability and performance accuracy by combining three different AI algorithms which include Poisson likelihood and Random Forest and their backup system.
+436:Automated FIR Handling: The OCR system has been designed to process Urdu police documents through its complete workflow which includes initial document processing and engine-based document evaluation and intelligent data extraction.
+439:The system provides three separate user interfaces which include dedicated access for Users and Administrators and Super Administrators to manage their respective access rights.
+495:Grasping the theoretical bases of SafeVision necessitates scrutinizing several crucial constructions that collectively comprise the intellectual core of intelligent safety administration systems.
+499:Predictive forecasting uses historical and current data to assess potential future threats. The system operates under the belief that past patterns will assist in predicting future events although researchers must manage challenges which arise from both data quality concerns and ethical research obligations. SafeVision uses two methods for its operation which include Poisson probability modeling to deliver precise percentage forecasts and Random Forest classification to identify complex patterns and categorize different risk levels.
+501:Geospatial awareness involves using location-specific data together with mapping technologies to investigate spatial patterns and their relationships across multiple areas. The security management system uses geospatial intelligence to identify dangerous areas while creating incident maps and assessing how threats vary across different locations. Decision-making depends on location data because incidents tend to gather in specific areas instead of spreading out evenly across space. SafeVision utilizes heatmaps to show dangerous areas while using radius-based security assessments and Haversine distance calculations to determine which incidents fall inside a user's notification range.
+505:Statistical likelihood modeling uses mathematical equations to determine event probabilities based on existing data. Security systems use the Poisson distribution as a standard method to predict rare events throughout various time intervals. The technique provides a reliable approximation because real-world conditions present more complex challenges. SafeVision uses this model to calculate risk assessment percentages which include the risk of a crime occurring in a particular time and location. The method establishes standardization through probabilistic display of unpredictable events.
+507:Machine learning classification uses historic examples to create data groups through pattern identification. Advanced statistical models enable the detection of intricate data connections which traditional statistical methods cannot identify. In SafeVision, a Random Forest Classifier uses previous incident data which includes location and offense type and time of day and season to divide risk levels into three categories: Elevated, Moderate, and Minimal. Random Forest implementation improves model accuracy by reducing overfitting, which makes it suitable for security datasets that follow structured formats.
+511:SafeVision uses a three-level prediction system to maintain system reliability and continuous operational system functioning. The system combines different techniques into a defined sequence instead of using only one technique. The first level uses the Poisson model to create accurate probability predictions when there is sufficient available data. The system switches to the Random Forest model when the main method fails because of insufficient data. The system employs a basic label encoding system as a backup method to ensure users receive some form of risk assessment, which functions as a mandatory requirement. The tiered structure provides continuous system operation while it prevents failures through its ability to handle different types of data situations.
+523:Immediacy weighting (30% of risk score) and time-decay mechanisms accentuate recent episodes to reflect greater near-term hazard.
+526:Geospatial awareness, heatmaps, and area-specific risk profiles facilitate comprehension of spatial patterns and guide environmental rectifications.
+529:Multi-tiered framework combining Poisson probability modeling and Random Forest categorization to capitalize on complementary strengths of statistical and machine learning procedures.
+543:Limited geographic coverage; may omit minor incidents; open data could aid criminals; primarily reactive
+577:Supports heatmap and radius-based analyses; improves spatial risk understanding
+587:Primarily reactive, focused on historical crime reporting and community awareness; limited guidance on mitigation
+591:Multi-source data integration with automated OCR extraction from FIRs; geocoding converts area names to precise coordinates for visualization
+594:Unified AI-based predictive models (Poisson + Random Forest), geospatial analytics, interactive heatmaps, and adaptive visualizations; multi-layered architecture ensures robustness
+600:Multi-role architecture with role-based access and adaptive dashboards; interactive visualization for SuperAdmin, Admin, and User roles
+619:Cohesive platform structure where OCR pulling, prognostical algorithms, renderings, and notifications are combined with shared data schemas and uniform entry points.
+622:Hierarchical forecasting merging Poisson likelihood, Random Forest categorization, and established backup, guaranteeing resilient forecasts under all circumstances.
+625:OCR apparatus streamlines removal from Urdu FIRs utilizing EasyOCR, PaddleOCR, and Tesseract, maintaining superior correctness and removing manual lags.
+708:The chapter presents the complete requirements which are necessary to build and implement SafeVision, an AI-based safety monitoring system that uses advanced analysis and geographic mapping. The platform provides predictive safety forecasts and warning broadcasts and route assistance to users while system managers can verify event data and monitor personnel and create predictive assessments through the API tools which they have collected. The document defines both the system requirements which are active and passive and it establishes the required hardware and software specifications and network design requirements. The project uses APIs for cartography and liaison and data forecasting to create seamless interoperability between its various components. The complete set of prerequisites establishes SafeVision as a system which achieves operational performance and dependable function, while also delivering user-friendly features that enhance public safety awareness and decision-making processes.
+729:Frontend Technologies:React.js for developing flexible user interfaces that use components and Leaflet.js for creating interactive maps which include heatmaps and geographic displays and Chart.js for showing data in dashboard and trend graph formats.
+730:Backend Technologies:FastAPI for building efficient asynchronous APIs that produce automatic documentation and Python as the main programming language for AI model creation and backend operations and MySQL Connector (Latest) for database access and MySQL query execution and APScheduler (Latest) for managing background tasks which handle notification and report generation.
+731:AI and Machine Learning Libraries:Scikit-learn for building and testing a Random Forest classifier and Pandas for preparing and analyzing data and developing features and NumPy for performing numerical calculations required to determine Poisson probabilities and Joblib for saving and retrieving machine learning models
+732:OCR and Document Processing:EasyOCR as its primary OCR tool for reading Urdu text while PaddleOCR functions as a secondary OCR tool which detects document layouts and reads English text and Tesseract works as the backup OCR engine which reads standard English text and OpenCV (cv2) handles image pretreatment through CLAHE and thresholding and line erasure while Pillow (PIL) allows users to change image formats and modify existing images
+733:Notification and Communication:Pywebpush which enables browser push notifications using VAPID and the SMTP Library which creates and sends electronic mail alerts
+741:Admin/SuperAdmin Role
+757:Confirms credentials, verifies lockout state, transmits OTP if needed, issues JWT tokens with function-based expiration
+758:Google OAuth Sign-in
+760:Sign in with Google account
+762:Validates Google token, checks existing user linkage, issues JWT tokens
+763:Admins Enrollment
+764:SuperAdmin-only manager creation
+766:SuperAdmin can enroll new Admins
+767:Validates SuperAdmin status, creates manager with authorizations, transmits setup guidance
+772:Accepts image, initiates OCR pipeline, saves with pending status, logs import
+773:OCR Processing
+777:Runs EasyOCR/PaddleOCR/Tesseract, pulls fields, shows for review
+781:SuperAdmin accept/decline submissions
+789:Multi-tiered forecasting (Poisson → Random Forest → Legacy)
+812:Sends browser push via VAPID protocol, sends electronic mail with HTML templates, deep-link tokens
+826:View density maps with administrative overlays
+828:Safety Route Suggestion
+830:Request safe routes between locations
+832:Examines crime data along route, suggests alternative safer paths, shows on map
+849:Administrator (Admin)
+851:Super Administrator (SuperAdmin)
+852:Possesses total system oversight comprising admin and user administration, system setup, audit trail access, and all Administrator functions.
+854:Includes external vendor services that provide operational geocoding and map segment services through OpenStreetMap and messaging services through SMTP and browser push services through VAPID which enable users to access data for both assessment and forecasting purposes
+862:SafeVision access requires users and administrators to use protected verification methods which enable them to enter the system through role-based access control.
+871:User, Administrator
+873:Covers all verification-related actions including user signup, sign in, password retrieval, and role-based entry control for users, admins, and super admins.
+875:The user or admin must possess valid credentials and an internet connection. Platform must be functioning.
+882:Platform provides a unified database which administrators and external APIs use to access information through the platform's interface
+884:Participants are signed into the platform and redirected to their designated starting panel (User, Admin, or SuperAdmin). Session credentials are saved.
+891:The platform enables administrators and external APIs to create a unified verified information system through their interaction with the system.
+898:Safety Data Assimilation and Administration
+900:Administrator, External APIs, System
+902:Defines how the platform gathers, integrates, and refreshes datasets from various APIs and administrative transfers for assessment and projections. Includes OCR-based FIR extraction.
+904:API keys are active and the database is linked. Admin has suitable authorizations.
+906:permits administrators to upload new datasets through admin links or input methods
+907:Optical character recognition (OCR) to extract particular elements from visual content
+913:Administrator reviews the content before making approval decisions or requesting changes
+923:The platform uses AI/ML algorithms to predict safety levels and route hazards through its AI/ML system according to this operational explanation.
+932:The safety assessment of areas employs a multi-tiered AI/ML projection method that first uses a Poisson Probability Model as its primary model. The secondary model uses a Random Forest Classifier while the Legacy Label Encoder serves as a backup model system.
+937:Poisson Probability Model computes the statistical plausibility of an event (e.g., 22.4% likelihood)
+938:If the Poisson model falters due to missing information, the platform silently reverts to the Random Forest Classifier, which projects hazards as High, Medium, or Low
+965:Platform shows a safety rating gauge along with a heatmap and incident markers and a radar chart display
+980:Warnings and Notifications Administration
+984:Handles all steps for detecting alerts which include creating alerts and sending them to users through browser notifications and email messages. The system provides users with 60-minute breaks between zones to prevent them from receiving too many alerts
+992:Platform transmits browser push notification via VAPID protocol
+1029:Use Case 7: Administrative Monitoring and Reporting
+1030:The system enables administrators to monitor system performance while they create operational reports which support their strategic planning activities.
+1041:Table 13: SafeVision - Administrative Monitoring and Reporting
+1047:Administrator, System
+1049:Admins can watch logs, system operation, route hazards, and user actions, and create analytical summaries for planning.
+1051:Admin credentials and entry to backend utilities. System must have gathered adequate information.
+1053:Admin user selects either the summary section or the monitoring dashboard for their work
+1055:Admin user selects summary parameters which include timespan and region and summary kind
+1057:Admin user can download summaries in three formats which include PDF and CSV and regular email delivery setup
+1058:Admin user examines confirmation logs to track all user actions and system operations
+1065:3. 8:SafeVision - Use Case 7: Administrative Monitoring and Reporting
+1066:Use Case 8: OCR FIR Processing
+1067:The administration of this situation can upload FIR images to obtain specific parts of those images.
+1068:Table 14: SafeVision - OCR FIR Processing
+1072:OCR FIR Handling
+1074:Administrator, System
+1076:Allows automated retrieval of structured data from Urdu FIR documents utilizing multi-engine OCR with specialized preliminary processing.
+1078:Admin has uploaded a valid FIR picture (JPEG, PNG, WEBP). OCR engines are accessible.
+1080:Admin uploads FIR picture via OCR interface
+1082:System executes EasyOCR (main), PaddleOCR (secondary), and Tesseract (backup) engines
+1087:System presents retrieved segments for admin inspection and authorization
+1089:Retrieved FIR data is shown for admin inspection and may be authorized to join the incident repository.
+1104:The system takes 500 milliseconds to return prediction results and it takes 30 to 40 seconds to process each image through OCR.
+1110:The system performs nightly backup operations which enable users to retrieve data from previous points in time and the OCR system automatically defaults to manual entry mode during essential situations.
+1114:Maintains a record of all critical system activities while its security measures block unauthorized access through traffic control methods and account suspension and JWT token expiration.
+1120:Provides two functions which enable users to conduct OCR review tasks and urgent tasks with quick and simple methods.
+1139:Source code administration and collective effort
+1141:React.js
+1144:FastAPI
+1147:MySQL
+1148:Structured data retention and administration
+1151:Random Forest Classifier training and deployment
+1152:OCR
+1153:EasyOCR, Tesseract
+1157:Image preliminary handling for OCR
+1179:User interface planning, model creation, React.js execution, dashboard elements, map inclusion
+1182:FastAPI backend creation, database linkage, API interchange, model calibration, prediction engine integration, OCR flow integration
+1190:The SafeVision system depends on an organized relational database to manage and sort all crucial details effectively. The database uses MySQL design which enables it to provide strong data protection and system growth and compatibility with FastAPI based server frameworks.
+1196:Keeps user account specifics such as identity, electronic mail, designation (user/admin/superadmin), encrypted password, residence/office positions, alert range, and preferences.
+1216:Registers all pivotal system happenings for auditing and tracking, including user entries, data modifications, and administrative functions.
+1227:The system employs proven, well-backed instruments (React, FastAPI, MySQL, Scikit-learn) guaranteeing dependability and ease of construction.
+1228:Existing tools allow OCR and AI development to proceed with standard software and average computer hardware which enables cost reduction through cloud infrastructure and open-source software solutions.
+1230:The system provides users with an easy interface which enables them to learn the system quickly while administrators can handle their tasks through efficient operational procedures.
+1331:The complete SafeVision system architecture operates as a web application with multiple layers which includes a React-based frontend and a FastAPI-based backend that connects to a MySQL database while using AI and machine learning models. External APIs like Leaflet enable users to create geographical maps which they can visualize in their applications. The architectural design enables data to move seamlessly from the user interface to the backend system which allows users to perform interactive analytical tasks while receiving safety-related information. The system intelligence base uses a prediction engine that operates through multiple layers to follow a predetermined fallback procedure:
+1332:Layer 1 (Primary) - Poisson Probability Model: This layer executes first to compute the statistical likelihood of any specific incident (e.g., 22.4% probability of theft). The model achieves both computational efficiency and mathematical precision when historical data exists in sufficient amounts.
+1333:Layer 2 (Secondary) - Random Forest Classifier: The Random Forest Classifier will be used in cases where the Poisson model fails to produce results due to missing data or zero-frequency situations while FIR historical patterns serve as the basis for risk classification into High, Medium, or Low categories.
+1335:The same React web application can also be deployed as a hybrid Android and iOS mobile application with the addition of Capacitor integration. Users can access predictive insights together with alerts and area-based safety information through a mobile-friendly interface which preserves the existing structure and backend connectivity of the web system.
+1337:The two primary approaches for software system development lead to the creation of two distinct software design methodologies. SafeVision required the implementation of Top-Down Design Approach through its complete design process. The approach started from the top-level objectives - which included safety data prediction and visualization and alert generation - and divided them into smaller sub modules which included data integration and visualization engine and reporting module and alert system and OCR processing. The approach established:
+1344:Safevision interface design establishes accessibility standards through design work which includes both clear communication methods and user interaction design. The system shows safety data through mapping and charting methods which create a user-friendly navigation experience and use simplified design elements. The web-based interface provides user and administrator dashboards which include interactive maps and predictive charts and alert notifications. The mobile app version will also use the same UI components and will be compiled with Ionic Capacitor to give the adaptive touch-optimized layout. The interface system provides:
+1346:Admin Dashboard: manages all datasets while tracking user behavior and monitoring FIR submissions and reviewing OCR extracted data and producing automated reports.
+1347:SuperAdmin Dashboard: This will provide full system management features which include system administration and system configuration and access to audit logs and advanced analytics capabilities.
+1348:Hybrid Support: With Capacitor hybrid support enables the interface to display content on mobile devices while providing offline access and push notifications.
+1350:The system's complete visual design and user interaction patterns are shown through the SafeVision high-fidelity prototypes. The prototypes show how users and administrators use the application to obtain safety insights and safety predictions and safety management tools:
+1381:Admin Dashboard
+1383:4. 7:SafeVision - Admin Dashboard
+1393:SafeVision System Architecture shows the main system components which exchange information to create safety predictions. The system uses a combination of react frontend technology, Fast API backend system, MySQL database, and a multiple level crime risk assessment prediction system. The system uses Leaflet APIs to create geospatial data visualizations which permit extension to a Capacitor-based mobile application that shares the same backend system.
+1399:The Logical View of SafeVision defines the system's internal logic by showing how data elements connect through their object relationships. The main classes include User, Admin, Crime, Alert, PredictionRequest, and NotificationSubscription.
+1402:The system structure uses class associations and dependencies to create a framework that supports reusable components while maintaining consistent behavior between web applications and future mobile development. The system enables data processing through safe methods which allow tracking of system activities and their corresponding system reactions.
+1404:The Process View describes how the system operates by showing its workflow which includes user requests and their resulting visual data outputs. The system uses a three-stage prediction process that starts with Poisson probability estimation, then moves to Random Forest Classifier, and finally uses Legacy model as the last option which guarantees predictions in all situations.
+1414:The Sequence Diagram illustrates how SafeVision components interact with each other and how their time-dependent relationships function between User Frontend Backend Database AI Prediction Engine and Map API. The backend system will first initiate a prediction request through the Poisson model followed by Random Forest and then Legacy (if needed) which will occur without user awareness.
+1421:Frontend UI (React.js):Enables users to interact with the UI through its rendering capabilities.
+1422:Backend API (FastAPI):Handles request processing while performing business logic operations and authentication tasks.
+1424:OCR Service (EasyOCR/PaddleOCR/Tesseract):Extracts text from FIR documents using its OCR capabilities.
+1426:Database Layer (MySQL):MySQL to handle all data storage requirements and data retrieval needs.
+1432:The Physical View describes the deployment of the infrastructure of the SafeVision on the devices of clients and servers. The deployment process includes the three components of Client Tier which includes browser and mobile app access Web Server and Application Server which operates FastAPI through Uvicorn and Database Server which uses MySQL together with External Services that include OpenStreetMap API and SMTP and VAPID push.
+1437:Entity Relationship Diagram (ERD) shows how SafeVision handles data through its key entities and their relationships. The main tables contain user information together with admin details about crimes and areas and user alerts plus browser notifications and alert subscriptions and audit logs plus system logs.
+1440:The most important relationships are between User and Alerts (1:M), User and Subscriptions (1:1), Area and Crimes (1:M), and Admin and User (1:1). The system uses a relational structure which enables web applications and Capacitor applications to connect with both backend and frontend systems.
+1449:The diagram shows SafeVision as a single system which connects with Users Admins Emergency Services and External Mapping APIs and Notification APIs. The system receives credentials and location queries and FIR uploads while it sends safety scores and alerts and maps and analytics.
+1453:The level 1 shows SafeVision through its five main components which include 1.0 User Interface Management 2.0 Data Integration and OCR 3.0 Prediction Engine 4.0 Alert Manager and 5.0 Report Generator. The system contains data stores which include Users and Crimes and Alerts and Notifications and Reports.
+1457:DFD Level 2 (Detailed Flows - Prediction and Route Safety)
+1458:Prediction flow consists of 3.1 Receive Request which leads to 3.2 Fetch Historical Data which leads to 3.3 Extract Features which leads to 3.4 Run Poisson which leads to 3.5 Run Random Forest as required which leads to 3.6 Run Legacy as required which leads to 3.7 Aggregate Results which leads to 3.8 Store in Database which leads to 3.9 Return to Frontend. The system uses crime-weighted pathfinding to determine the optional routes which have the safest paths.
+1460:4. 18SafeVision - Data Flow Diagram (Level 2: Prediction and Route Safety)
+1463:The system operates by using Flow through 4.1 Monitor New Incidents after every 5 minutes which leads to 4.2 Match User Locations which leads to 4.3 Cooldown Check after every 60 minutes which leads to 4.4 Create Alert which leads to 4.5 Select Channels which leads to 4.6 Push Dispatch VAPID which leads to 4.7 Email Dispatch SMTP which leads to 4.8 Update Logs which leads to 4.8 Store in User Inbox.
+1488:Frontend: React.js 18.x with functional elements and hooks
+1489:Backend: FastAPI (Python 3.9+) with asynchronous access points
+1490:Database: MySQL 8.0 with spatial data support
+1491:AI/ML: uses Scikit-learn to implement Random Forest and it includes a custom Poisson execution feature
+1492:OCR: EasyOCR, PaddleOCR, Tesseract with OpenCV preprocessing
+1494:Notifications: Pywebpush (VAPID) to deliver browser push notifications and it uses SMTP to send electronic mail
+1514:Uvicorn for FastAPI, Webpack Dev Server for React
+1516:MySQL 8.0 (local instance)
+1524:MySQL 8.0 on dedicated instance
+1532:The Validation and Permission Unit manages user accounts through handling user registration and login and email validation and role-based access control and JWT token processing and session security.
+1535:Sign-in Validation with Role-Based 2FA:The system processes sign-in requests by confirming user credentials while verifying their lockout status. The system resets failed login attempts after successful authentication. The system uses OTP authentication for admin and superadmin users while applying TOTP for all enabled user accounts. The system generates access tokens and refresh tokens for users while storing the refresh token. The system records every sign-in event to maintain security.
+1539:The Multi-Tiered AI Estimation Unit uses three methods to estimate risk through its primary method of Poisson Probability and its secondary method of Random Forest and its Legacy method.
+1541:Poisson Likelihood Computation:Retrieve historical occurrences; determine lambda from occurrences per interval; return FAIL if lambda is zero; compute P(X>=1)=1-e^(-lambda); convert to percentage; round to single decimal spot; return hazard proportion.
+1542:Random Forest Training:Collect authorized incident records; prepare and encode categorical fields; construct time/season features; part data; train Random Forest with balanced sets; assess framework; store framework, encoders, and scaler.
+1543:Random Forest Estimation:Fetch framework artifacts; derive features from zone, incident type, time, and day; encode and scale features; estimate likelihoods and class; relate class to Low/Medium/High; return hazard tier and certainty.
+1545:Unified Estimation Access Point:The first step of the process involves testing Poisson; if it produces a value the system will link to the hazard tier while registering the outcome; if Poisson fails the system will proceed to test Random Forest; if Random Forest also fails the system will use Legacy backup; the system will always generate an estimation result.
+1550:Module 4:OCR and FIR Data Unit Purpose:
+1551:This unit extracts structured details from FIR images using EasyOCR, PaddleOCR, Tesseract, and OpenCV preprocessing.
+1554:Multi-Engine OCR with Field Extraction: Operate EasyOCR, PaddleOCR, and Tesseract; select the superior certainty outcome; pull out the incident zone using OCR patterns and strip scanning; standardize zone identifications; pull out sections, date, and time; locate the zone; return structured FIR details.
+1561:Browser Push Notification Setup:If VAPID keys don't exist you need to create them first before getting browser approval while you need to use the service operator to send subscription details to the backend system after that you will need to keep the subscription active until the time arrives for push notifications.
+1563:This unit uses Leaflet and OpenStreetMap to show maps and heatmaps along with markers and route safety suggestions.
+1565:Heatmap Fabrication:The system queries incidents based on the selected geographic area and its filtering options while assigning intensity levels according to the severity of incidents which results in creating heatmap points collection that the system uses to render Leaflet heatmap display.
+1566:Safety Route Computation:The base route is obtained from OSRM after which the route gets divided into sections which require hazard and safety calculations based on nearby incidents for each section. The system selects a safer route whenever the average safety rating falls below the established threshold. The route description should include both its geometric layout and safety assessment details.
+1601:OCR Processing Hardware Notes
+1602:The process of OCR with EasyOCR and PaddleOCR requires heavy mental effort. The time needed to process one FIR visual without GPU support ranges between 30 and 40 seconds.
+1604:This chapter provided complete realization details of SafeVision which developed through six critical validation and permission and multi-tiered AI estimation and hazard rating and safety rating and OCR and FIR data and warning and delivery and geospatial rendering units.. The system integrates all system components into one platform which provides Users and Admins and SuperAdmin different access rights and functions based on their user roles.
+1622:Quantitative analysis of SafeVision is presented in this chapter which evaluates five authentication security criteria together with AI predictive accuracy and OCR predictive performance and alert delivery reliability and system scalability and usability testing.
+1628:GPU: CPU resources to conduct all processing tasks including OCR and AI functions
+1629:Client Devices: Windows 11 operating system with Google Chrome version 120 and higher and Mozilla Firefox version 121 and higher to verify cross-browser compatibility.
+1632:Backend: Python 3.10+ with FastAPI and Uvicorn ASGI server for its backend functionality
+1633:Frontend: React.js 18 with Vite-based build system for front-end development and MySQL 8.0 for database management with local spatial indexing capabilities
+1634:Artificial intelligence / Machine learning:Scikit-learn for Random Forest and NumPy for Poisson Logic to implement artificial intelligence and machine learning capabilitiesOCR
+1635:Suite: uses EasyOCR and PaddleOCR and Tesseract which runs in CPU inference
+1642:OCR Sample:The OCR sample required testing field extraction accuracy and geocoding accuracy with 30 actual FIR images which were scanned at 300 DPI in Urdu.
+1646:Password hashing, token expiry, account lockout, 2FA being mandatory with privileged users, and Lahore location validation were all tested. The security layer was reliable and invalid areas were rejected. The key weakness is that geocoding relies on the external Nominatim service.
+1653:Admin Role Login
+1654:Email OTP (2FA)
+1665:JWT Expiry (Admin)
+1671:Expert judgment was significantly correlated with the weighted risk score, and the Pearson correlation and mean difference between the two were 0.87 and 3.8 points respectively. This renders the score applicable in relative comparisons despite the fact that it is not to be regarded as an absolute measure of public-safety.
+1672:OCR and FIR Processing Testing
+1673:EasyOCR has always been most successful with Urdu FIR scans, with a maximum success of 94.2 percent on high-quality images, 86.7 percent on medium-quality images, and 72.3 percent on low-quality images. The processing time also became much faster with the help of GPU acceleration and it must be applied in manufacturing.
+1679:Simple navigation was self-intuitive. Almost all participants were successful in registration, viewing safety scores, and uploading an FIR to the administrator, and the primary source of usability conflict was with notification permissions.
+1723:SafeVision is an open-source web-based public safety solution, which includes prediction, geospatial analysis, OCR, alerting, and role-based administration to deliver proactive safety intelligence.
+1727:The three-layer prediction pipeline, the Urdu OCR workflow, and the spatial alerting mechanism are the primary contributions to be mentioned, which can be deployed to the city scale.
+1729:Handwritten OCR is still challenging, scaling is not as easy as with more than 100 users, fallback to SMS is not yet available, and geographical coverage is restricted to Lahore.
+1731:SMS fallback, improved handwriting OCR and database read replicas should be added as short-term work. Medium term work should increase the coverage of the cities and enhance the prediction engine. The mobile packaging with Capacitor, real-time data sources, and more comprehensive analytics may also be considered in the long-term work.
+1733:SafeVision indicates that the AI-enhanced public safety software has the potential to shift to the proactive, personalized risk awareness instead of the reactive reporting. The prototype is conceptually well, quantifiable, and can be the subject of progressive improvement.
+1753: L. Breiman, "Random forests," Machine Learning, vol. 45, no. 1, pp. 5-32, Oct. 2001. doi: 10.1023/A:1010933404324
+1762:Y. Fujii, K. Driesen, J. Baccash, A. Hurst, and A. C. Popat, "A comparison of deep learning OCR engines for Urdu text," in Proc. IEEE Int. Conf. on Image Processing (ICIP), Abu Dhabi, UAE, Oct. 2020, pp. 2601-2605. doi: 10.1109/ICIP40778.2020.9190898

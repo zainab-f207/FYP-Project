@@ -676,7 +676,7 @@
 }
 
 .map-container {
-  height: 400px;
+  height: 560px;
   position: relative;
 }
 
@@ -2027,6 +2027,109 @@
   position: relative;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.crime-popup-compact .crime-popup-card {
+  width: 256px;
+}
+
+.crime-popup-compact .crime-popup-header {
+  padding: 8px 12px 4px;
+}
+
+.crime-popup-compact .crime-popup-type {
+  padding: 2px 12px 8px;
+  font-size: 12.5px;
+}
+
+.crime-popup-compact .crime-popup-section {
+  padding: 7px 12px 1px;
+}
+
+.crime-popup-compact .crime-popup-section-last {
+  padding-bottom: 10px;
+}
+
+.crime-popup-compact .crime-popup-section-body {
+  gap: 2px;
+  padding-left: 14px;
+}
+
+.crime-popup-compact .crime-popup-addr-main {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.crime-popup-compact .crime-popup-addr-sub,
+.crime-popup-compact .crime-popup-addr-urdu {
+  font-size: 11px;
+}
+
+.crime-popup-interactive .crime-popup-card {
+  width: 288px;
+}
+
+.crime-popup-interactive .leaflet-popup-content {
+  line-height: 1.25;
+}
+
+.crime-popup-interactive .crime-popup-header {
+  padding: 6px 12px 3px;
+}
+
+.crime-popup-interactive .crime-popup-section {
+  padding: 5px 12px 0;
+}
+
+.crime-popup-interactive .crime-popup-section-last {
+  padding-bottom: 8px;
+}
+
+.crime-popup-interactive .crime-popup-section-body {
+  gap: 1px;
+  padding-left: 12px;
+}
+
+.crime-popup-interactive .crime-popup-addr-main {
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+
+.crime-popup-interactive .crime-popup-addr-sub,
+.crime-popup-interactive .crime-popup-addr-urdu {
+  font-size: 10.5px;
+}
+
+.crime-popup-interactive .crime-popup-section-title {
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.crime-popup-cluster .cluster-popup {
+  background: #0f1825;
+  color: #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px 12px;
+  width: 256px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.crime-popup-cluster .cluster-popup p {
+  margin: 0 0 8px;
+  line-height: 1.35;
+}
+
+.crime-popup-cluster .cluster-popup p strong {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.55);
+  margin-bottom: 3px;
+}
+
+.crime-popup-cluster .cluster-popup p:last-child {
+  margin-bottom: 0;
 }
 
 /* ── Coloured risk bar at top ───────────────────────── */

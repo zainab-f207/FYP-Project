@@ -821,7 +821,7 @@ def get_scheduled_reports_from_db(limit: int = 50) -> List[Dict[str, Any]]:
     try:
         cursor.execute(
             """
-            SELECT id, title, type, schedule, format, recipients, parameters, next_run, last_run, status, created_by, created_at
+            SELECT *
             FROM scheduled_reports
             WHERE status = 'active'
             ORDER BY next_run ASC
@@ -839,12 +839,13 @@ def get_scheduled_reports_from_db(limit: int = 50) -> List[Dict[str, Any]]:
             next_run = row_data.get("next_run")
             scheduled.append({
                 "id": row_data.get("id"),
-                "title": row_data.get("title"),
-                "schedule": row_data.get("schedule"),
+                "title": row_data.get("title") or row_data.get("report_name"),
+                "report_type": row_data.get("type") or row_data.get("report_type") or "crime_summary",
+                "schedule": row_data.get("schedule") or row_data.get("schedule_frequency"),
                 "next_run": next_run.isoformat() if next_run and hasattr(next_run, 'isoformat') else None,
                 "format": row_data.get("format"),
                 "recipients": recipients,
-                "status": row_data.get("status")
+                "status": row_data.get("status") or ("active" if row_data.get("is_active") else None)
             })
 
         return scheduled

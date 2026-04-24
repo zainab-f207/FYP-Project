@@ -99,7 +99,7 @@ logger = logging.getLogger(__name__)
 from app.utils.risk import calculate_safety_score, calculate_breakdown, calculate_unified_risk_summary, compute_poisson_risk_pct, get_risk_level
 
 # Import OCR modules for FIR extraction
-from app.ocr.fir_specialized_ocr import FIRExtractor, load_areas_for_geocoding as _ocr_load_areas
+from app.ocr.fir_specialized_ocr import FIRExtractor, load_areas_for_geocoding as _ocr_load_areas, geocode_crime_area as _ocr_geocode_area
 from app.ocr.urdu_location_dictionary import correct_location_text, _normalize_text
 from app.ocr.ppc_sections import get_crime_names
 
@@ -691,18 +691,29 @@ def api_me_stats_alias(
         safe_zone_name = "N/A"
         if lat is not None and lon is not None:
             try:
-                cursor.execute("""
-                    SELECT name, ST_Distance_Sphere(point(longitude, latitude), point(%s, %s)) / 1000 as dist
-                    FROM locations WHERE location_type IN ('police_station', 'hospital')
-                    ORDER BY dist ASC LIMIT 1
-                """, (lon, lat))
-                sz = cursor.fetchone()
-                if sz:
-                    nearest_safe_zone = round(sz['dist'], 1)
-                    safe_zone_name = sz['name']
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS c
+                    FROM information_schema.tables
+                    WHERE table_schema = DATABASE() AND table_name = 'locations'
+                    """
+                )
+                _locations_exists = int((cursor.fetchone() or {}).get('c', 0) or 0) > 0
+                if _locations_exists:
+                    cursor.execute("""
+                        SELECT name, ST_Distance_Sphere(point(longitude, latitude), point(%s, %s)) / 1000 as dist
+                        FROM locations WHERE location_type IN ('police_station', 'hospital')
+                        ORDER BY dist ASC LIMIT 1
+                    """, (lon, lat))
+                    sz = cursor.fetchone()
+                    if sz:
+                        nearest_safe_zone = round(sz['dist'], 1)
+                        safe_zone_name = sz['name']
+                    else:
+                        # Fallback if no locations in DB
+                        safe_zone_name = "No secure zones in radius"
                 else:
-                    # Fallback if no locations in DB
-                    safe_zone_name = "No secure zones in radius"
+                    safe_zone_name = "N/A"
             except Exception as loc_err:
                 logger.warning(f"Failed to fetch nearest safe zone: {loc_err}")
                 safe_zone_name = "N/A"
@@ -1274,20 +1285,65 @@ def weekly_safety_report_job():
 def start_background_monitoring():
     """Start background monitoring tasks"""
     try:
+        # Load operational scheduler settings (with safe fallbacks)
+        try:
+            from app.routes.admin import get_setting, SYSTEM_SETTINGS_DEFAULTS
+
+            def _default_str(key: str) -> str:
+                return str(SYSTEM_SETTINGS_DEFAULTS.get(key, {}).get("value", ""))
+
+            def _setting_int(key: str, min_value: int, max_value: int) -> int:
+                raw = get_setting(key)
+                if raw is None or str(raw).strip() == "":
+                    raw = _default_str(key)
+                return max(min_value, min(max_value, int(raw)))
+
+            monitor_interval = _setting_int("monitor_saved_locations_interval_minutes", 1, 60)
+            poll_interval = _setting_int("incident_poll_interval_minutes", 1, 60)
+            monitor_max_instances = _setting_int("monitor_job_max_instances", 1, 5)
+            poll_max_instances = _setting_int("incident_poll_job_max_instances", 1, 5)
+
+            weekly_enabled_raw = get_setting("weekly_reports_enabled")
+            if weekly_enabled_raw is None:
+                weekly_enabled_raw = _default_str("weekly_reports_enabled")
+            weekly_enabled = str(weekly_enabled_raw).lower() == "true"
+
+            weekly_day_raw = get_setting("weekly_reports_day_of_week")
+            weekly_day = str(weekly_day_raw if weekly_day_raw else _default_str("weekly_reports_day_of_week")).strip().lower()
+            weekly_hour = _setting_int("weekly_reports_hour", 0, 23)
+            weekly_minute = _setting_int("weekly_reports_minute", 0, 59)
+
+            weekly_timezone_raw = get_setting("weekly_reports_timezone")
+            weekly_timezone = str(weekly_timezone_raw if weekly_timezone_raw else _default_str("weekly_reports_timezone")).strip()
+        except Exception:
+            monitor_interval = 1
+            poll_interval = 1
+            monitor_max_instances = 1
+            poll_max_instances = 1
+            weekly_enabled = True
+            weekly_day = 'sun'
+            weekly_hour = 17
+            weekly_minute = 5
+            weekly_timezone = 'Asia/Karachi'
+
         # Remove any existing jobs to avoid duplicates
         try:
             scheduler.remove_job('monitor_saved_locations')
+        except Exception:
+            pass
+        try:
+            scheduler.remove_job('weekly_safety_reports')
         except Exception:
             pass
         
         # Use the synchronous wrapper for APScheduler
         scheduler.add_job(
             monitor_saved_locations_job,
-            trigger=IntervalTrigger(minutes=1),
+            trigger=IntervalTrigger(minutes=monitor_interval),
             id='monitor_saved_locations',
             name='Monitor saved locations for risk alerts',
             replace_existing=True,
-            max_instances=1
+            max_instances=monitor_max_instances
         )
         
         # Add weekly report job (Sundays at 6 PM)
@@ -1302,20 +1358,20 @@ def start_background_monitoring():
         #     replace_existing=True
         # )
 
-        # TEST: Saturday 04:10 AM PKT for scheduling reference
-        scheduler.add_job(
-            weekly_safety_report_job,
-            trigger='cron',
-            day_of_week='sun',
-            hour=2,
-            minute=25,
-            id='weekly_safety_reports',
-            name='TEST: Send weekly safety reports (PKT)',
-            replace_existing=True,
-            timezone='Asia/Karachi'
-        )
+        if weekly_enabled:
+            scheduler.add_job(
+                weekly_safety_report_job,
+                trigger='cron',
+                day_of_week=weekly_day,
+                hour=weekly_hour,
+                minute=weekly_minute,
+                id='weekly_safety_reports',
+                name='Send weekly safety reports',
+                replace_existing=True,
+                timezone=weekly_timezone
+            )
 
-        # ── Incident polling: runs every 2 min, catches ALL insert sources ──
+        # ── Incident polling interval is configured via system settings ──
         def poll_incidents_job():
             """Sync wrapper for APScheduler"""
             try:
@@ -1325,11 +1381,11 @@ def start_background_monitoring():
 
         scheduler.add_job(
             poll_incidents_job,
-            trigger=IntervalTrigger(minutes=1),
+            trigger=IntervalTrigger(minutes=poll_interval),
             id='poll_new_incidents',
             name='Poll DB for new incidents and dispatch alerts',
             replace_existing=True,
-            max_instances=1
+            max_instances=poll_max_instances
         )
         logger.info("✅ Background monitoring tasks started successfully")
         print("🕒 Scheduler started - monitoring jobs are active")
@@ -1429,16 +1485,33 @@ async def on_startup():
             from model_watcher import get_watcher as _gw
             _gw().start()
             print("✅ ModelWatcher started — auto-retrain enabled")
+            print("🔄 Running initial model check for new data...")
+            try:
+                _gw()._db_check()
+                print("✅ Initial model check completed")
+            except Exception as _initial_check_err:
+                print(f"⚠️  Initial model check error (non-fatal): {_initial_check_err}")
         except Exception as _mwe:
             print(f"⚠️  ModelWatcher not started (non-fatal): {_mwe}")
 
         # Test the scheduler immediately
         scheduler.print_jobs()
 
-        # Run initial monitoring check
-        print("🔄 Running initial saved locations monitoring...")
-        await monitor_saved_locations()
-        print("✅ Initial saved locations monitoring completed")
+        # Run initial monitoring check (configurable)
+        try:
+            from app.routes.admin import get_setting, SYSTEM_SETTINGS_DEFAULTS
+            default_run_initial = str(SYSTEM_SETTINGS_DEFAULTS.get("run_initial_monitor_on_startup", {}).get("value", "true")).lower()
+            run_initial_raw = get_setting("run_initial_monitor_on_startup")
+            run_initial = str(run_initial_raw if run_initial_raw is not None else default_run_initial).lower() == "true"
+        except Exception:
+            run_initial = True
+
+        if run_initial:
+            print("🔄 Running initial saved locations monitoring...")
+            await monitor_saved_locations()
+            print("✅ Initial saved locations monitoring completed")
+        else:
+            print("ℹ️ Initial saved locations monitoring skipped by system setting")
 
     except Exception as exc:
         logger.error("Startup schema initialization failed", exc_info=exc)
@@ -1523,22 +1596,34 @@ async def analyze_route_safety(route: RouteData):
         if route_points:
             lat, lng = route_points[0]
             try:
-                cursor.execute("""
-                    SELECT
-                        ST_Distance_Sphere(
-                            point(longitude, latitude),
-                            point(%s, %s)
-                        ) as distance_meters
-                    FROM locations
-                    WHERE location_type = 'police_station'
-                    ORDER BY distance_meters ASC
-                    LIMIT 1
-                """, (lng, lat))
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS c
+                    FROM information_schema.tables
+                    WHERE table_schema = DATABASE() AND table_name = 'locations'
+                    """
+                )
+                _locations_exists = int((cursor.fetchone() or {}).get('c', 0) or 0) > 0
+                if _locations_exists:
+                    cursor.execute("""
+                        SELECT
+                            ST_Distance_Sphere(
+                                point(longitude, latitude),
+                                point(%s, %s)
+                            ) as distance_meters
+                        FROM locations
+                        WHERE location_type = 'police_station'
+                        ORDER BY distance_meters ASC
+                        LIMIT 1
+                    """, (lng, lat))
 
-                result = cursor.fetchone()
-                if result:
-                    result_dict = cast(Dict[str, Any], result)
-                    infrastructure_data["nearest_police_distance"] = result_dict.get("distance_meters", float('inf'))
+                    result = cursor.fetchone()
+                    if result:
+                        result_dict = cast(Dict[str, Any], result)
+                        infrastructure_data["nearest_police_distance"] = result_dict.get("distance_meters", float('inf'))
+                else:
+                    infrastructure_data["nearest_police_distance"] = 1500
+                    infrastructure_data["nearest_hospital_distance"] = 2000
             except Exception as e:
                 logger.warning(f"Could not query locations table: {e}. Using default infrastructure data.")
                 # Use default values if locations table doesn't exist
@@ -1699,6 +1784,261 @@ async def extract_text_from_image(file: UploadFile = File(...)):
             },
             status_code=500
         )
+
+
+# ── Re-geocode and transliterate helpers for admin crime-area corrections ─────
+# The OCR review screen lets an admin fix Gemini's Urdu mistakes. When they do,
+# the original lat/long (computed from the wrong Urdu) is stale. These two
+# endpoints power (a) a "Re-geocode" button that recomputes coordinates from
+# the corrected Urdu, and (b) a live English preview of the Urdu as the admin
+# types so they can verify without reading Urdu script directly.
+
+
+class _RegeocodeRequest(BaseModel):
+    area: str = Field(..., min_length=1, max_length=400)
+
+
+@app.post("/api/ocr/regeocode")
+async def ocr_regeocode(payload: _RegeocodeRequest):
+    """Re-run Nominatim geocoding for the supplied (admin-edited) crime area.
+
+    Returns `{latitude, longitude, display_name, success}` matching the shape
+    the OCR extract endpoint already uses inside `fields.location`, so the
+    frontend can drop the result straight into state.
+    """
+    area = (payload.area or "").strip()
+    if not area:
+        return JSONResponse(
+            content={"success": False, "error": "Empty area string"},
+            status_code=400,
+        )
+    try:
+        geo = _ocr_geocode_area(area)
+        return {
+            "latitude": geo.get("latitude"),
+            "longitude": geo.get("longitude"),
+            "display_name": geo.get("display_name", ""),
+            "success": bool(geo.get("success")),
+        }
+    except Exception as e:
+        logger.error(f"[regeocode] failed for area={area!r}: {e}")
+        return JSONResponse(
+            content={"success": False, "error": f"Geocode failed: {e}"},
+            status_code=500,
+        )
+
+
+class _TransliterateRequest(BaseModel):
+    urdu_text: str = Field(..., min_length=1, max_length=400)
+
+
+@app.post("/api/ocr/transliterate")
+async def ocr_transliterate(payload: _TransliterateRequest):
+    """Convert an Urdu area string to English for the live admin preview.
+
+    Uses the same keyword-first / MyMemory-fallback path already used during
+    approval-time writes so the preview matches what will eventually be saved.
+    """
+    urdu = (payload.urdu_text or "").strip()
+    if not urdu:
+        return {"english": ""}
+    try:
+        # Import lazily — approval_workflow pulls in several DB helpers we
+        # don't need on the hot startup path.
+        from app.approval_workflow import _azure_transliterate_single
+        english = _azure_transliterate_single(urdu) or ""
+        return {"english": english}
+    except Exception as e:
+        logger.error(f"[transliterate] failed for urdu={urdu!r}: {e}")
+        return JSONResponse(
+            content={"english": "", "error": f"Transliterate failed: {e}"},
+            status_code=500,
+        )
+
+
+class _RomanToUrduRequest(BaseModel):
+    roman_text: str = Field(..., min_length=1, max_length=400)
+
+
+# Common Lahore-area vocabulary. Google Input Tools is non-deterministic for
+# short stems ("block" → sometimes "بلاک", sometimes "بلا"), so we override
+# these explicitly and only fall back to Google for unknown words.
+_ROMAN_URDU_OVERRIDES = {
+    "block": "بلاک",
+    "sub": "سب",
+    "road": "روڈ",
+    "rd": "روڈ",
+    "street": "گلی",
+    "gali": "گلی",
+    "gate": "گیٹ",
+    "town": "ٹاؤن",
+    "phase": "فیز",
+    "colony": "کالونی",
+    "society": "سوسائٹی",
+    "housing": "ہاؤسنگ",
+    "scheme": "سکیم",
+    "abad": "آباد",
+    "bagh": "باغ",
+    "park": "پارک",
+    "chowk": "چوک",
+    "nagar": "نگر",
+    "pura": "پورہ",
+    "mohalla": "محلّہ",
+    "mohallah": "محلّہ",
+    "bazaar": "بازار",
+    "bazar": "بازار",
+    "market": "مارکیٹ",
+    "sector": "سیکٹر",
+    "model": "ماڈل",
+    "cantt": "کینٹ",
+    "garden": "گارڈن",
+    "city": "سٹی",
+    "canal": "نہر",
+    "main": "مین",
+    "lane": "لین",
+    "interchange": "انٹرچینج",
+    "stop": "سٹاپ",
+    "more": "موڑ",
+    "mor": "موڑ",
+    "eden": "ایڈن",
+    "lohari": "لوہاری",
+    "bhati": "بھاٹی",
+    "delhi": "دہلی",
+    "mochi": "موچی",
+    "akbari": "اکبری",
+    "shah": "شاہ",
+    "alami": "عالمی",
+    "data": "داتا",
+    "darbar": "دربار",
+    "anarkali": "انارکلی",
+    "badami": "بادامی",
+    "mazang": "مزنگ",
+    "samanabad": "سمن آباد",
+    "iqbal": "اقبال",
+    "allama": "علامہ",
+    "johar": "جوہر",
+    "shalimar": "شالامار",
+    "shahdara": "شاہدرہ",
+    "ravi": "راوی",
+    "askari": "عسکری",
+    "defence": "ڈیفنس",
+    "dha": "ڈی ایچ اے",
+    "bahria": "بحریہ",
+    "valencia": "والینشیا",
+    "wapda": "واپڈا",
+    "pia": "پی آئی اے",
+    "thokar": "ٹھوکر",
+    "niaz": "نیاز",
+    "baig": "بیگ",
+    "raiwind": "رائیونڈ",
+    "multan": "ملتان",
+    "ferozepur": "فیروزپور",
+    "grand": "گرینڈ",
+    "trunk": "ٹرنک",
+    "gt": "جی ٹی",
+    "mm": "ایم ایم",
+    "alam": "عالم",
+    "jail": "جیل",
+    "mall": "مال",
+    "walton": "والٹن",
+    "lahore": "لاہور",
+    "punjab": "پنجاب",
+    "pakistan": "پاکستان",
+}
+
+
+@app.post("/api/ocr/roman-to-urdu")
+async def ocr_roman_to_urdu(payload: _RomanToUrduRequest):
+    """Convert Roman (English-letter) Urdu words to Urdu script.
+
+    Local overrides handle common Lahore-area vocabulary (block, road, gate,
+    town, named landmarks) with deterministic output. For everything else we
+    proxy Google Input Tools — the same API that powers Gboard's Urdu
+    transliteration keyboard. Single uppercase letters (e.g. "F", "A" for
+    sub-block codes) are preserved as Roman on purpose — that's the local
+    convention for how these are written on FIRs.
+    """
+    roman = (payload.roman_text or "").strip()
+    if not roman:
+        return {"urdu": ""}
+    try:
+        words = roman.split()
+        url = "https://inputtools.google.com/request"
+        urdu_parts = []
+        trace = []
+        for word in words:
+            # Separate leading/trailing punctuation so overrides still match.
+            m = re.match(r"^([^\w]*)(\w.*?\w|\w)([^\w]*)$", word, flags=re.UNICODE)
+            if m:
+                lead, core, trail = m.group(1), m.group(2), m.group(3)
+            else:
+                lead, core, trail = "", word, ""
+
+            # Pure digit or non-alpha (already-Urdu, punctuation, numbers) → pass through
+            if not core or not re.search(r"[A-Za-z]", core):
+                urdu_parts.append(word)
+                trace.append(f"{word!r}→passthrough")
+                continue
+
+            # Single uppercase letter like "F" / "A" → keep as Roman (sub-block codes)
+            if re.fullmatch(r"[A-Z]", core):
+                urdu_parts.append(word)
+                trace.append(f"{word!r}→roman-letter")
+                continue
+
+            # Local override (case-insensitive)
+            override = _ROMAN_URDU_OVERRIDES.get(core.lower())
+            if override:
+                urdu_parts.append(f"{lead}{override}{trail}")
+                trace.append(f"{word!r}→override:{override}")
+                continue
+
+            # Fall back to Google Input Tools
+            r = requests.get(
+                url,
+                params={
+                    "text": core,
+                    "itc": "ur-t-i0-und",
+                    "num": "5",
+                    "cp": "0",
+                    "cs": "1",
+                    "ie": "utf-8",
+                    "oe": "utf-8",
+                    "app": "demopage",
+                },
+                timeout=5,
+            )
+            r.raise_for_status()
+            data = r.json()
+            picked = core
+            if (
+                isinstance(data, list)
+                and len(data) >= 2
+                and data[0] == "SUCCESS"
+                and isinstance(data[1], list)
+                and data[1]
+                and isinstance(data[1][0], list)
+                and len(data[1][0]) >= 2
+                and data[1][0][1]
+            ):
+                candidates = [c for c in data[1][0][1] if isinstance(c, str) and c]
+                # Prefer the longest candidate — Google sometimes returns a
+                # truncated form first ("بلا" before "بلاک"). Longer Urdu
+                # renderings of short Roman stems are almost always correct.
+                if candidates:
+                    picked = max(candidates, key=len)
+            urdu_parts.append(f"{lead}{picked}{trail}")
+            trace.append(f"{word!r}→google:{picked}")
+        result = " ".join(urdu_parts)
+        logger.info(f"[roman-to-urdu] in={roman!r} out={result!r} trace={trace}")
+        return {"urdu": result}
+    except Exception as e:
+        logger.error(f"[roman-to-urdu] failed for text={roman!r}: {e}")
+        return JSONResponse(
+            content={"urdu": "", "error": f"Roman→Urdu failed: {e}"},
+            status_code=500,
+        )
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -947,13 +947,12 @@ const apiService = {
     try {
       console.log('🔔 Subscribing to alerts:', subscriptionData);
 
-      // Ensure notification_types includes browser instead of SMS
       const updatedSubscriptionData = {
         ...subscriptionData,
-        notification_types: ['email', 'browser'] // Remove 'sms', add 'browser'
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/alerts/subscribe`, {
+      // Backend route is /api/alerts/community/subscribe via alerts router.
+      const response = await fetch(`${API_BASE_URL}/api/alerts/community/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

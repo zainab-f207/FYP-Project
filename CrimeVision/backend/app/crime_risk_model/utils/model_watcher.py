@@ -35,14 +35,50 @@ import threading
 import subprocess
 import time
 from datetime import datetime
+from typing import Any, Dict
+
+from app.core.database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
-RETRAIN_THRESHOLD_NEW_CRIMES      = 500   # new rows since last training
-RETRAIN_THRESHOLD_NEW_AREAS       = 5     # brand-new areas
-RETRAIN_THRESHOLD_NEW_CRIME_TYPES = 10    # brand-new crime types
-CHECK_INTERVAL_SECONDS            = 3600  # periodic check every 60 min
+DEFAULT_RETRAIN_THRESHOLD_NEW_CRIMES      = 500   # new rows since last training
+DEFAULT_RETRAIN_THRESHOLD_NEW_AREAS       = 5     # brand-new areas
+DEFAULT_RETRAIN_THRESHOLD_NEW_CRIME_TYPES = 10    # brand-new crime types
+DEFAULT_CHECK_INTERVAL_SECONDS            = 3600  # periodic check every 60 min
+DEFAULT_RETRAIN_TIMEOUT_SECONDS           = 600   # retrain subprocess timeout
+
+
+def _load_system_setting_ints(defaults: Dict[str, int]) -> Dict[str, int]:
+    """Load integer settings in one query and fall back to provided defaults."""
+    conn = None
+    cursor = None
+    resolved = dict(defaults)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        keys = list(defaults.keys())
+        placeholders = ','.join(['%s'] * len(keys))
+        cursor.execute(
+            f"SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ({placeholders})",
+            tuple(keys),
+        )
+        rows = cursor.fetchall() or []
+        for row in rows:
+            key = row.get('setting_key')
+            if key in resolved:
+                try:
+                    resolved[key] = int(row.get('setting_value'))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+    return resolved
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 _UTILS_DIR    = os.path.dirname(__file__)
@@ -91,6 +127,8 @@ class ModelWatcher:
         self._retraining    = False
         self._thread        = None
         self._stop_event    = threading.Event()
+        self._runtime_config_cache: Dict[str, int] | None = None
+        self._runtime_config_ts: float = 0.0
 
         # Counters (reset after successful retrain)
         self._new_crimes_since_train     = 0
@@ -105,6 +143,32 @@ class ModelWatcher:
 
         self._load_known_from_artifacts()
 
+    def _get_runtime_config(self) -> Dict[str, int]:
+        """Return runtime thresholds/intervals from system settings with a short cache TTL."""
+        now = time.time()
+        if self._runtime_config_cache and (now - self._runtime_config_ts) < 60:
+            return self._runtime_config_cache
+
+        values = _load_system_setting_ints({
+            'model_watcher_retrain_threshold_new_crimes': DEFAULT_RETRAIN_THRESHOLD_NEW_CRIMES,
+            'model_watcher_retrain_threshold_new_areas': DEFAULT_RETRAIN_THRESHOLD_NEW_AREAS,
+            'model_watcher_retrain_threshold_new_crime_types': DEFAULT_RETRAIN_THRESHOLD_NEW_CRIME_TYPES,
+            'model_watcher_check_interval_seconds': DEFAULT_CHECK_INTERVAL_SECONDS,
+            'model_watcher_retrain_timeout_seconds': DEFAULT_RETRAIN_TIMEOUT_SECONDS,
+        })
+
+        cfg = {
+            'retrain_threshold_new_crimes': max(1, min(1_000_000, int(values['model_watcher_retrain_threshold_new_crimes']))),
+            'retrain_threshold_new_areas': max(1, min(100_000, int(values['model_watcher_retrain_threshold_new_areas']))),
+            'retrain_threshold_new_crime_types': max(1, min(100_000, int(values['model_watcher_retrain_threshold_new_crime_types']))),
+            'check_interval_seconds': max(10, min(86_400, int(values['model_watcher_check_interval_seconds']))),
+            'retrain_timeout_seconds': max(30, min(7_200, int(values['model_watcher_retrain_timeout_seconds']))),
+        }
+
+        self._runtime_config_cache = cfg
+        self._runtime_config_ts = now
+        return cfg
+
     # ──────────────────────────────────────────────────────────────────────────
 
     def _load_known_from_artifacts(self):
@@ -112,8 +176,16 @@ class ModelWatcher:
         try:
             with open(_ARTIFACTS, 'r', encoding='utf-8') as f:
                 arts = json.load(f)
-            self._known_areas  = set(arts.get('area_freq_map', {}).keys())
-            self._known_types  = set(arts.get('combined_severity_map', {}).keys())
+            self._known_areas  = {
+                str(area).strip().lower()
+                for area in arts.get('area_freq_map', {}).keys()
+                if str(area).strip()
+            }
+            self._known_types  = {
+                str(crime_type).strip().lower()
+                for crime_type in arts.get('combined_severity_map', {}).keys()
+                if str(crime_type).strip()
+            }
             self._training_sample_count = int(arts.get('n_training_samples', 0))
             ts = arts.get('trained_at')
             if ts:
@@ -162,10 +234,11 @@ class ModelWatcher:
         """Check whether any threshold has been crossed. Must be called under lock."""
         if self._retraining:
             return False
+        cfg = self._get_runtime_config()
         return (
-            self._new_crimes_since_train      >= RETRAIN_THRESHOLD_NEW_CRIMES
-            or len(self._new_areas_since_train)  >= RETRAIN_THRESHOLD_NEW_AREAS
-            or len(self._new_types_since_train)  >= RETRAIN_THRESHOLD_NEW_CRIME_TYPES
+            self._new_crimes_since_train >= cfg['retrain_threshold_new_crimes']
+            or len(self._new_areas_since_train) >= cfg['retrain_threshold_new_areas']
+            or len(self._new_types_since_train) >= cfg['retrain_threshold_new_crime_types']
         )
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -193,7 +266,7 @@ class ModelWatcher:
                 [python_exe, _TRAIN_SCRIPT],
                 capture_output=True,
                 text=True,
-                timeout=600,   # 10-minute timeout
+                timeout=self._get_runtime_config()['retrain_timeout_seconds'],
                 cwd=os.path.dirname(_TRAIN_SCRIPT),
             )
 
@@ -226,7 +299,10 @@ class ModelWatcher:
             logger.info("ModelWatcher: model hot-reloaded successfully ✓")
 
         except subprocess.TimeoutExpired:
-            logger.error("ModelWatcher: retrain subprocess timed out after 600 s")
+            logger.error(
+                "ModelWatcher: retrain subprocess timed out after %s s",
+                self._get_runtime_config()['retrain_timeout_seconds'],
+            )
         except Exception as e:
             logger.error("ModelWatcher: retrain failed — %s", e, exc_info=True)
         finally:
@@ -240,9 +316,12 @@ class ModelWatcher:
         Background thread body: periodically poll the DB for new crime count
         and fire retrain if thresholds are reached.
         """
-        logger.info("ModelWatcher: periodic check thread started (interval=%ds)",
-                    CHECK_INTERVAL_SECONDS)
-        while not self._stop_event.wait(timeout=CHECK_INTERVAL_SECONDS):
+        interval_seconds = self._get_runtime_config()['check_interval_seconds']
+        logger.info("ModelWatcher: periodic check thread started (interval=%ds)", interval_seconds)
+        while True:
+            interval_seconds = self._get_runtime_config()['check_interval_seconds']
+            if self._stop_event.wait(timeout=interval_seconds):
+                break
             try:
                 self._db_check()
             except Exception as e:
@@ -300,6 +379,12 @@ class ModelWatcher:
                     new_since_train, len(new_areas), len(new_types),
                 )
                 self._trigger_retrain()
+            else:
+                logger.info(
+                    "ModelWatcher: periodic check found no retrain condition "
+                    "(+%d crimes, %d areas, %d types)",
+                    new_since_train, len(new_areas), len(new_types),
+                )
 
         except Exception as e:
             raise RuntimeError(f"DB check failed: {e}") from e
@@ -317,7 +402,7 @@ class ModelWatcher:
             name='ModelWatcher',
         )
         self._thread.start()
-        logger.info("ModelWatcher: started (check every %ds)", CHECK_INTERVAL_SECONDS)
+        logger.info("ModelWatcher: started (check every %ds)", self._get_runtime_config()['check_interval_seconds'])
 
     def stop(self):
         """Signal the watcher thread to stop gracefully."""
@@ -327,6 +412,7 @@ class ModelWatcher:
 
     def status(self) -> dict:
         """Return current watcher state (useful for health/debug endpoints)."""
+        cfg = self._get_runtime_config()
         with self._lock:
             return {
                 'retraining':               self._retraining,
@@ -337,8 +423,10 @@ class ModelWatcher:
                 'known_types_count':        len(self._known_types),
                 'training_sample_count':    self._training_sample_count,
                 'thresholds': {
-                    'crimes':      RETRAIN_THRESHOLD_NEW_CRIMES,
-                    'areas':       RETRAIN_THRESHOLD_NEW_AREAS,
-                    'crime_types': RETRAIN_THRESHOLD_NEW_CRIME_TYPES,
+                    'crimes':      cfg['retrain_threshold_new_crimes'],
+                    'areas':       cfg['retrain_threshold_new_areas'],
+                    'crime_types': cfg['retrain_threshold_new_crime_types'],
                 },
+                'check_interval_seconds': cfg['check_interval_seconds'],
+                'retrain_timeout_seconds': cfg['retrain_timeout_seconds'],
             }

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import CrimeMap from '../CrimeMap/CrimeMap_updated';
 import apiService from '../../services/apiService_updated';
 import { ppcSimpleLabel } from '../../utils/ppcUtils';
 import { useAuth } from '../../contexts/AuthContext_updated';
-import { useSystemSettings } from '../../contexts/SystemSettingsContext';
+import { SYSTEM_SETTINGS_DEFAULTS, useSystemSettings } from '../../contexts/SystemSettingsContext';
+import { calculate_unified_risk_summary } from '../../utils/riskCalculation';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -74,6 +75,32 @@ const updateChartTheme = (isDark) => {
 
 const LAHORE_BOUNDS = [[31.25, 74.05], [31.80, 74.70]];
 
+const normalizeVisibilityThreshold = (value) => {
+  const v = String(value || SYSTEM_SETTINGS_DEFAULTS.map_alert_visibility_threshold).toLowerCase();
+  if (v === 'critical') return 'Critical';
+  if (v === 'high') return 'High';
+  if (v === 'medium') return 'Medium';
+  return 'Low';
+};
+
+const riskRank = {
+  Low: 1,
+  Medium: 2,
+  Moderate: 2,
+  High: 3,
+  Critical: 4,
+};
+
+const riskScoreForLevel = (level) => {
+  const v = String(level || 'Low').toLowerCase();
+  if (v.includes('critical')) return 100;
+  if (v.includes('high')) return 80;
+  if (v.includes('medium') || v.includes('moderate')) return 55;
+  return 30;
+};
+
+const normalizeAreaName = (area) => (area || 'Unknown').toString().trim().toLowerCase() || 'unknown';
+
 const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = true, initialArea = null }) => {
   const { token, isAuthenticated } = useAuth();
   const { settings: systemSettings } = useSystemSettings();
@@ -99,7 +126,7 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedTile, setSelectedTile] = useState('streets');
   const [isDarkTheme, setIsDarkTheme] = useState(false);
-  const [incidentLimit, setIncidentLimit] = useState(100);
+  const [incidentLimit, setIncidentLimit] = useState(SYSTEM_SETTINGS_DEFAULTS.map_default_record_limit);
   const [mappedIncidentsLoading, setMappedIncidentsLoading] = useState(false);
   const [showUnmappedList, setShowUnmappedList] = useState(false);
   const [incidentCounts, setIncidentCounts] = useState({
@@ -131,6 +158,8 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
   }, [selectedTile]);
   const [showTileDropdown, setShowTileDropdown] = useState(false);
   const [chartAnimation, setChartAnimation] = useState(true);
+  const incidentLimitTouchedRef = useRef(false);
+  const tileTouchedRef = useRef(false);
 
   // Enhanced visualization modes with modern icons
   const visualizationModes = [
@@ -184,6 +213,7 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
 
   if (typeof risk === 'string') {
     const r = risk.toLowerCase().trim();
+    if (r.includes('critical') || r.includes('avoid')) return '#7c3aed'; // purple
     if (r.includes('high')) return '#ef4444'; // red
     if (r.includes('medium') || r.includes('med')) return '#f59e0b'; // yellow
     if (r.includes('low')) return '#22c55e'; // green
@@ -214,6 +244,7 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
 
   if (typeof risk === 'string') {
     const r = risk.toLowerCase().trim();
+    if (r.includes('critical') || r.includes('avoid')) return 'Critical';
     if (r.includes('high')) return 'High';
     if (r.includes('medium') || r.includes('med')) return 'Medium';
     if (r.includes('low')) return 'Low';
@@ -237,6 +268,21 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
 
   return 'Low';
 }, []);
+
+  useEffect(() => {
+    const configuredLimit = Number(systemSettings?.map_default_record_limit ?? SYSTEM_SETTINGS_DEFAULTS.map_default_record_limit);
+    if (!incidentLimitTouchedRef.current && Number.isFinite(configuredLimit) && configuredLimit >= 0) {
+      setIncidentLimit(configuredLimit);
+    }
+  }, [systemSettings?.map_default_record_limit]);
+
+  useEffect(() => {
+    const configuredStyle = String(systemSettings?.map_default_style || SYSTEM_SETTINGS_DEFAULTS.map_default_style);
+    const hasConfiguredStyle = availableTiles.some((tile) => tile.id === configuredStyle);
+    if (!tileTouchedRef.current && hasConfiguredStyle) {
+      setSelectedTile(configuredStyle);
+    }
+  }, [availableTiles, systemSettings?.map_default_style]);
 
   // Parse area_translit into structured lines for the popup
   // line1: "LDA City – Sector 5, Block F"
@@ -315,6 +361,26 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
     }
   }, []);
 
+  const formatCrimeDateParts = useCallback((dateStr) => {
+    if (!dateStr) return { date: 'Unknown', time: 'Unknown' };
+    try {
+      let d;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr).trim())) {
+        const [y, m, day] = dateStr.split('-').map(Number);
+        d = new Date(y, m - 1, day);
+      } else {
+        d = new Date(dateStr);
+      }
+      if (isNaN(d.getTime())) return { date: String(dateStr), time: 'Unknown' };
+      return {
+        date: d.toLocaleDateString('en-GB'),
+        time: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      };
+    } catch {
+      return { date: String(dateStr), time: 'Unknown' };
+    }
+  }, []);
+
   const computeClusters = useCallback((list, gridSize = 0.005) => {
     const grid = {};
     list.forEach(c => {
@@ -351,9 +417,40 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
     const fetchData = async () => {
       try {
         setLoading(true);
+
+        // Build query params based on filters
+        const queryParams = {};
+
+        // Record limit: use system setting (or manual if touched)
+        let recordLimit = incidentLimitTouchedRef.current
+          ? incidentLimit
+          : Number(systemSettings?.map_default_record_limit ?? SYSTEM_SETTINGS_DEFAULTS.map_default_record_limit);
+
+        if (recordLimit > 0) {
+          queryParams.limit = recordLimit;
+        }
+
+        const defaultRecordLimit = Number(systemSettings?.map_default_record_limit ?? SYSTEM_SETTINGS_DEFAULTS.map_default_record_limit);
+        const bypassAutoLookbackForManualLimit =
+          incidentLimitTouchedRef.current && Number(recordLimit) !== defaultRecordLimit;
+
+        // Data lookback: apply UNLESS user explicitly sets date range OR manually changes record limit.
+        // This only affects automatic lookback and preserves all other filters.
+        const retentionDays = Number(systemSettings?.data_retention_days ?? SYSTEM_SETTINGS_DEFAULTS.data_retention_days);
+        if (!customStartDate && !customEndDate && retentionDays > 0 && !bypassAutoLookbackForManualLimit) {
+          // Apply system default lookback when NO date range is explicitly set
+          const start = new Date();
+          start.setDate(start.getDate() - retentionDays);
+          queryParams.start_date = start.toISOString().slice(0, 10);
+        } else if (customStartDate || customEndDate) {
+          // Use explicit date range if provided
+          if (customStartDate) queryParams.start_date = customStartDate;
+          if (customEndDate) queryParams.end_date = customEndDate;
+        }
+
         const [crimeTypesData, crimesData, areasData] = await Promise.all([
           apiService.getCrimeTypes(),
-          apiService.getCrimes({ limit: 13000 }),
+          apiService.getCrimes(queryParams),
           apiService.getAreas()
         ]);
 
@@ -379,7 +476,7 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
     };
 
     fetchData();
-  }, []);
+  }, [selectedTimePeriod, customStartDate, customEndDate, incidentLimit, systemSettings]);
 
   // Handle initialArea selection from dashboard/email links
   useEffect(() => {
@@ -475,6 +572,8 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
   const filteredCrimes = useMemo(() => {
     console.log('Filtering crimes...', crimes.length);
     let filtered = [...crimes];
+    const threshold = normalizeVisibilityThreshold(systemSettings?.map_alert_visibility_threshold ?? SYSTEM_SETTINGS_DEFAULTS.map_alert_visibility_threshold);
+    const thresholdRank = riskRank[threshold] || 1;
 
     // If predictionData is provided, filter crimes to match prediction area, crimeType, and date
     if (predictionData) {
@@ -558,9 +657,14 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
       }
     }
 
+    filtered = filtered.filter((crime) => {
+      const risk = getRiskLevel(crime.risk_level);
+      return (riskRank[risk] || 1) >= thresholdRank;
+    });
+
     console.log('Filtered crimes count (all):', filtered.length);
     return filtered;
-  }, [crimes, filters, locationFilters, selectedTimePeriod, customStartDate, customEndDate, predictionData]);
+  }, [crimes, filters, locationFilters, selectedTimePeriod, customStartDate, customEndDate, predictionData, systemSettings?.map_alert_visibility_threshold, getRiskLevel]);
 
 // FIXED: More lenient mappable crimes logic
 const mappableCrimes = useMemo(() => {
@@ -615,6 +719,10 @@ const displayCrimes = useMemo(() => {
                           predictionData !== null ||
                           selectedTimePeriod !== 'all';
 
+  if (incidentLimit === 0) {
+    return mappableCrimes;
+  }
+
   // If filters are active, show ALL mappable crimes (no limit)
   // If no filters, apply the incident limit
   return hasActiveFilters ? mappableCrimes : mappableCrimes.slice(0, incidentLimit);
@@ -628,7 +736,9 @@ const renderedCrimes = useMemo(() => {
                           selectedTimePeriod !== 'all';
 
   // Always apply incidentLimit regardless of filters (fix display limit not applying after filter)
-  let crimesToRender = hasActiveFilters ? displayCrimes : displayCrimes.slice(0, incidentLimit);
+  let crimesToRender = incidentLimit === 0
+    ? displayCrimes
+    : (hasActiveFilters ? displayCrimes : displayCrimes.slice(0, incidentLimit));
 
   return crimesToRender.filter(crime => {
     const lat = Array.isArray(crime.coordinates) ? crime.coordinates[0] : crime.latitude;
@@ -638,6 +748,209 @@ const renderedCrimes = useMemo(() => {
     return !(isNaN(numLat) || isNaN(numLng) || !isFinite(numLat) || !isFinite(numLng) || (numLat === 0 && numLng === 0));
   });
 }, [displayCrimes, filters, locationFilters, predictionData, selectedTimePeriod, incidentLimit]);
+
+const plottedMarkers = useMemo(() => {
+  const byCoord = new Map();
+
+  renderedCrimes.forEach((crime) => {
+    const latRaw = Array.isArray(crime.coordinates) ? crime.coordinates[0] : crime.latitude;
+    const lngRaw = Array.isArray(crime.coordinates) ? crime.coordinates[1] : crime.longitude;
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    const subarea = (crime.area_translit || crime.area || 'Unknown').trim() || 'Unknown';
+    const subareaKey = subarea.toLowerCase();
+
+    if (!byCoord.has(coordKey)) {
+      byCoord.set(coordKey, new Map());
+    }
+
+    const coordGroup = byCoord.get(coordKey);
+    if (!coordGroup.has(subareaKey)) {
+      coordGroup.set(subareaKey, {
+        key: `${coordKey}|${subareaKey}`,
+        lat,
+        lng,
+        subarea,
+        area: (crime.area || 'Unknown').trim() || 'Unknown',
+        area_urdu: crime.area_urdu || null,
+        crimes: [],
+      });
+    }
+
+    coordGroup.get(subareaKey).crimes.push(crime);
+  });
+
+  const out = [];
+  byCoord.forEach((coordGroup) => {
+    const subareaGroups = Array.from(coordGroup.values());
+    subareaGroups.forEach((group, index) => {
+      const angle = (2 * Math.PI * index) / Math.max(subareaGroups.length, 1);
+      const ring = 1 + Math.floor(index / 8);
+      const offset = subareaGroups.length > 1 ? 0.00012 * ring : 0;
+      const riskLevel = group.crimes.reduce((highest, crime) => {
+        const current = getRiskLevel(crime.risk_level);
+        return (riskRank[current] || 1) > (riskRank[highest] || 1) ? current : highest;
+      }, 'Low');
+
+      const crimeTypes = {};
+      const areaCounts = {};
+      let highRiskCount = 0;
+      let moderateCount = 0;
+      let last_30_days = 0;
+      let last_90_days = 0;
+      let recent_count = 0;
+      let older_count = 0;
+      const now = new Date();
+      const cutoff_90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const cutoff_30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const cutoff_45 = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+      group.crimes.forEach((crime) => {
+        const crimeType = crime.crime_type || 'Unknown';
+        crimeTypes[crimeType] = (crimeTypes[crimeType] || 0) + 1;
+        const areaName = (crime.area || 'Unknown').trim() || 'Unknown';
+        areaCounts[areaName] = (areaCounts[areaName] || 0) + 1;
+        const lvl = getRiskLevel(crime.risk_level);
+        if (lvl === 'High' || lvl === 'Critical') highRiskCount += 1;
+        else if (lvl === 'Moderate') moderateCount += 1;
+
+        const crimeDate = crime.date ? new Date(crime.date) : null;
+        if (crimeDate && !isNaN(crimeDate.getTime())) {
+          if (crimeDate >= cutoff_30) last_30_days += 1;
+          if (crimeDate >= cutoff_90) last_90_days += 1;
+          if (crimeDate >= cutoff_45) recent_count += 1;
+          else older_count += 1;
+        }
+      });
+
+      const topType = Object.entries(crimeTypes).sort((a, b) => b[1] - a[1])[0] || ['Unknown', 0];
+      const warningAvoidPct = group.crimes.length ? Math.round((highRiskCount / group.crimes.length) * 100) : 0;
+      const stats = {
+        total_crimes: group.crimes.length,
+        high_risk_count: highRiskCount,
+        medium_risk_count: moderateCount,
+        last_30_days,
+        last_90_days,
+        recent_count,
+        older_count,
+      };
+      const riskSummary = calculate_unified_risk_summary(stats);
+      const riskScore = riskSummary.risk_score;
+
+      out.push({
+        ...group,
+        count: group.crimes.length,
+        highestRisk: riskLevel,
+        crime_types: crimeTypes,
+        area_counts: areaCounts,
+        warning_avoid_pct: warningAvoidPct,
+        risk_score: riskScore,
+        top_type: topType[0],
+        top_type_count: topType[1],
+        displayLat: group.lat + Math.sin(angle) * offset,
+        displayLng: group.lng + Math.cos(angle) * offset,
+      });
+    });
+  });
+
+  return out;
+}, [renderedCrimes, getRiskLevel]);
+
+const heatmapClusterSummaryMap = useMemo(() => {
+  const grouped = new Map();
+  const now = new Date();
+  const cutoff_90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+  const cutoff_30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const cutoff_45 = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+
+  displayCrimes.forEach((crime) => {
+    const lat = Array.isArray(crime.coordinates) ? crime.coordinates[0] : crime.latitude;
+    const lng = Array.isArray(crime.coordinates) ? crime.coordinates[1] : crime.longitude;
+    if (typeof lat !== 'number' || typeof lng !== 'number' || !isFinite(lat) || !isFinite(lng)) return;
+
+    const coordKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
+    const areaName = (crime.area || 'Unknown').trim() || 'Unknown';
+    const areaKey = normalizeAreaName(areaName);
+    const key = `${coordKey}|${areaKey}`;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        count: 0,
+        top_area: areaName,
+        areaCounts: {},
+        subareaCounts: {},
+        typeCounts: {},
+        criticalCount: 0,
+        highCount: 0,
+        moderateCount: 0,
+        lowCount: 0,
+        last_30_days: 0,
+        last_90_days: 0,
+        recent_count: 0,
+        older_count: 0,
+      });
+    }
+
+    const summary = grouped.get(key);
+    summary.count += 1;
+    const mappedArea = areaName;
+    const firSubarea = (crime.area_translit || crime.area || 'Unknown').trim() || 'Unknown';
+    const typeName = crime.crime_type || 'Unknown';
+    const level = getRiskLevel(crime.risk_level);
+
+    summary.areaCounts[mappedArea] = (summary.areaCounts[mappedArea] || 0) + 1;
+    summary.subareaCounts[firSubarea] = (summary.subareaCounts[firSubarea] || 0) + 1;
+    summary.typeCounts[typeName] = (summary.typeCounts[typeName] || 0) + 1;
+
+    if (level === 'Critical') summary.criticalCount += 1;
+    else if (level === 'High') summary.highCount += 1;
+    else if (level === 'Moderate') summary.moderateCount += 1;
+    else summary.lowCount += 1;
+
+    // Calculate recency
+    const crimeDate = crime.date ? new Date(crime.date) : null;
+    if (crimeDate && !isNaN(crimeDate.getTime())) {
+      if (crimeDate >= cutoff_30) summary.last_30_days += 1;
+      if (crimeDate >= cutoff_90) summary.last_90_days += 1;
+      if (crimeDate >= cutoff_45) summary.recent_count += 1;
+      else summary.older_count += 1;
+    }
+  });
+
+  const summaries = new Map();
+  grouped.forEach((summary, key) => {
+    const topArea = Object.entries(summary.areaCounts).sort((a, b) => b[1] - a[1])[0] || ['Unknown', 0];
+    const topSubarea = Object.entries(summary.subareaCounts).sort((a, b) => b[1] - a[1])[0] || ['Unknown', 0];
+    const topType = Object.entries(summary.typeCounts).sort((a, b) => b[1] - a[1])[0] || ['Unknown', 0];
+
+    // Use unified risk calculation (matching backend exactly)
+    const stats = {
+      total_crimes: summary.count,
+      high_risk_count: summary.criticalCount + summary.highCount,
+      medium_risk_count: summary.moderateCount,
+      last_30_days: summary.last_30_days,
+      last_90_days: summary.last_90_days,
+      recent_count: summary.recent_count,
+      older_count: summary.older_count,
+    };
+    const riskSummary = calculate_unified_risk_summary(stats);
+    const warningAvoidPct = summary.count > 0 ? Math.round(((summary.criticalCount + summary.highCount) / summary.count) * 100) : 0;
+
+    summaries.set(key, {
+      ...summary,
+      top_area: topArea[0],
+      top_subarea: topSubarea[0],
+      top_type: topType[0],
+      top_type_count: topType[1],
+      warning_avoid_pct: warningAvoidPct,
+      risk_score: riskSummary.risk_score,
+    });
+  });
+
+  return summaries;
+}, [displayCrimes, getRiskLevel]);
 
 // FIXED: Move debugging useEffect AFTER displayCrimes is defined
 useEffect(() => {
@@ -1514,11 +1827,21 @@ const fetchTrendsData = useCallback(async () => {
     const selectedTileConfig = availableTiles.find(tile => tile.id === selectedTile);
 
     const mapProps = {
-      center: [31.5204, 74.3587],
-      zoom: systemSettings.default_map_zoom || 12,
-      minZoom: 11,
-      maxBounds: LAHORE_BOUNDS,
-      maxBoundsViscosity: 1.0,
+      center: [
+        Number(systemSettings?.map_default_center_lat ?? SYSTEM_SETTINGS_DEFAULTS.map_default_center_lat),
+        Number(systemSettings?.map_default_center_lng ?? SYSTEM_SETTINGS_DEFAULTS.map_default_center_lng),
+      ],
+      zoom: Number(systemSettings?.default_map_zoom ?? SYSTEM_SETTINGS_DEFAULTS.default_map_zoom),
+      minZoom: Number(systemSettings?.map_min_zoom ?? SYSTEM_SETTINGS_DEFAULTS.map_min_zoom),
+      maxZoom: Number(systemSettings?.map_max_zoom ?? SYSTEM_SETTINGS_DEFAULTS.map_max_zoom),
+      maxBounds: [[
+        Number(systemSettings?.map_bounds_south ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_south),
+        Number(systemSettings?.map_bounds_west ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_west),
+      ], [
+        Number(systemSettings?.map_bounds_north ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_north),
+        Number(systemSettings?.map_bounds_east ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_east),
+      ]] || LAHORE_BOUNDS,
+      maxBoundsViscosity: Number(systemSettings?.map_bounds_viscosity ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_viscosity),
       style: { width: '100%', height: '100%' },
       scrollWheelZoom: false,
       keyboard: false,
@@ -1537,97 +1860,119 @@ const fetchTrendsData = useCallback(async () => {
               url={resolveComputedTileUrl()}
               attribution='&copy; OpenStreetMap contributors'
             />
-            {renderedCrimes.map((crime, index) => {
-              const lat = Array.isArray(crime.coordinates) ? crime.coordinates[0] : crime.latitude;
-              const lng = Array.isArray(crime.coordinates) ? crime.coordinates[1] : crime.longitude;
-
-              // Highlight prediction crimes with distinct color
-              let riskColor = getRiskColor(crime.risk_level);
-              if (predictionData) {
-                const matchesArea = predictionData.area ? (crime.area || '').toLowerCase() === predictionData.area.toLowerCase() : true;
-                const matchesCrimeType = predictionData.crimeType ? (crime.crime_type || '').toLowerCase() === predictionData.crimeType.toLowerCase() : true;
-                const matchesDate = predictionData.date ? (new Date(crime.date).toDateString() === new Date(predictionData.date).toDateString()) : true;
-                if (matchesArea && matchesCrimeType && matchesDate) {
-                  riskColor = '#3b82f6'; // Use blue color for prediction highlight
-                }
-              }
+            {plottedMarkers.map((markerPoint, index) => {
+              const riskColor = getRiskColor(markerPoint.highestRisk);
+              const crimeTypeList = Object.entries(markerPoint.crime_types || {}).sort((a, b) => b[1] - a[1]);
+              const areaList = Object.entries(markerPoint.area_counts || {}).sort((a, b) => b[1] - a[1]);
+              const topArea = areaList[0] || ['Unknown', 0];
+              const topType = crimeTypeList[0] || ['Unknown', 0];
+              const topAddress = parseAddress(markerPoint.subarea);
 
               return (
                 <Marker
-                  key={crime.id || index}
-                  position={[lat, lng]}
+                  key={markerPoint.key || `marker-${index}`}
+                  position={[markerPoint.displayLat, markerPoint.displayLng]}
                   icon={createCustomIcon(riskColor)}
                 >
-                  <Popup className="crime-popup-wrapper">
-                    {(() => {
-                      const risk = getRiskLevel(crime.risk_level).toLowerCase();
-                      const { line1, line2 } = parseAddress(crime.area_translit || crime.area);
-                      const urduFull = crime.area_urdu ? crime.area_urdu.trim() : null;
-                      return (
-                        <div className="crime-popup-card">
-                          <div className={`crime-popup-risk-bar risk-bar-${risk}`} />
-
-                          {/* Header: label + risk badge */}
-                          <div className="crime-popup-header">
-                            <span className="crime-popup-label">FIR Incident</span>
-                            <span className={`crime-popup-risk-badge risk-badge-${risk}`}>
-                              {getRiskLevel(crime.risk_level)} Risk
-                            </span>
-                          </div>
-
-                          {/* Crime type */}
-                          <div className="crime-popup-type">
-                            {ppcSimpleLabel(crime.crime_type) || crime.crime_type || 'Unknown Incident'}
-                          </div>
-
-                          <div className="crime-popup-divider" />
-
-                          {/* 📍 Location section */}
-                          <div className="crime-popup-section">
-                            <div className="crime-popup-section-title">
-                              <span className="crime-popup-sec-icon">📍</span>
-                              <span>Location:</span>
-                            </div>
-                            <div className="crime-popup-section-body">
-                              {line1 && <div className="crime-popup-addr-main">{line1}</div>}
-                              {line2 && <div className="crime-popup-addr-sub">{line2}</div>}
-                              {urduFull && (
-                                <div className="crime-popup-addr-urdu">({urduFull})</div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* 🌐 City section */}
-                          <div className="crime-popup-section">
-                            <div className="crime-popup-section-title">
-                              <span className="crime-popup-sec-icon">🌐</span>
-                              <span>City:</span>
-                            </div>
-                            <div className="crime-popup-section-body">
-                              <div className="crime-popup-addr-main">Lahore, Pakistan</div>
-                            </div>
-                          </div>
-
-                          {/* 🗓 Date & Time section */}
-                          <div className="crime-popup-section crime-popup-section-last">
-                            <div className="crime-popup-section-title">
-                              <span className="crime-popup-sec-icon">🗓</span>
-                              <span>Date &amp; Time:</span>
-                            </div>
-                            <div className="crime-popup-section-body">
-                              <div className="crime-popup-addr-main">{formatCrimeDate(crime.date)}</div>
-                            </div>
-                          </div>
-
-                          {/* FIR chip */}
-                          {crime.fir_number && (
-                            <div className="crime-popup-fir-row">
-                              <span className="crime-popup-fir-chip">FIR #{crime.fir_number}</span>
-                            </div>
-                          )}
+                  <Popup className="crime-popup-wrapper crime-popup-interactive">
+                    <div className="crime-popup-card">
+                      <div className="crime-popup-section">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">📚</span>
+                          <span>Merged Database Rows</span>
                         </div>
-                      );
-                    })()}
+                        <div className="crime-popup-section-body">
+                          <div className="crime-popup-addr-main">{markerPoint.count}</div>
+                        </div>
+                      </div>
+
+                      <div className="crime-popup-section">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">📍</span>
+                          <span>Mapped Area (OSM / Area Column)</span>
+                        </div>
+                        <div className="crime-popup-section-body">
+                          <div className="crime-popup-addr-main">{topArea[0]}</div>
+                        </div>
+                      </div>
+
+                      <div className="crime-popup-section">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">🧭</span>
+                          <span>FIR Area (English / Transliteration)</span>
+                        </div>
+                        <div className="crime-popup-section-body">
+                          <div className="crime-popup-addr-main">{topAddress.line1 || markerPoint.subarea || 'Unknown'}</div>
+                          {topAddress.line2 && <div className="crime-popup-addr-sub">{topAddress.line2}</div>}
+                          {markerPoint.area_urdu && <div className="crime-popup-addr-urdu">{markerPoint.area_urdu}</div>}
+                        </div>
+                      </div>
+
+                      <div className="crime-popup-section">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">⚠</span>
+                          <span>Risk Score</span>
+                        </div>
+                        <div className="crime-popup-section-body">
+                          <div className="crime-popup-addr-main">{markerPoint.risk_score}%</div>
+                        </div>
+                      </div>
+
+                      <div className="crime-popup-section">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">🛡</span>
+                          <span>Safety Score</span>
+                        </div>
+                        <div className="crime-popup-section-body">
+                          <div className="crime-popup-addr-main">{Math.round(100 - markerPoint.risk_score)}%</div>
+                        </div>
+                      </div>
+
+                      <div className="crime-popup-section crime-popup-section-last">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">🗓</span>
+                          <span>Date</span>
+                        </div>
+                        <div className="crime-popup-section-body">
+                          <div className="crime-popup-addr-main">{formatCrimeDateParts(markerPoint.crimes?.[0]?.date).date}</div>
+                        </div>
+                      </div>
+
+                      <div className="crime-popup-section crime-popup-section-last">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">⏰</span>
+                          <span>Time</span>
+                        </div>
+                        <div className="crime-popup-section-body">
+                          <div className="crime-popup-addr-main">{formatCrimeDateParts(markerPoint.crimes?.[0]?.date).time}</div>
+                        </div>
+                      </div>
+
+                      <div className="crime-popup-section">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">📑</span>
+                          <span>Crime Types</span>
+                        </div>
+                        <div className="crime-popup-section-body">
+                          {crimeTypeList.map(([type, count]) => (
+                            <div key={`${index}-${type}`} className="crime-popup-addr-sub">
+                              {ppcSimpleLabel(type)}
+                              <span style={{ display: 'block' }}>x{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="crime-popup-section crime-popup-section-last">
+                        <div className="crime-popup-section-title">
+                          <span className="crime-popup-sec-icon">📍</span>
+                          <span>Coordinates</span>
+                        </div>
+                        <div className="crime-popup-section-body">
+                          <div className="crime-popup-addr-main">📍 {markerPoint.displayLat.toFixed(4)}, {markerPoint.displayLng.toFixed(4)}</div>
+                        </div>
+                      </div>
+                    </div>
                   </Popup>
                 </Marker>
               );
@@ -1676,64 +2021,36 @@ const fetchTrendsData = useCallback(async () => {
                       iconAnchor: [4, 4]
                     })}
                   >
-                    <Popup className="crime-popup-wrapper crime-popup-compact">
+                    <Popup className="crime-popup-wrapper crime-popup-compact crime-popup-cluster">
                       {(() => {
-                        const risk = getRiskLevel(crime.risk_level).toLowerCase();
-                        const { line1, line2 } = parseAddress(crime.area_translit || crime.area);
-                        const urduFull = crime.area_urdu ? crime.area_urdu.trim() : null;
+                          const topArea = (crime.area || 'Unknown').trim() || 'Unknown';
+                          const coordKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
+                          const clusterKey = `${coordKey}|${normalizeAreaName(topArea)}`;
+                          const summary = heatmapClusterSummaryMap.get(clusterKey) || {
+                            count: 1,
+                            top_area: topArea,
+                            top_subarea: crime.area_translit || crime.area || 'Unknown',
+                            top_type: crime.crime_type || 'Unknown',
+                            top_type_count: 1,
+                            warning_avoid_pct: (getRiskLevel(crime.risk_level) === 'High' || getRiskLevel(crime.risk_level) === 'Critical') ? 100 : 0,
+                            risk_score: (getRiskLevel(crime.risk_level) === 'High' || getRiskLevel(crime.risk_level) === 'Critical') ? 100 : 0,
+                          };
                         return (
-                          <div className="crime-popup-card">
-                            <div className={`crime-popup-risk-bar risk-bar-${risk}`} />
-
-                            <div className="crime-popup-header">
-                              <span className="crime-popup-label">FIR Incident</span>
-                              <span className={`crime-popup-risk-badge risk-badge-${risk}`}>
-                                {getRiskLevel(crime.risk_level)} Risk
-                              </span>
-                            </div>
-
-                            <div className="crime-popup-type">
-                              {ppcSimpleLabel(crime.crime_type) || crime.crime_type || 'Unknown Incident'}
-                            </div>
-
-                            <div className="crime-popup-divider" />
-
-                            {/* 📍 Location */}
-                            <div className="crime-popup-section">
-                              <div className="crime-popup-section-title">
-                                <span className="crime-popup-sec-icon">📍</span>
-                                <span>Location:</span>
-                              </div>
-                              <div className="crime-popup-section-body">
-                                {line1 && <div className="crime-popup-addr-main">{line1}</div>}
-                                {line2 && <div className="crime-popup-addr-sub">{line2}</div>}
-                                {urduFull && (
-                                  <div className="crime-popup-addr-urdu">({urduFull})</div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* 🌐 City */}
-                            <div className="crime-popup-section">
-                              <div className="crime-popup-section-title">
-                                <span className="crime-popup-sec-icon">🌐</span>
-                                <span>City:</span>
-                              </div>
-                              <div className="crime-popup-section-body">
-                                <div className="crime-popup-addr-main">Lahore, Pakistan</div>
-                              </div>
-                            </div>
-
-                            {/* 🗓 Date & Time */}
-                            <div className="crime-popup-section crime-popup-section-last">
-                              <div className="crime-popup-section-title">
-                                <span className="crime-popup-sec-icon">🗓</span>
-                                <span>Date &amp; Time:</span>
-                              </div>
-                              <div className="crime-popup-section-body">
-                                <div className="crime-popup-addr-main">{formatCrimeDate(crime.date)}</div>
-                              </div>
-                            </div>
+                          <div className="cluster-popup">
+                            <p><strong>Filtered Crimes</strong></p>
+                              <p>{summary.count}</p>
+                            <p><strong>Area</strong></p>
+                              <p>{summary.top_area}</p>
+                            <p><strong>Top FIR Sub-area</strong></p>
+                              <p>{summary.top_subarea}</p>
+                            <p><strong>Top Type</strong></p>
+                              <p>{ppcSimpleLabel(summary.top_type)} ({summary.top_type_count})</p>
+                            <p><strong>Risk Score</strong></p>
+                              <p>{summary.risk_score}%</p>
+                            <p><strong>Safety Score</strong></p>
+                              <p style={{ color: (100 - summary.risk_score) > 80 ? '#22c55e' : (100 - summary.risk_score) > 50 ? '#f59e0b' : '#ef4444', fontWeight: 'bold' }}>
+                                {Math.round(100 - summary.risk_score)}%
+                              </p>
                           </div>
                         );
                       })()}
@@ -1764,7 +2081,69 @@ const fetchTrendsData = useCallback(async () => {
             />
             {clusters.map((cluster, index) => {
               const riskColors = cluster.crimes.map(crime => getRiskColor(crime.risk_level));
-              const dominantColor = riskColors[0] || '#3b82f6'; // Use first color or default
+              const dominantColor = riskColors[0] || '#3b82f6';
+              const areaCounts = {};
+              const subareaCounts = {};
+              const typeCounts = {};
+              let criticalCount = 0;
+              let highCount = 0;
+              let moderateCount = 0;
+              let lowCount = 0;
+
+              // Use consistent time reference from parent scope
+              // This ensures all clusters use the same "now" for recency calculations
+              cluster.crimes.forEach((crime) => {
+                const areaName = (crime.area || 'Unknown').trim() || 'Unknown';
+                const subareaName = (crime.area_translit || crime.area || 'Unknown').trim() || 'Unknown';
+                const typeName = crime.crime_type || 'Unknown';
+                areaCounts[areaName] = (areaCounts[areaName] || 0) + 1;
+                subareaCounts[subareaName] = (subareaCounts[subareaName] || 0) + 1;
+                typeCounts[typeName] = (typeCounts[typeName] || 0) + 1;
+
+                const lvl = getRiskLevel(crime.risk_level);
+                if (lvl === 'Critical') criticalCount += 1;
+                else if (lvl === 'High') highCount += 1;
+                else if (lvl === 'Moderate') moderateCount += 1;
+                else lowCount += 1;
+              });
+
+              // Calculate recency using consistent reference
+              let last_30_days = 0;
+              let last_90_days = 0;
+              let recent_count = 0;
+              let older_count = 0;
+
+              const now = new Date();
+              const cutoff_90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+              const cutoff_30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+              const cutoff_45 = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+
+              cluster.crimes.forEach((crime) => {
+                const crimeDate = crime.date ? new Date(crime.date) : null;
+                if (crimeDate && !isNaN(crimeDate.getTime())) {
+                  if (crimeDate >= cutoff_30) last_30_days += 1;
+                  if (crimeDate >= cutoff_90) last_90_days += 1;
+                  if (crimeDate >= cutoff_45) recent_count += 1;
+                  else older_count += 1;
+                }
+              });
+
+              const topArea = Object.entries(areaCounts).sort((a, b) => b[1] - a[1])[0] || ['Unknown', 0];
+              const topSubarea = Object.entries(subareaCounts).sort((a, b) => b[1] - a[1])[0] || ['Unknown', 0];
+              const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0] || ['Unknown', 0];
+
+              // Use unified risk calculation (matching backend exactly)
+              const stats = {
+                total_crimes: cluster.count,
+                high_risk_count: criticalCount + highCount,
+                medium_risk_count: moderateCount,
+                last_30_days,
+                last_90_days,
+                recent_count,
+                older_count,
+              };
+              const riskSummary = calculate_unified_risk_summary(stats);
+              const riskScore = riskSummary.risk_score;
 
               return (
                 <Marker
@@ -1790,24 +2169,22 @@ const fetchTrendsData = useCallback(async () => {
                     iconAnchor: [Math.min(20 + cluster.count, 30), Math.min(20 + cluster.count, 30)]
                   })}
                 >
-                  <Popup>
+                  <Popup className="crime-popup-wrapper crime-popup-compact crime-popup-cluster">
                     <div className="cluster-popup">
-                      <h4>Crime Cluster</h4>
-                      <p><strong>Total Incidents:</strong> {cluster.count}</p>
-                      <p><strong>Area:</strong> {cluster.crimes[0]?.area || 'Unknown'}</p>
-                      <div style={{ marginTop: '8px' }}>
-                        <strong>Crime Types:</strong>
-                        <div style={{ marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {Array.from(new Set(cluster.crimes.map(record => record.crime_type || 'Unknown'))).slice(0, 5).map((type, crimeTypeIndex) => (
-                            <span key={crimeTypeIndex} style={{
-                              background: '#e5e7eb',
-                              padding: '2px 6px',
-                              borderRadius: '10px',
-                              fontSize: '12px'
-                            }}>{type}</span>
-                          ))}
-                        </div>
-                      </div>
+                      <p><strong>Filtered Crimes</strong></p>
+                      <p>{cluster.count}</p>
+                      <p><strong>Area</strong></p>
+                      <p>{topArea[0]}</p>
+                      <p><strong>Top FIR Sub-area</strong></p>
+                      <p>{topSubarea[0]}</p>
+                      <p><strong>Top Type</strong></p>
+                      <p>{ppcSimpleLabel(topType[0])} ({topType[1]})</p>
+                      <p><strong>Risk Score</strong></p>
+                      <p>{riskScore}%</p>
+                      <p><strong>Safety Score</strong></p>
+                      <p style={{ color: (100 - riskScore) > 80 ? '#22c55e' : (100 - riskScore) > 50 ? '#f59e0b' : '#ef4444', fontWeight: 'bold' }}>
+                        {Math.round(100 - riskScore)}%
+                      </p>
                     </div>
                   </Popup>
                 </Marker>
@@ -2038,20 +2415,21 @@ const fetchTrendsData = useCallback(async () => {
                 Display Limit
               </h4>
               <div className="slider-control">
-                <label>Show Incidents: {incidentLimit}</label>
-                <input
-                  type="range"
-                  min="10"
-                  max="500"
-                  step="10"
+                <label>Show Incidents: {incidentLimit === 0 ? 'All records' : incidentLimit}</label>
+                <select
                   value={incidentLimit}
-                  onChange={(e) => setIncidentLimit(parseInt(e.target.value))}
-                  className="prediction-slider"
-                />
-                <div className="slider-labels">
-                  <span>10</span>
-                  <span>500+</span>
-                </div>
+                  onChange={(e) => {
+                    incidentLimitTouchedRef.current = true;
+                    setIncidentLimit(parseInt(e.target.value, 10));
+                  }}
+                  className="modern-select"
+                >
+                  <option value={500}>500 records</option>
+                  <option value={1000}>1,000 records</option>
+                  <option value={2000}>2,000 records</option>
+                  <option value={5000}>5,000 records</option>
+                  <option value={0}>All records</option>
+                </select>
                 <button 
                   className="reset-button"
                   onClick={() => {
@@ -2147,6 +2525,7 @@ const fetchTrendsData = useCallback(async () => {
                           key={tile.id}
                           className={`tile-option ${selectedTile === tile.id ? 'active' : ''}`}
                           onClick={() => {
+                            tileTouchedRef.current = true;
                             setSelectedTile(tile.id);
                             setShowTileDropdown(false);
                           }}

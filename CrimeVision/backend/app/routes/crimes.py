@@ -8,6 +8,7 @@ import pandas as pd
 import difflib
 import joblib
 import os
+import json
 from mysql.connector import Error as MySQLError
 from app.core.database import get_db_connection
 from app.utils.validation import validate_date_format, validate_crime_type
@@ -2762,24 +2763,55 @@ def get_intelligence_dashboard(current_user: str = Depends(get_username_from_tok
             pass
 
         reliability = (
-            'High'     if oov_count <= 5
+            'High' if oov_count <= 5
             else 'Moderate' if oov_count <= 15
             else 'Low'
         )
-        last_train_date = 'Feb 28, 2026'
+
+        # Resolve model metadata from artifacts first; fall back to model file mtime.
+        # This avoids stale/hardcoded dates and avoids relying on created_at column shape.
+        last_train_date = '—'
+        training_size = total_records
         records_since_last_train = 0
+        rf_accuracy_pct = 82
+        poisson_mae_pct = 11
+        trained_at_dt = None
         try:
-            model_path = os.path.join(_CRM_DIR, 'models', 'random_forest_model.joblib')
-            if os.path.exists(model_path):
-                mtime = os.path.getmtime(model_path)
-                last_train_date = _dt.fromtimestamp(mtime).strftime('%b %d, %Y')
-                # Count records imported *after* the model file was written
-                mtime_dt = _dt.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
-                cursor.execute(
-                    "SELECT COUNT(*) AS n FROM crimes WHERE created_at > %s",
-                    (mtime_dt,)
-                )
-                records_since_last_train = int(cursor.fetchone()['n'])
+            artifacts_path = os.path.join(_CRM_DIR, 'models', 'model_artifacts.json')
+            if os.path.exists(artifacts_path):
+                with open(artifacts_path, 'r', encoding='utf-8') as f:
+                    _arts = json.load(f)
+                _trained_at_raw = _arts.get('trained_at')
+                _n_samples_raw = _arts.get('n_training_samples')
+                _cv_acc = _arts.get('cv_accuracy_mean')
+                if _n_samples_raw is not None:
+                    training_size = int(_n_samples_raw)
+                if _cv_acc is not None:
+                    try:
+                        rf_accuracy_pct = int(round(float(_cv_acc) * 100))
+                    except Exception:
+                        pass
+                if _trained_at_raw:
+                    try:
+                        trained_at_dt = _dt.fromisoformat(str(_trained_at_raw))
+                    except Exception:
+                        trained_at_dt = None
+
+            if trained_at_dt is None:
+                model_path = os.path.join(_CRM_DIR, 'models', 'random_forest_model.joblib')
+                if os.path.exists(model_path):
+                    trained_at_dt = _dt.fromtimestamp(os.path.getmtime(model_path))
+
+            if trained_at_dt is not None:
+                last_train_date = trained_at_dt.strftime('%b %d, %Y')
+
+            records_since_last_train = max(0, int(total_records) - int(training_size))
+
+            # If auto-retrain status has a newer timestamp, prefer that display date.
+            if last_retrain_ts:
+                _lrt_dt = _dt.fromtimestamp(float(last_retrain_ts))
+                if (trained_at_dt is None) or (_lrt_dt > trained_at_dt):
+                    last_train_date = _lrt_dt.strftime('%b %d, %Y')
         except Exception:
             pass
 
@@ -2796,13 +2828,13 @@ def get_intelligence_dashboard(current_user: str = Depends(get_username_from_tok
                 'unknown_labels':            unknown_labels,
             },
             'model_health': {
-                'rf_accuracy':     82,
-                'poisson_mae_pct': 11,
+                'rf_accuracy':     rf_accuracy_pct,
+                'poisson_mae_pct': poisson_mae_pct,
                 'reliability':     reliability,
                 'oov_count':       oov_count,
                 'last_train_date': last_train_date,
                 'retrain_count':   retrain_count,
-                'training_size':   total_records,
+                'training_size':   training_size,
             },
             'drift': {
                 'new_areas':             new_areas[:6],
@@ -2875,12 +2907,13 @@ def trigger_retrain(current_user: str = Depends(get_username_from_token)):
 
 @router.get("/areas/{area}/heatmap")
 def get_area_heatmap(area: str):
-    """Get heatmap data for crime density in a specific area"""
+    """Get heatmap data for crime density in a specific area with unified risk scores"""
     conn = get_db_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="Database connection failed")
     cursor = conn.cursor(dictionary=True)
     try:
+        # Get all crimes for the area
         cursor.execute("""
             SELECT
                 id, area, crime_type, crime_date,
@@ -2910,6 +2943,11 @@ def get_area_heatmap(area: str):
         clusters = []
         if heatmap_data:
             cluster_map: Dict[str, Any] = {}
+            now = datetime.utcnow()
+            cutoff_90 = now - timedelta(days=90)
+            cutoff_30 = now - timedelta(days=30)
+            cutoff_45 = now - timedelta(days=45)  # for recent/older split
+
             for point in heatmap_data:
                 cluster_key = f"{round(point['lat'], 3)},{round(point['lng'], 3)}"
                 if cluster_key not in cluster_map:
@@ -2917,19 +2955,72 @@ def get_area_heatmap(area: str):
                         "lat": round(point['lat'], 3),
                         "lng": round(point['lng'], 3),
                         "count": 0,
-                        "high_risk_count": 0
+                        "high_risk_count": 0,
+                        "medium_risk_count": 0,
+                        "last_30_days": 0,
+                        "last_90_days": 0,
+                        "recent_count": 0,
+                        "older_count": 0,
                     }
-                cluster_map[cluster_key]["count"] += 1
-                if point["risk_level"] == "High":
-                    cluster_map[cluster_key]["high_risk_count"] += 1
 
-            clusters = [
-                {
-                    **cluster,
-                    "high_risk_ratio": cluster["high_risk_count"] / cluster["count"] if cluster["count"] > 0 else 0
+                cluster = cluster_map[cluster_key]
+                cluster["count"] += 1
+
+                # Count by risk level
+                risk_level = str(point["risk_level"] or "").lower()
+                if risk_level in ("high", "critical", "avoid", "warning"):
+                    cluster["high_risk_count"] += 1
+                elif risk_level in ("moderate", "medium", "caution"):
+                    cluster["medium_risk_count"] += 1
+
+                # Count by recency
+                crime_date = point["date"]
+                if isinstance(crime_date, str):
+                    try:
+                        crime_dt = datetime.fromisoformat(crime_date.replace('Z', '+00:00'))
+                    except:
+                        crime_dt = None
+                else:
+                    crime_dt = crime_date
+
+                if crime_dt:
+                    if crime_dt >= cutoff_30:
+                        cluster["last_30_days"] += 1
+                    if crime_dt >= cutoff_90:
+                        cluster["last_90_days"] += 1
+                    if crime_dt >= cutoff_45:
+                        cluster["recent_count"] += 1
+                    else:
+                        cluster["older_count"] += 1
+
+            # Calculate unified risk scores for each cluster
+            clusters = []
+            for cluster in cluster_map.values():
+                stats = {
+                    "total_crimes": cluster["count"],
+                    "high_risk_count": cluster["high_risk_count"],
+                    "medium_risk_count": cluster["medium_risk_count"],
+                    "last_30_days": cluster["last_30_days"],
+                    "last_90_days": cluster["last_90_days"],
+                    "recent_count": cluster["recent_count"],
+                    "older_count": cluster["older_count"],
                 }
-                for cluster in cluster_map.values()
-            ]
+
+                # Get unified risk summary
+                risk_summary = calculate_unified_risk_summary(stats)
+
+                clusters.append({
+                    "lat": cluster["lat"],
+                    "lng": cluster["lng"],
+                    "count": cluster["count"],
+                    "high_risk_count": cluster["high_risk_count"],
+                    "medium_risk_count": cluster["medium_risk_count"],
+                    "high_risk_ratio": cluster["high_risk_count"] / cluster["count"] if cluster["count"] > 0 else 0,
+                    "risk_score": risk_summary["risk_score"],
+                    "safety_score": risk_summary["safety_score"],
+                    "risk_level": risk_summary["risk_level"],
+                    "risk_label": risk_summary["risk_label"],
+                })
 
         return {
             "area": area,

@@ -13,6 +13,37 @@ const getProfileImageUrl = (profilePicture) => {
   return `${window.location.origin}/${profilePicture}`;
 };
 
+const DEFAULT_ALERT_CHANNEL_PREFERENCES = {
+  incident: { email: true, browser: false },
+  live: { email: true, browser: false },
+  weekly: { email: true, browser: false }
+};
+
+const normalizeAlertChannelPreferences = (rawPreferences, fallbackEmail = true, fallbackBrowser = false) => {
+  const fallback = {
+    incident: { email: fallbackEmail, browser: fallbackBrowser },
+    live: { email: fallbackEmail, browser: fallbackBrowser },
+    weekly: { email: fallbackEmail, browser: fallbackBrowser }
+  };
+
+  const source = rawPreferences && typeof rawPreferences === 'object' ? rawPreferences : {};
+
+  return {
+    incident: {
+      email: source.incident?.email !== undefined ? Boolean(source.incident.email) : fallback.incident.email,
+      browser: source.incident?.browser !== undefined ? Boolean(source.incident.browser) : fallback.incident.browser
+    },
+    live: {
+      email: source.live?.email !== undefined ? Boolean(source.live.email) : fallback.live.email,
+      browser: source.live?.browser !== undefined ? Boolean(source.live.browser) : fallback.live.browser
+    },
+    weekly: {
+      email: source.weekly?.email !== undefined ? Boolean(source.weekly.email) : fallback.weekly.email,
+      browser: source.weekly?.browser !== undefined ? Boolean(source.weekly.browser) : fallback.weekly.browser
+    }
+  };
+};
+
 const ProfileModal = ({ isOpen, onClose }) => {
   const { user, token, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
@@ -29,7 +60,8 @@ const ProfileModal = ({ isOpen, onClose }) => {
     monitor_live_location: false,
     weekly_reports_enabled: true,
     incident_alerts_enabled: true,
-    live_alerts_enabled: true
+    live_alerts_enabled: true,
+    alert_channel_preferences: { ...DEFAULT_ALERT_CHANNEL_PREFERENCES }
   });
 
   const [profilePhoto, setProfilePhoto] = useState(null);
@@ -200,7 +232,12 @@ useEffect(() => {
         monitor_live_location: user.monitor_live_location || false,
         weekly_reports_enabled: user.weekly_reports_enabled !== undefined ? user.weekly_reports_enabled : true,
         incident_alerts_enabled: user.incident_alerts_enabled !== undefined ? user.incident_alerts_enabled : true,
-        live_alerts_enabled: user.live_alerts_enabled !== undefined ? user.live_alerts_enabled : true
+        live_alerts_enabled: user.live_alerts_enabled !== undefined ? user.live_alerts_enabled : true,
+        alert_channel_preferences: normalizeAlertChannelPreferences(
+          user.alert_channel_preferences,
+          user.email_alerts_enabled !== undefined ? user.email_alerts_enabled : true,
+          user.browser_notifications_enabled || false
+        )
       });
 
       setPreviewPhoto(getProfileImageUrl(user.profile_picture));
@@ -236,6 +273,49 @@ useEffect(() => {
       ...prev, 
       [name]: type === 'checkbox' ? checked : value 
     }));
+  };
+
+  const handleLiveMonitoringChange = (checked) => {
+    setFormData(prev => ({
+      ...prev,
+      monitor_live_location: checked,
+      live_alerts_enabled: checked
+    }));
+  };
+
+  const handleAlertChannelChange = (alertType, channel, checked) => {
+    setFormData(prev => ({
+      ...prev,
+      alert_channel_preferences: {
+        ...prev.alert_channel_preferences,
+        [alertType]: {
+          ...(prev.alert_channel_preferences?.[alertType] || {}),
+          [channel]: checked
+        }
+      }
+    }));
+  };
+
+  const getEnabledAlertTypeKeys = (data) => {
+    const keys = [];
+    if (data.incident_alerts_enabled) keys.push('incident');
+    if (data.live_alerts_enabled) keys.push('live');
+    if (data.weekly_reports_enabled) keys.push('weekly');
+    return keys;
+  };
+
+  const getEffectiveChannelFlags = (data) => {
+    const enabledTypes = getEnabledAlertTypeKeys(data);
+    let anyEmail = false;
+    let anyBrowser = false;
+
+    enabledTypes.forEach((typeKey) => {
+      const prefs = data.alert_channel_preferences?.[typeKey] || {};
+      if (prefs.email) anyEmail = true;
+      if (prefs.browser) anyBrowser = true;
+    });
+
+    return { anyEmail, anyBrowser };
   };
 
   const handlePhotoChange = (e) => {
@@ -427,6 +507,7 @@ useEffect(() => {
       }
 
       // Update profile data - ensure ALL fields are included
+      const { anyEmail, anyBrowser } = getEffectiveChannelFlags(formData);
       const updateData = {
         first_name: formData.first_name,
         last_name: formData.last_name,
@@ -436,12 +517,13 @@ useEffect(() => {
         alert_radius: formData.alert_radius,
         profile_picture: profile_picture_path,
         phone_number: formData.phone_number,
-        browser_notifications_enabled: formData.browser_notifications_enabled,
-        email_alerts_enabled: formData.email_alerts_enabled,
+        browser_notifications_enabled: anyBrowser,
+        email_alerts_enabled: anyEmail,
         monitor_live_location: Boolean(formData.monitor_live_location),
         weekly_reports_enabled: Boolean(formData.weekly_reports_enabled),
         incident_alerts_enabled: Boolean(formData.incident_alerts_enabled),
-        live_alerts_enabled: Boolean(formData.live_alerts_enabled)
+        live_alerts_enabled: Boolean(formData.monitor_live_location),
+        alert_channel_preferences: formData.alert_channel_preferences
       };
 
 
@@ -452,7 +534,7 @@ useEffect(() => {
       console.log('✅ Profile update API response:', result);
 
       // Only setup browser push if enabled AND supported
-      if (formData.browser_notifications_enabled && browserPushSupported) {
+      if (anyBrowser && browserPushSupported) {
         try {
           console.log('🚀 Setting up browser push notifications...');
           await setupBrowserPushNotifications();
@@ -479,7 +561,12 @@ useEffect(() => {
         monitor_live_location: updatedUser.monitor_live_location || false,
         weekly_reports_enabled: updatedUser.weekly_reports_enabled !== undefined ? updatedUser.weekly_reports_enabled : true,
         incident_alerts_enabled: updatedUser.incident_alerts_enabled !== undefined ? updatedUser.incident_alerts_enabled : true,
-        live_alerts_enabled: updatedUser.live_alerts_enabled !== undefined ? updatedUser.live_alerts_enabled : true
+        live_alerts_enabled: updatedUser.live_alerts_enabled !== undefined ? updatedUser.live_alerts_enabled : (updatedUser.monitor_live_location || false),
+        alert_channel_preferences: normalizeAlertChannelPreferences(
+          updatedUser.alert_channel_preferences,
+          updatedUser.email_alerts_enabled !== undefined ? updatedUser.email_alerts_enabled : true,
+          updatedUser.browser_notifications_enabled || false
+        )
       }));
 
 
@@ -502,16 +589,34 @@ useEffect(() => {
         await apiService.unsubscribeFromAlerts(token);
         setSuccess('Alerts disabled successfully!');
       } else {
-        // Subscribe with current location and preferences - Independent toggling
+        // Subscribe with explicit category + channel selections from user preferences.
+        const { anyEmail, anyBrowser } = getEffectiveChannelFlags(formData);
         const notificationTypes = [];
-        if (formData.email_alerts_enabled) notificationTypes.push('email');
-        if (formData.browser_notifications_enabled && browserPushSupported) {
+        if (anyEmail) notificationTypes.push('email');
+        if (anyBrowser && browserPushSupported) {
           notificationTypes.push('browser');
         }
 
+        const alertTypes = [];
+        if (formData.incident_alerts_enabled) alertTypes.push('incident_alert');
+        if (formData.live_alerts_enabled) alertTypes.push('live_alert');
+        if (formData.weekly_reports_enabled) alertTypes.push('weekly_report');
+
+        if (notificationTypes.length === 0) {
+          setError('Enable at least one delivery channel (Email or Browser) before subscribing.');
+          return;
+        }
+
+        if (alertTypes.length === 0) {
+          setError('Enable at least one alert type (Incident, Live, or Weekly) before subscribing.');
+          return;
+        }
+
+        const monitoredAreas = [formData.home_area, formData.work_area].filter(Boolean);
+
         const subscriptionData = {
-          alert_types: ['crime', 'safety', 'emergency'],
-          areas: [formData.home_area].filter(Boolean),
+          alert_types: alertTypes,
+          areas: monitoredAreas.length > 0 ? monitoredAreas : ['General'],
           radius: formData.alert_radius,
           notification_types: notificationTypes,
           is_active: true
@@ -857,7 +962,7 @@ useEffect(() => {
                 <div className={styles.alertStatusHeader}>
                   <div className={styles.statusInfo}>
                     <h4>Safety Alerts</h4>
-                    <p>Real-time crime and safety notifications</p>
+                    <p>Master switch for incident, live, and weekly alert delivery</p>
                   </div>
                   <div className={styles.statusToggle}>
                     <button
@@ -887,70 +992,22 @@ useEffect(() => {
                     </div>
                     <div className={styles.alertStat}>
                       <i className="fas fa-desktop"></i>
-                      <span>Browser Notifications: {formData.browser_notifications_enabled ? 'Enabled' : 'Disabled'}</span>
+                      <span>Incident Channels: {formData.alert_channel_preferences?.incident?.email ? 'Email ' : ''}{formData.alert_channel_preferences?.incident?.browser ? 'Browser' : ''}{(!formData.alert_channel_preferences?.incident?.email && !formData.alert_channel_preferences?.incident?.browser) ? 'None' : ''}</span>
+                    </div>
+                    <div className={styles.alertStat}>
+                      <i className="fas fa-bolt"></i>
+                      <span>Live Channels: {formData.alert_channel_preferences?.live?.email ? 'Email ' : ''}{formData.alert_channel_preferences?.live?.browser ? 'Browser' : ''}{(!formData.alert_channel_preferences?.live?.email && !formData.alert_channel_preferences?.live?.browser) ? 'None' : ''}</span>
+                    </div>
+                    <div className={styles.alertStat}>
+                      <i className="fas fa-map-marked-alt"></i>
+                      <span>Live Location Monitoring: {formData.monitor_live_location ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                    <div className={styles.alertStat}>
+                      <i className="fas fa-calendar-week"></i>
+                      <span>Weekly Channels: {formData.alert_channel_preferences?.weekly?.email ? 'Email ' : ''}{formData.alert_channel_preferences?.weekly?.browser ? 'Browser' : ''}{(!formData.alert_channel_preferences?.weekly?.email && !formData.alert_channel_preferences?.weekly?.browser) ? 'None' : ''}</span>
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Browser Push Settings */}
-              <div className={styles.browserPushSettings}>
-                <div className={styles.settingHeader}>
-                  <div className={styles.settingInfo}>
-                    <h4>Browser Push Notifications</h4>
-                    <p>Receive alerts directly in your browser</p>
-                  </div>
-                  <label className={styles.switch}>
-                    <input
-                      type="checkbox"
-                      name="browser_notifications_enabled"
-                      checked={formData.browser_notifications_enabled}
-                      onChange={handleChange}
-                      disabled={!browserPushSupported}
-                    />
-                    <span className={styles.slider}></span>
-                  </label>
-                </div>
-
-                {!browserPushSupported && (
-                  <p className={styles.browserPushNote}>
-                    \u26A0\uFE0F Browser push notifications are not supported in your current browser. 
-                    Consider using Chrome, Firefox, or Edge for this feature.
-                  </p>
-                )}
-
-                {formData.browser_notifications_enabled && browserPushSupported && (
-                  <p className={styles.browserPushNote}>
-                    \u2705 You will receive instant safety alerts directly in your browser, 
-                    even when the tab is closed.
-                  </p>
-                )}
-              </div>
-
-              {/* Email Alerts Settings */}
-              <div className={styles.browserPushSettings} style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-                <div className={styles.settingHeader}>
-                  <div className={styles.settingInfo}>
-                    <h4>Email Notifications</h4>
-                    <p>Receive alerts via your registerd email: {formData.email}</p>
-                  </div>
-                  <label className={styles.switch}>
-                    <input
-                      type="checkbox"
-                      name="email_alerts_enabled"
-                      checked={formData.email_alerts_enabled}
-                      onChange={handleChange}
-                    />
-                    <span className={styles.slider}></span>
-                  </label>
-                </div>
-
-                <p className={styles.browserPushNote}>
-                  {formData.email_alerts_enabled ? 
-                    "\u2705 You will receive email alerts for high-risk activity in your areas." :
-                    "\u26A0\uFE0F Email alerts are disabled. You will not receive any notifications via email."
-                  }
-                </p>
               </div>
 
               {/* Live Location Tracking Settings */}
@@ -958,14 +1015,14 @@ useEffect(() => {
                 <div className={styles.settingHeader}>
                   <div className={styles.settingInfo}>
                     <h4>Live Location Alerts</h4>
-                    <p>Alert me when I enter a high-risk zone in real-time</p>
+                    <p>Turn live tracking on or off and choose how those alerts are delivered</p>
                   </div>
                   <label className={styles.switch}>
                     <input
                       type="checkbox"
                       name="monitor_live_location"
                       checked={formData.monitor_live_location}
-                      onChange={handleChange}
+                      onChange={(e) => handleLiveMonitoringChange(e.target.checked)}
                     />
                     <span className={styles.slider}></span>
                   </label>
@@ -977,6 +1034,30 @@ useEffect(() => {
                     "⚠️ Live location monitoring is disabled. You will not receive alerts based on your current movement."
                   }
                 </p>
+
+                {formData.monitor_live_location && (
+                  <div style={{ marginTop: '1rem' }}>
+                   <div className={styles.browserPushNote} style={{ display: 'flex', gap: '1.25rem', marginTop: '0.75rem' }}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formData.alert_channel_preferences?.live?.email)}
+                          onChange={(e) => handleAlertChannelChange('live', 'email', e.target.checked)}
+                        />{' '}
+                        Email
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formData.alert_channel_preferences?.live?.browser)}
+                          onChange={(e) => handleAlertChannelChange('live', 'browser', e.target.checked)}
+                          disabled={!browserPushSupported}
+                        />{' '}
+                        Browser
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Weekly Reports Settings */}
@@ -1003,6 +1084,27 @@ useEffect(() => {
                     "⚠️ Weekly reports are disabled."
                   }
                 </p>
+                {formData.weekly_reports_enabled && (
+                  <div className={styles.browserPushNote} style={{ display: 'flex', gap: '1.25rem', marginTop: '0.75rem' }}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.alert_channel_preferences?.weekly?.email)}
+                        onChange={(e) => handleAlertChannelChange('weekly', 'email', e.target.checked)}
+                      />{' '}
+                      Email
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.alert_channel_preferences?.weekly?.browser)}
+                        onChange={(e) => handleAlertChannelChange('weekly', 'browser', e.target.checked)}
+                        disabled={!browserPushSupported}
+                      />{' '}
+                      Browser
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Incident Alerts Settings */}
@@ -1029,6 +1131,27 @@ useEffect(() => {
                     "⚠️ Instant incident alerts are disabled."
                   }
                 </p>
+                {formData.incident_alerts_enabled && (
+                  <div className={styles.browserPushNote} style={{ display: 'flex', gap: '1.25rem', marginTop: '0.75rem' }}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.alert_channel_preferences?.incident?.email)}
+                        onChange={(e) => handleAlertChannelChange('incident', 'email', e.target.checked)}
+                      />{' '}
+                      Email
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.alert_channel_preferences?.incident?.browser)}
+                        onChange={(e) => handleAlertChannelChange('incident', 'browser', e.target.checked)}
+                        disabled={!browserPushSupported}
+                      />{' '}
+                      Browser
+                    </label>
+                  </div>
+                )}
               </div>
 
             </div>

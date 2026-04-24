@@ -31,6 +31,24 @@ def _sanitize_filename(name: str) -> str:
     cleaned = re.sub(r"\s+", "_", cleaned)
     return cleaned[:120] if cleaned else "report"
 
+
+def _get_table_columns(cursor, table_name: str) -> set[str]:
+    cursor.execute(
+        """
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s
+        """,
+        (table_name,),
+    )
+    rows = cursor.fetchall() or []
+    return {row.get("COLUMN_NAME") for row in rows if row.get("COLUMN_NAME")}
+
+
+def _scheduled_reports_uses_modern_schema(cursor) -> bool:
+    columns = _get_table_columns(cursor, "scheduled_reports")
+    return "report_type" in columns and "schedule_frequency" in columns
+
 class ReportScheduleRequest(BaseModel):
     report_type: str
     frequency: str
@@ -52,6 +70,7 @@ async def schedule_report(
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+        modern_schema = _scheduled_reports_uses_modern_schema(cursor)
         
         report_name = request.title or f"Scheduled_{request.report_type}_{request.frequency}"
         recipients_str = ",".join(request.recipients) if request.recipients else ""
@@ -66,13 +85,29 @@ async def schedule_report(
         else:
             next_run = datetime.now() + timedelta(days=1)
         
-        cursor.execute("""
-            INSERT INTO scheduled_reports
-            (report_type, report_name, schedule_frequency, recipients, format, 
-             is_active, created_by, created_at, next_run_at)
-            VALUES (%s, %s, %s, %s, %s, 1, %s, NOW(), %s)
-        """, (request.report_type, report_name, request.frequency, recipients_str, request.format, 
-              current_user, next_run))
+        if modern_schema:
+            cursor.execute("""
+                INSERT INTO scheduled_reports
+                (report_type, report_name, schedule_frequency, recipients, format, 
+                 is_active, created_by, created_at, next_run_at)
+                VALUES (%s, %s, %s, %s, %s, 1, %s, NOW(), %s)
+            """, (request.report_type, report_name, request.frequency, recipients_str, request.format, 
+                  current_user, next_run))
+        else:
+            cursor.execute("""
+                INSERT INTO scheduled_reports
+                (title, type, schedule, format, recipients, parameters, next_run, last_run, status, created_by, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NULL, 'active', %s, NOW())
+            """, (
+                report_name,
+                request.report_type,
+                request.frequency,
+                request.format,
+                recipients_str,
+                json.dumps({"report_type": request.report_type, "report_name": report_name, "frequency": request.frequency}),
+                next_run,
+                current_user,
+            ))
         
         conn.commit()
         schedule_id = cursor.lastrowid
@@ -213,25 +248,22 @@ async def get_scheduled_reports(
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        
-        cursor.execute("""
-            SELECT 
-                id,
-                report_type,
-                report_name,
-                schedule_frequency,
-                schedule_time,
-                recipients,
-                format,
-                is_active,
-                created_by,
-                created_at,
-                last_run_at,
-                next_run_at
-            FROM scheduled_reports
-            WHERE is_active = 1
-            ORDER BY next_run_at ASC
-        """)
+        modern_schema = _scheduled_reports_uses_modern_schema(cursor)
+
+        if modern_schema:
+            cursor.execute("""
+                SELECT *
+                FROM scheduled_reports
+                WHERE is_active = 1
+                ORDER BY next_run_at ASC
+            """)
+        else:
+            cursor.execute("""
+                SELECT *
+                FROM scheduled_reports
+                WHERE status = 'active'
+                ORDER BY next_run ASC
+            """)
         
         reports = cursor.fetchall()
         
@@ -240,6 +272,15 @@ async def get_scheduled_reports(
             for date_field in ['created_at', 'last_run_at', 'next_run_at']:
                 if isinstance(report.get(date_field), datetime):
                     report[date_field] = report[date_field].isoformat()
+            if modern_schema:
+                report.setdefault('schedule_time', None)
+                report.setdefault('report_name', report.get('report_name') or 'Scheduled Report')
+            else:
+                report['report_type'] = report.get('type') or report.get('report_type') or 'crime_summary'
+                report['report_name'] = report.get('title') or report.get('report_name') or 'Scheduled Report'
+                report['schedule_frequency'] = report.get('schedule') or report.get('schedule_frequency')
+                report['is_active'] = report.get('status') == 'active'
+                report.setdefault('schedule_time', None)
         
         cursor.close()
         conn.close()
@@ -510,6 +551,7 @@ async def schedule_report(
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+        modern_schema = _scheduled_reports_uses_modern_schema(cursor)
         
         report_name = f"Scheduled_{report_type}_{frequency}"
         recipients_str = ",".join(recipients)
@@ -524,13 +566,29 @@ async def schedule_report(
         else:
             raise HTTPException(status_code=400, detail="Invalid frequency")
         
-        cursor.execute("""
-            INSERT INTO scheduled_reports
-            (report_type, report_name, schedule_frequency, recipients, format, 
-             is_active, created_by, created_at, next_run_at)
-            VALUES (%s, %s, %s, %s, %s, 1, %s, NOW(), %s)
-        """, (report_type, report_name, frequency, recipients_str, format, 
-              current_user, next_run))
+        if modern_schema:
+            cursor.execute("""
+                INSERT INTO scheduled_reports
+                (report_type, report_name, schedule_frequency, recipients, format, 
+                 is_active, created_by, created_at, next_run_at)
+                VALUES (%s, %s, %s, %s, %s, 1, %s, NOW(), %s)
+            """, (report_type, report_name, frequency, recipients_str, format, 
+                  current_user, next_run))
+        else:
+            cursor.execute("""
+                INSERT INTO scheduled_reports
+                (title, type, schedule, format, recipients, parameters, next_run, last_run, status, created_by, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NULL, 'active', %s, NOW())
+            """, (
+                report_name,
+                report_type,
+                frequency,
+                format,
+                recipients_str,
+                json.dumps({"report_type": report_type, "report_name": report_name, "frequency": frequency}),
+                next_run,
+                current_user,
+            ))
         
         conn.commit()
         schedule_id = cursor.lastrowid

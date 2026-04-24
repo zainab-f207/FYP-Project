@@ -218,6 +218,9 @@ def get_admins(current_user: str = Depends(get_username_from_token)):
 # ─── System Settings ────────────────────────────────────────────────
 SYSTEM_SETTINGS_DEFAULTS = {
     "session_timeout": {"value": "15", "category": "security"},
+    "user_session_timeout": {"value": "43200", "category": "security"},
+    "admin_session_timeout": {"value": "60", "category": "security"},
+    "superadmin_session_timeout": {"value": "60", "category": "security"},
     "max_login_attempts": {"value": "5", "category": "security"},
     "lockout_duration": {"value": "30", "category": "security"},
     # Separate password minimums per role
@@ -231,9 +234,54 @@ SYSTEM_SETTINGS_DEFAULTS = {
     "alert_cooldown_minutes": {"value": "60", "category": "alerts"},
     "high_risk_threshold": {"value": "70", "category": "alerts"},
     "medium_risk_threshold": {"value": "40", "category": "alerts"},
+    "alert_last_30_window_days": {"value": "30", "category": "alerts"},
+    "alert_last_90_window_days": {"value": "90", "category": "alerts"},
+    "alert_recent_half_window_days": {"value": "182", "category": "alerts"},
+    "alert_history_window_days": {"value": "365", "category": "alerts"},
     "default_map_zoom": {"value": "12", "category": "map"},
+    "map_min_zoom": {"value": "11", "category": "map"},
+    "map_max_zoom": {"value": "18", "category": "map"},
+    "map_default_center_lat": {"value": "31.5204", "category": "map"},
+    "map_default_center_lng": {"value": "74.3587", "category": "map"},
+    "map_bounds_south": {"value": "31.30", "category": "map"},
+    "map_bounds_west": {"value": "74.15", "category": "map"},
+    "map_bounds_north": {"value": "31.75", "category": "map"},
+    "map_bounds_east": {"value": "74.60", "category": "map"},
+    "map_bounds_viscosity": {"value": "1.0", "category": "map"},
+    "map_fitbounds_padding_px": {"value": "20", "category": "map"},
+    "map_fitbounds_max_zoom": {"value": "14", "category": "map"},
+    "map_provider_default": {"value": "maptiler", "category": "map"},
+    "maptiler_enabled": {"value": "true", "category": "map"},
+    "maptiler_api_key": {"value": "JKSv1djb3YWDL4sjZtTB", "category": "map"},
+    "map_default_style": {"value": "streets", "category": "map"},
     "heatmap_radius": {"value": "20", "category": "map"},
     "heatmap_intensity": {"value": "0.5", "category": "map"},
+    "heatmap_blur_multiplier": {"value": "25", "category": "map"},
+    "heatmap_layer_max_zoom": {"value": "17", "category": "map"},
+    "map_default_record_limit": {"value": "1000", "category": "map"},
+    "map_hotspot_min_incidents": {"value": "2", "category": "map"},
+    "map_alert_visibility_threshold": {"value": "low", "category": "map"},
+    "monitor_saved_locations_interval_minutes": {"value": "1", "category": "system"},
+    "monitor_job_max_instances": {"value": "1", "category": "system"},
+    "incident_poll_interval_minutes": {"value": "1", "category": "system"},
+    "incident_poll_job_max_instances": {"value": "1", "category": "system"},
+    "model_watcher_retrain_threshold_new_crimes": {"value": "500", "category": "system"},
+    "model_watcher_retrain_threshold_new_areas": {"value": "5", "category": "system"},
+    "model_watcher_retrain_threshold_new_crime_types": {"value": "10", "category": "system"},
+    "model_watcher_check_interval_seconds": {"value": "3600", "category": "system"},
+    "model_watcher_retrain_timeout_seconds": {"value": "600", "category": "system"},
+    "auto_retrain_oov_pair_threshold": {"value": "20", "category": "system"},
+    "auto_retrain_new_record_threshold": {"value": "50", "category": "system"},
+    "auto_retrain_min_interval_seconds": {"value": "3600", "category": "system"},
+    "run_initial_monitor_on_startup": {"value": "true", "category": "system"},
+    "weekly_reports_enabled": {"value": "true", "category": "system"},
+    "weekly_reports_day_of_week": {"value": "sun", "category": "system"},
+    "weekly_reports_hour": {"value": "17", "category": "system"},
+    "weekly_reports_minute": {"value": "5", "category": "system"},
+    "weekly_reports_timezone": {"value": "Asia/Karachi", "category": "system"},
+    "location_accuracy_threshold_meters": {"value": "50000", "category": "system"},
+    "low_accuracy_location_policy": {"value": "accept_warn", "category": "system"},
+    "ocr_transliteration_timeout_seconds": {"value": "8", "category": "system"},
     "data_retention_days": {"value": "90", "category": "system"},
     "log_level": {"value": "info", "category": "system"},
     "maintenance_mode": {"value": "false", "category": "system"},
@@ -375,12 +423,17 @@ async def save_system_settings(request: Request, current_user: str = Depends(get
         changed = []
         for key, value in settings_data.items():
             if key in SYSTEM_SETTINGS_DEFAULTS or key in [
-                "session_timeout", "max_login_attempts", "lockout_duration",
+                "session_timeout", "user_session_timeout", "admin_session_timeout", "superadmin_session_timeout",
+                "max_login_attempts", "lockout_duration",
                 "password_min_length", "admin_password_min_length", "superadmin_password_min_length",
                 "require_two_factor", "alert_threshold",
                 "notification_radius", "auto_alert_generation", "alert_cooldown_minutes",
                 "high_risk_threshold", "medium_risk_threshold", "default_map_zoom",
-                "heatmap_radius", "heatmap_intensity", "data_retention_days",
+                "heatmap_radius", "heatmap_intensity", "map_default_record_limit",
+                "map_hotspot_min_incidents", "map_alert_visibility_threshold", "data_retention_days",
+                "monitor_saved_locations_interval_minutes", "incident_poll_interval_minutes",
+                "weekly_reports_enabled", "weekly_reports_day_of_week", "weekly_reports_hour",
+                "weekly_reports_minute", "weekly_reports_timezone", "location_accuracy_threshold_meters",
                 "log_level", "maintenance_mode",
             ]:
                 cat = SYSTEM_SETTINGS_DEFAULTS.get(key, {}).get("category", "general")
@@ -410,6 +463,58 @@ async def save_system_settings(request: Request, current_user: str = Depends(get
         conn.rollback()
         logger.error(f"Error saving system settings: {e}")
         raise HTTPException(status_code=500, detail="Failed to save system settings")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@router.post("/system-settings/apply-runtime")
+async def apply_runtime_system_settings(request: Request, current_user: str = Depends(get_username_from_token)):
+    """Apply scheduler/runtime-related system settings immediately (no backend restart)."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT role FROM users_info WHERE username = %s", (current_user,))
+        user = cast(Optional[Dict[str, Any]], cursor.fetchone())
+        if not user or user.get("role") not in ["superadmin", "admin"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Lazy import to avoid module import cycles at startup.
+        import main as app_main
+
+        app_main.start_background_monitoring()
+
+        jobs = []
+        try:
+            for job in app_main.scheduler.get_jobs():
+                jobs.append({
+                    "id": job.id,
+                    "name": job.name,
+                    "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                })
+        except Exception:
+            jobs = []
+
+        log_admin_action(
+            admin_username=current_user,
+            action="apply_runtime_system_settings",
+            target_type="system_settings",
+            target_id=0,
+            details={"jobs": [j.get("id") for j in jobs]},
+            request=request,
+        )
+
+        conn.commit()
+        return {
+            "message": "Runtime scheduler settings applied successfully",
+            "jobs": jobs,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error applying runtime settings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to apply runtime settings")
     finally:
         cursor.close()
         conn.close()

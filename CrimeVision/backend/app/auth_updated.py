@@ -54,18 +54,63 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(truncated_password)
 
 
+def _get_session_timeout_for_role(role: str) -> int:
+    """Read role-specific session timeout (minutes) from system_settings with defaults."""
+    role_key = str(role or "user").lower()
+    default_by_role = {
+        "superadmin": SUPERADMIN_TOKEN_EXPIRE_MINUTES,
+        "admin": ADMIN_TOKEN_EXPIRE_MINUTES,
+        "user": ACCESS_TOKEN_EXPIRE_MINUTES,
+    }
+    setting_key_by_role = {
+        "superadmin": "superadmin_session_timeout",
+        "admin": "admin_session_timeout",
+        "user": "user_session_timeout",
+    }
+
+    default_value = int(default_by_role.get(role_key, ACCESS_TOKEN_EXPIRE_MINUTES))
+    setting_key = setting_key_by_role.get(role_key, "user_session_timeout")
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT setting_value FROM system_settings WHERE setting_key = %s",
+            (setting_key,)
+        )
+        row = cursor.fetchone()
+
+        # Backward compatibility fallback to legacy key
+        if not row:
+            cursor.execute(
+                "SELECT setting_value FROM system_settings WHERE setting_key = %s",
+                ("session_timeout",)
+            )
+            row = cursor.fetchone()
+
+        cursor.close()
+        if row and row.get("setting_value") is not None:
+            parsed = int(cast(Dict[str, Any], row)["setting_value"])
+            return max(5, min(43200, parsed))
+    except Exception as e:
+        logger.warning(f"Using default session timeout for role={role_key}: {e}")
+    finally:
+        if conn and conn.is_connected():
+            conn.close()
+
+    return default_value
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create a JWT access token. Role-based expiry: superadmin=10min, admin=15min, user=30days."""
+    """Create a JWT access token with role-based expiry from system settings."""
     to_encode = data.copy()
     role = data.get("role", "user")
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
-    elif role == "superadmin":
-        expire = datetime.utcnow() + timedelta(minutes=SUPERADMIN_TOKEN_EXPIRE_MINUTES)
-    elif role == "admin":
-        expire = datetime.utcnow() + timedelta(minutes=ADMIN_TOKEN_EXPIRE_MINUTES)
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        role_timeout = _get_session_timeout_for_role(str(role))
+        expire = datetime.utcnow() + timedelta(minutes=role_timeout)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     username = data.get("sub", "unknown")

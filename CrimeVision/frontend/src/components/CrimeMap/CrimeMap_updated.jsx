@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { apiService } from "../../services/apiService_updated";
 import { ppcSimpleLabel } from '../../utils/ppcUtils';
-import { useSystemSettings } from '../../contexts/SystemSettingsContext';
+import { SYSTEM_SETTINGS_DEFAULTS, useSystemSettings } from '../../contexts/SystemSettingsContext';
 import './CrimeMap2.css';
 
 // Fix for default markers
@@ -52,6 +52,38 @@ const riskColors = {
   'Unknown': '#6b7280'  // Neutral gray for unknown
 };
 
+const riskRank = {
+  Low: 1,
+  Moderate: 2,
+  Medium: 2,
+  High: 3,
+  Critical: 4,
+};
+
+const actionLabel = (level) => {
+  if (level === 'Critical') return 'Avoid';
+  if (level === 'High') return 'Warning';
+  if (level === 'Moderate') return 'Caution';
+  return 'Safe';
+};
+
+const normalizeVisibilityThreshold = (value) => {
+  const v = String(value || SYSTEM_SETTINGS_DEFAULTS.map_alert_visibility_threshold).toLowerCase();
+  if (v === 'critical') return 'Critical';
+  if (v === 'high') return 'High';
+  if (v === 'medium') return 'Moderate';
+  return 'Low';
+};
+
+const normalizeRiskLevel = (value) => {
+  const v = String(value || '').toLowerCase();
+  if (v.includes('critical') || v.includes('avoid')) return 'Critical';
+  if (v.includes('high') || v.includes('warning')) return 'High';
+  if (v.includes('moderate') || v.includes('medium') || v.includes('caution')) return 'Moderate';
+  if (v.includes('low') || v.includes('safe')) return 'Low';
+  return 'Low';
+};
+
 // Component to handle map view changes based on prediction data
 const MapController = ({ predictionData, crimes }) => {
   const map = useMap();
@@ -86,7 +118,7 @@ const MapController = ({ predictionData, crimes }) => {
   return null;
 };
 
-const FitBounds = ({ points }) => {
+const FitBounds = ({ points, paddingPx, maxZoom }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -96,11 +128,13 @@ const FitBounds = ({ points }) => {
     const bounds = L.latLngBounds(latLngs);
 
     try {
-      map.fitBounds(bounds, { padding: [20, 20], maxZoom: 14, animate: true, duration: 1.0 });
+      const safePadding = Number.isFinite(Number(paddingPx)) ? Number(paddingPx) : 20;
+      const safeMaxZoom = Number.isFinite(Number(maxZoom)) ? Number(maxZoom) : 14;
+      map.fitBounds(bounds, { padding: [safePadding, safePadding], maxZoom: safeMaxZoom, animate: true, duration: 1.0 });
     } catch (e) {
       // no-op
     }
-  }, [points, map]);
+  }, [points, map, paddingPx, maxZoom]);
 
   return null;
 };
@@ -111,12 +145,18 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
   const [crimeTypes, setCrimeTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [limit, setLimit] = useState(1000);
+  const [limit, setLimit] = useState(SYSTEM_SETTINGS_DEFAULTS.map_default_record_limit);
   const [selectedCrimeType, setSelectedCrimeType] = useState('all');
-  const [mapStyle, setMapStyle] = useState('streets'); // Default to streets style
-  const [mapProvider, setMapProvider] = useState('maptiler'); // 'maptiler' or 'osm'
+  const [riskFilter, setRiskFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [mapStyle, setMapStyle] = useState(systemSettings?.map_default_style || SYSTEM_SETTINGS_DEFAULTS.map_default_style);
+  const [mapProvider, setMapProvider] = useState(systemSettings?.map_provider_default || SYSTEM_SETTINGS_DEFAULTS.map_provider_default);
   const [fallbackTriggered, setFallbackTriggered] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [settingsSyncedAt, setSettingsSyncedAt] = useState(() => new Date());
+  const limitTouchedRef = useRef(false);
+  const mapStyleTouchedRef = useRef(false);
+  const mapProviderTouchedRef = useRef(false);
 
   // Track global theme changes (supports both body class and data-theme attribute)
   useEffect(() => {
@@ -140,7 +180,7 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
   };
 
   // MapTiler configuration
-  const MAPTILER_API_KEY = 'JKSv1djb3YWDL4sjZtTB'; // Replace with your MapTiler API key
+  const MAPTILER_API_KEY = String(systemSettings?.maptiler_api_key || SYSTEM_SETTINGS_DEFAULTS.maptiler_api_key || '');
 
   // Unified tile config generator for MapTiler and OSM sources
   const getTileConfig = (provider, style, isDark) => {
@@ -148,6 +188,7 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
       const maptilerBase = 'https://api.maptiler.com/maps';
       const urls = {
         streets: `${maptilerBase}/${isDark ? 'streets-v2-dark' : 'streets-v2'}/{z}/{x}/{y}.png?key=${MAPTILER_API_KEY}`,
+        dark: `${maptilerBase}/streets-v2-dark/{z}/{x}/{y}.png?key=${MAPTILER_API_KEY}`,
         satellite: `${maptilerBase}/satellite/{z}/{x}/{y}.png?key=${MAPTILER_API_KEY}`,
         hybrid: `${maptilerBase}/hybrid/{z}/{x}/{y}.png?key=${MAPTILER_API_KEY}`,
         basic: `${maptilerBase}/${isDark ? 'basic-v2-dark' : 'basic-v2'}/{z}/{x}/{y}.png?key=${MAPTILER_API_KEY}`,
@@ -161,6 +202,7 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
       // OpenStreetMap tiles from CrimeMapInterface_real_insights
       const osmUrls = {
         streets: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
         basic: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
         satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         hybrid: 'https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
@@ -185,6 +227,36 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
   };
 
   useEffect(() => {
+    const configuredLimit = Number(systemSettings?.map_default_record_limit ?? SYSTEM_SETTINGS_DEFAULTS.map_default_record_limit);
+    if (!limitTouchedRef.current && Number.isFinite(configuredLimit) && configuredLimit >= 0 && configuredLimit !== limit) {
+      setLimit(configuredLimit);
+    }
+  }, [systemSettings?.map_default_record_limit]);
+
+  useEffect(() => {
+    const configuredStyle = String(systemSettings?.map_default_style || SYSTEM_SETTINGS_DEFAULTS.map_default_style);
+    if (!mapStyleTouchedRef.current && configuredStyle) {
+      setMapStyle(configuredStyle);
+    }
+  }, [systemSettings?.map_default_style]);
+
+  useEffect(() => {
+    const maptilerEnabled = Boolean(systemSettings?.maptiler_enabled ?? SYSTEM_SETTINGS_DEFAULTS.maptiler_enabled);
+    const configuredProvider = String(systemSettings?.map_provider_default || SYSTEM_SETTINGS_DEFAULTS.map_provider_default);
+    if (!maptilerEnabled) {
+      setMapProvider('osm');
+      return;
+    }
+    if (!mapProviderTouchedRef.current && (configuredProvider === 'maptiler' || configuredProvider === 'osm')) {
+      setMapProvider(configuredProvider);
+    }
+  }, [systemSettings?.map_provider_default, systemSettings?.maptiler_enabled]);
+
+  useEffect(() => {
+    setSettingsSyncedAt(new Date());
+  }, [systemSettings]);
+
+  useEffect(() => {
     // Fetch crime types from database
     fetchCrimeTypes();
 
@@ -193,7 +265,7 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
     } else {
       fetchPredictionCrimes();
     }
-  }, [limit, selectedCrimeType, predictionData]);
+  }, [limit, selectedCrimeType, predictionData, systemSettings?.data_retention_days]);
 
   const fetchCrimeTypes = async () => {
     try {
@@ -211,9 +283,16 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
       setError(null);
 
       const filters = {
-        limit: limit === 1000 ? undefined : limit,
+        limit: limit === 0 ? undefined : limit,
         crime_type: selectedCrimeType !== 'all' ? selectedCrimeType : undefined
       };
+
+      const retentionDays = Number(systemSettings?.data_retention_days ?? SYSTEM_SETTINGS_DEFAULTS.data_retention_days);
+      if (retentionDays > 0) {
+        const start = new Date();
+        start.setDate(start.getDate() - retentionDays);
+        filters.start_date = start.toISOString().slice(0, 10);
+      }
 
       const data = await apiService.getCrimes(filters);
       setCrimes(Array.isArray(data) ? data : []);
@@ -317,7 +396,14 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
   };
 
   const getFilteredCrimes = () => {
+    const threshold = normalizeVisibilityThreshold(systemSettings?.map_alert_visibility_threshold ?? SYSTEM_SETTINGS_DEFAULTS.map_alert_visibility_threshold);
+    const thresholdRank = riskRank[threshold] || 1;
+
     const filtered = crimes.filter(crime => {
+      if (selectedCrimeType !== 'all' && String(crime.crime_type || '').toLowerCase() !== String(selectedCrimeType).toLowerCase()) {
+        return false;
+      }
+
       let lat, lng;
 
       // Check coordinates array format first
@@ -342,6 +428,23 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
 
       if (!isValidLat || !isValidLng) {
         console.warn(`Filtering out crime ${crime.id} - invalid coordinates: lat=${lat}, lng=${lng}`);
+        return false;
+      }
+
+      const normalizedRisk = normalizeRiskLevel(crime.risk_level);
+      if ((riskRank[normalizedRisk] || 1) < thresholdRank) {
+        return false;
+      }
+
+      if (riskFilter !== 'all' && normalizedRisk !== riskFilter) {
+        return false;
+      }
+
+      const crimeDate = String(crime.date || '').slice(0, 10);
+      if (dateRange.start && crimeDate && crimeDate < dateRange.start) {
+        return false;
+      }
+      if (dateRange.end && crimeDate && crimeDate > dateRange.end) {
         return false;
       }
 
@@ -407,6 +510,21 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
   };
 
   const tileConfig = getTileConfig(mapProvider, mapStyle, isDarkMode);
+  const minZoom = Number(systemSettings?.map_min_zoom ?? SYSTEM_SETTINGS_DEFAULTS.map_min_zoom);
+  const maxZoom = Number(systemSettings?.map_max_zoom ?? SYSTEM_SETTINGS_DEFAULTS.map_max_zoom);
+  const baseZoom = Number(systemSettings?.default_map_zoom ?? SYSTEM_SETTINGS_DEFAULTS.default_map_zoom);
+  const requestedZoom = predictionData ? baseZoom + 2 : baseZoom + 1;
+  const mapZoom = Math.max(minZoom, Math.min(maxZoom, requestedZoom));
+  const mapBounds = [[
+    Number(systemSettings?.map_bounds_south ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_south),
+    Number(systemSettings?.map_bounds_west ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_west),
+  ], [
+    Number(systemSettings?.map_bounds_north ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_north),
+    Number(systemSettings?.map_bounds_east ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_east),
+  ]];
+  const mapBoundsViscosity = Number(systemSettings?.map_bounds_viscosity ?? SYSTEM_SETTINGS_DEFAULTS.map_bounds_viscosity);
+  const fitBoundsPaddingPx = Number(systemSettings?.map_fitbounds_padding_px ?? SYSTEM_SETTINGS_DEFAULTS.map_fitbounds_padding_px);
+  const fitBoundsMaxZoom = Number(systemSettings?.map_fitbounds_max_zoom ?? SYSTEM_SETTINGS_DEFAULTS.map_fitbounds_max_zoom);
 
   return (
     <div className="crime-map-container">
@@ -419,14 +537,20 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
             <select
               id="limit-select"
               value={limit}
-              onChange={(e) => setLimit(parseInt(e.target.value))}
+              onChange={(e) => {
+                limitTouchedRef.current = true;
+                setLimit(parseInt(e.target.value, 10));
+              }}
               className="limit-selector"
             >
-              <option value={1000}>All reports</option>
               <option value={500}>500 reports</option>
+              <option value={1000}>1,000 reports</option>
+              <option value={2000}>2,000 reports</option>
+              <option value={5000}>5,000 reports</option>
               <option value={200}>200 reports</option>
               <option value={100}>100 reports</option>
               <option value={50}>50 reports</option>
+              <option value={0}>All records</option>
             </select>
           </div>
 
@@ -447,9 +571,50 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
             </select>
           </div>
 
+          <div className="control-group">
+            <label htmlFor="risk-select">Risk Level:</label>
+            <select
+              id="risk-select"
+              value={riskFilter}
+              onChange={(e) => setRiskFilter(e.target.value)}
+              className="crime-type-selector"
+            >
+              <option value="all">All Levels</option>
+              <option value="Critical">Avoid</option>
+              <option value="High">Warning</option>
+              <option value="Moderate">Caution</option>
+              <option value="Low">Safe</option>
+            </select>
+          </div>
+
+          <div className="control-group">
+            <label htmlFor="from-date">From:</label>
+            <input
+              id="from-date"
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              className="crime-type-selector"
+            />
+          </div>
+
+          <div className="control-group">
+            <label htmlFor="to-date">To:</label>
+            <input
+              id="to-date"
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              className="crime-type-selector"
+            />
+          </div>
+
           <div className="stats">
             <div className="stat-item">
               <strong>Total:</strong> {displayCrimes.length} reports
+            </div>
+            <div className="stat-item">
+              <strong>Visibility:</strong> {normalizeVisibilityThreshold(systemSettings?.map_alert_visibility_threshold ?? SYSTEM_SETTINGS_DEFAULTS.map_alert_visibility_threshold)}+
             </div>
             {selectedCrimeType !== 'all' && (
               <div className="stat-item">
@@ -496,10 +661,15 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
             <label>Source:</label>
             <select
               value={mapProvider}
-              onChange={(e) => setMapProvider(e.target.value)}
+              onChange={(e) => {
+                mapProviderTouchedRef.current = true;
+                setMapProvider(e.target.value);
+              }}
               className="style-select"
             >
-              <option value="maptiler">MapTiler</option>
+              {(systemSettings?.maptiler_enabled ?? SYSTEM_SETTINGS_DEFAULTS.maptiler_enabled) && (
+                <option value="maptiler">MapTiler</option>
+              )}
               <option value="osm">OpenStreetMap</option>
             </select>
           </div>
@@ -507,10 +677,14 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
             <label>Map Style:</label>
             <select
               value={mapStyle}
-              onChange={(e) => setMapStyle(e.target.value)}
+              onChange={(e) => {
+                mapStyleTouchedRef.current = true;
+                setMapStyle(e.target.value);
+              }}
               className="style-select"
             >
               <option value="streets">Streets</option>
+              <option value="dark">Dark</option>
               <option value="satellite">Satellite</option>
               <option value="hybrid">Hybrid</option>
               <option value="basic">Basic</option>
@@ -520,14 +694,52 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
         </div>
       </div>
 
+      {/* Applied Settings Snapshot */}
+      <div
+        style={{
+          margin: '10px 0 14px',
+          padding: '10px 12px',
+          borderRadius: '10px',
+          border: '1px solid rgba(99, 102, 241, 0.25)',
+          background: 'linear-gradient(135deg, rgba(30,41,59,0.7), rgba(15,23,42,0.7))',
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          alignItems: 'center'
+        }}
+      >
+        <span style={{ fontSize: '0.75rem', color: '#93c5fd', fontWeight: 700, letterSpacing: '0.3px' }}>
+          Applied from System Settings
+        </span>
+        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>
+          Last synced: {settingsSyncedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        </span>
+        <span style={{ padding: '4px 9px', borderRadius: '999px', background: 'rgba(59,130,246,0.18)', color: '#bfdbfe', fontSize: '0.75rem', fontWeight: 600 }}>
+          Records: {Number(systemSettings?.map_default_record_limit ?? limit).toLocaleString()}
+        </span>
+        <span style={{ padding: '4px 9px', borderRadius: '999px', background: 'rgba(34,197,94,0.16)', color: '#bbf7d0', fontSize: '0.75rem', fontWeight: 600 }}>
+          Visibility: {normalizeVisibilityThreshold(systemSettings?.map_alert_visibility_threshold ?? SYSTEM_SETTINGS_DEFAULTS.map_alert_visibility_threshold)}+
+        </span>
+        <span style={{ padding: '4px 9px', borderRadius: '999px', background: 'rgba(245,158,11,0.16)', color: '#fde68a', fontSize: '0.75rem', fontWeight: 600 }}>
+          Lookback: {Number(systemSettings?.data_retention_days ?? SYSTEM_SETTINGS_DEFAULTS.data_retention_days)} days
+        </span>
+        <span style={{ padding: '4px 9px', borderRadius: '999px', background: 'rgba(168,85,247,0.16)', color: '#e9d5ff', fontSize: '0.75rem', fontWeight: 600 }}>
+          Heatmap: r{Number(systemSettings?.heatmap_radius ?? SYSTEM_SETTINGS_DEFAULTS.heatmap_radius)} • i{Number(systemSettings?.heatmap_intensity ?? SYSTEM_SETTINGS_DEFAULTS.heatmap_intensity)}
+        </span>
+      </div>
+
       {/* Map */}
       <div className="map-wrapper">
         <MapContainer
-          center={[31.5204, 74.3587]} // Lahore coordinates
-          zoom={predictionData ? (systemSettings?.default_map_zoom || 12) + 2 : (systemSettings?.default_map_zoom || 12) + 1}
-          minZoom={11}
-          maxBounds={[[31.30, 74.15], [31.75, 74.60]]}
-          maxBoundsViscosity={1.0}
+          center={[
+            Number(systemSettings?.map_default_center_lat ?? SYSTEM_SETTINGS_DEFAULTS.map_default_center_lat),
+            Number(systemSettings?.map_default_center_lng ?? SYSTEM_SETTINGS_DEFAULTS.map_default_center_lng),
+          ]}
+          zoom={mapZoom}
+          minZoom={minZoom}
+          maxZoom={maxZoom}
+          maxBounds={mapBounds}
+          maxBoundsViscosity={mapBoundsViscosity}
           style={{ width: "100%", height: "70vh" }}
           scrollWheelZoom={false}
           zoomControl={true}
@@ -558,7 +770,7 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
           {/* Map Controller for prediction data */}
           <MapController predictionData={predictionData} crimes={crimes} />
           {!predictionData && markerPositions.length > 0 && (
-            <FitBounds points={markerPositions} />
+            <FitBounds points={markerPositions} paddingPx={fitBoundsPaddingPx} maxZoom={fitBoundsMaxZoom} />
           )}
 
           {/* Crime Markers */}
@@ -618,7 +830,7 @@ const CrimeMap = ({ showLoginModal, isAuthenticated, predictionData, hideControl
                         backgroundColor: getRiskLevel(crime) === 'High' ? '#fee2e2' : getRiskLevel(crime) === 'Medium' ? '#fef3c7' : getRiskLevel(crime) === 'Low' ? '#d1fae5' : '#e5e7eb',
                         color: getRiskLevel(crime) === 'High' ? '#dc2626' : getRiskLevel(crime) === 'Medium' ? '#d97706' : getRiskLevel(crime) === 'Low' ? '#059669' : '#374151'
                       }}>
-                        {getRiskLevel(crime)}
+                        {actionLabel(normalizeRiskLevel(getRiskLevel(crime)))}
                       </span>
                     </div>
 

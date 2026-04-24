@@ -333,7 +333,7 @@ import UserManagement from './UserManagement';
 import AdminManagement from './AdminManagement';
 import AnalyticsDashboard from './AnalyticsDashboard_updated';
 import SystemSettings from './SystemSettings';
-import ReportingDashboard from '../ReportingDashboard';
+import SuperAdminReportsPanel from './SuperAdminReportsPanel';
 import PendingApprovalsPanel from '../AdminDashboard/PendingApprovalsPanel';
 import PPCManagement from './PPCManagement';
 import SuperAdminPredictionPanel from './SuperAdminPredictionPanel';
@@ -461,7 +461,7 @@ const SuperAdminDashboard = () => {
       case 'admin-management':
         return <AdminManagement token={token} />;
       case 'reporting':
-        return <ReportingDashboard />;
+        return <SuperAdminReportsPanel token={token} />;
       case 'system-settings':
         return <SystemSettings />;
       case 'approvals':

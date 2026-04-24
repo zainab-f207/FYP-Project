@@ -1,0 +1,1762 @@
+﻿
+SafeVision: Spatial Visualytics of Reported IncidentsÂ inÂ Lahore
+
+
+
+Zainab Fayyaz
+Zaid Waseem
+Akmal Naseer
+
+
+
+SupervisedBy
+Afraz Hayat Malik 
+
+
+Submittedfor thepartialfulfillmentof BSComputerScience Intelligencedegreeto theFacultyofEngineering&CS
+
+NATIONAL UNIVERSITY OF MODERN LANGUAGES
+ISLAMABAD
+November,2025
+
+ABSTRACT
+
+
+In the modern fast changing digital age, the issue of citizen safety and immediate awareness of the incident has become topical among citizens and law enforcers. The classic crime mapping tools are largely based on proven crime records, which misses a huge gap of managing unconfirmed incident reports and offering proactive safety information. SafeVision is created to solve these problems as an intelligent AI-driven web-based safety and incident management platform that helps to bridge the gap between reported incidents and actionable safety intelligence. 
+As opposed to traditional systems that only process the verified crimes, the SafeVision will process the First Information Reports (FIRs) but will always draw a line between reported cases and confirmed crimes. The platform allows citizens, administrators and law enforcement agencies to monitor, predict and act on safety issues in a single interface. 
+The architecture of the platform includes three different levels of access SuperAdmin, Admin and User; it is written in FastAPI to provide a high-performance backend, React.js to have a responsive frontend interface, and MySQL to have secure and scalable data storage. SuperAdmins have complete control over the system including user control, registration of the administrator, validation of the FIR data, and access to classified records. Both SuperAdmins and Admins use a multi-layered AI-based prediction engine that integrates Poisson probability modeling with Random Forest classification to facilitate both the support of manual and multi-crime prediction by date, area, and incident type. The user interface offers interactive incident heatmaps which display route suggestions that prioritize safety along with real-time navigation and contact location sharing through messaging features and automated alerts for high-risk zones and expected incidents which users receive through email and browser notifications. 
+The organization conducts testing and validation activities while developing the system to confirm its performance through ongoing accuracy testing and responsiveness testing and reliability testing. Early feedback demonstrates that SafeVision combines artificial intelligence with geospatial analytics and automated document processing and real-time alert systems to create a comprehensive public safety platform that provides predictive capabilities.
+
+CERTIFICATE
+
+
+
+
+Dated:
+
+FinalApproval
+
+It is certified that the project report titled â€˜SafeVision: Spatial Visualytics of Reported Incidents in Lahoreâ€™ submitted by Zainab Fayyaz, Zaid Waseem, and Akmal Naseerfor the partial fulfillment of the requirement of â€œBachelorâ€™sDegree in Software Engineering/ComputerScience/InformationTechnology/ Artificial Intelligenceâ€is
+approved.
+
+COMMITTEE
+
+
+Dr. FirstNameLastName
+ReginalDirectorSignature:
+
+Dr.BasitShahzad
+HoD EngineeringSignature:
+
+FirstNameLastName
+HeadProjectCommitteeSignature:
+
+FirstNameLastName
+SupervisorSignature:
+
+
+
+
+
+
+
+
+
+
+
+DECLARATION
+
+We hereby declare that our dissertation is entirely our work and genuine/original. We understand that in case of discovery of any PLAGIARISM at any stage, our group will be assigned an F (FAIL) grade, and it may result in withdrawal of our Bachelor's degree.
+
+
+GroupMembersSignature
+
+
+
+Zainab Fayyaz
+
+Zaid Waseem
+
+Akmal Naseer
+
+
+
+PLAIGRISMCERTIFICATE
+
+Thisistocertifythattheprojectentitledâ€œSafeVision: Spatial Visualytics of Reported Incidents in Lahoreâ€, isbeingsubmittedherefortheaward of the â€œDegree of Bachelorâ€ in â€œSoftware Engineering/Computer Science/ Information Technology/Artificial Intelligenceâ€.This istheresult ofthe original work by Zainab fayyaz, Zaid Waseem, and Akmal Naseerunder my supervision and guidance. The work embodied in this project has not been done earlier for the basis of the award of any degree or compatiblecertificateorsimilartitleofthisforanyotherdiploma/examiningbodyoruniversity to the best of my knowledge and belief.
+
+
+Turnitin Originality Report Processedon30-May-202010:14PKT ID: XXXXXXXX
+Word Count:99999
+
+SimilarityIndex X%
+SimilaritybySource
+Internet Sources:X%
+Publications:X%
+StudentPapers:X%
+
+Date:20/05/2020Supervisor Name
+
+
+TURNITINORIGINALITYREPORT
+
+â€œSafeVision: Spatial Visualytics of Reported Incidents in Lahoreâ€ byZainab Fayyaz, Zaid Waseem, andAkmal Naseer
+FromDr. Afraz Hayat Malik
+
+Processedon30-May-202010:14PKT ID: XXXXXXXX
+Word Count:99999
+
+SimilarityIndex X%
+SimilaritybySource
+Internet Sources:X%
+Publications:X%
+StudentPapers:X%
+
+
+SOURCES:
+
+
+ACKNOWLEDGMENT
+(Optional)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TABLEOFCONTENTS
+
+CHAPTER 11
+1.0Introduction2
+1.1Motivation2
+1.2Problem Statement3
+1.3Goals and Objectives4
+1.4Scope of the Study5
+1.5Process Model5
+1.6Nature of the Project6
+1.7Overview7
+CHAPTER 28
+2.0Introduction9
+2.1.1Public Safety Management9
+2.1.2Predictive Analytics in Safety9
+2.1.3Geospatial Intelligence10
+2.1.4Alert and Advisory Systems10
+2.1.5Statistical Probability Modeling10
+2.1.6Machine Learning Classification10
+2.1.7Risk Scoring Mechanism11
+2.1.8Multi-Layered Risk Prediction Approach11
+2.2Theoretical Framework for Safety Prediction11
+2.3Existing Studies/Systems12
+2.4Comparison of Existing Systems15
+2.5Research Gaps and SafeVision Solutions16
+2.6Conclusion17
+CHAPTER 318
+3.0Introduction19
+3.1Interface Requirements19
+3.1.1Hardware Interface Requirements19
+3.1.2Software Interface Requirements20
+3.2Functional Requirements21
+3.3Use Case Model24
+3.3.1Actors24
+3.4Use Cases25
+3.5Non-Functional Requirements40
+3.5.1Performance Requirements40
+3.5.2Reliability Requirements40
+3.5.3Security Requirements40
+3.5.4Usability Requirements40
+3.5.5Maintainability Requirements41
+3.6Resource Requirements41
+3.6.1Hardware / Software Tools41
+3.6.2Human Effort42
+3.7Database Requirements42
+3.8Project Feasibility44
+3.8.1Technical Feasibility44
+3.8.2Operational Feasibility44
+3.8.3Legal & Ethical Feasibility44
+3.9Summary44
+CHAPTER 445
+4.0Introduction46
+4.1System Design Overview46
+4.2Design Approach46
+4.3Interface Design47
+4.3.1High-Fidelity Prototype47
+4.44+1 View Model of Architecture52
+4.4.1System Architecture Diagram53
+4.4.2Logical View (Class Diagram)53
+4.4.3Process View (Activity Diagram)54
+4.4.4State Diagram55
+4.4.5Sequence Diagram56
+4.4.6Development View (Component Diagram)57
+4.4.7Physical (Deployment) Diagram58
+4.5Entity Relationship Diagram (ERD)59
+4.6Data Flow Diagram (DFD)60
+4.7Summary65
+CHAPTER 566
+5.0Introduction67
+5.1Implementation Environment67
+5.1.1Development Environment67
+5.1.2Production Environment68
+5.2Modules of FYP68
+5.2.1Hardware Module Details70
+5.2.2Server Hardware Recommendations71
+5.2.3Client Hardware Requirements71
+5.2.4OCR Processing Hardware Notes71
+5.3Conclusion71
+CHAPTER 672
+6.0Introduction73
+6.1Testing Environment and Setup73
+6.1.1Hardware Configuration73
+6.1.2Software Configuration73
+6.1.3Test Dataset73
+6.1.4Testing Methodology74
+6.2Authentication and Security Testing74
+6.3Multi-Layered AI Prediction Testing74
+6.4Risk Scoring and Safety Score Validation74
+6.5OCR and FIR Processing Testing74
+6.6Alert System Testing75
+6.7Performance and Load Testing75
+6.8Usability Testing75
+6.9Summary75
+CHAPTER 776
+7.1Introduction77
+7.2Project Review77
+7.3Comparison with Proposed Objectives77
+7.4Key Contributions77
+7.5Limitations77
+7.6Future Work Recommendations77
+7.7Conclusion77
+7.8Summary77
+REFERENCES78
+
+
+
+
+LISTOFFIGURES
+
+FigureCaptionPage
+3. 1    SafeVision - Use Case Diagramâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦.25
+3. 2    SafeVision - Use Case 1: User Registration and Authenticationâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦26
+3. 3    SafeVision - Use Case 2: Safety Data Integration and Managementâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦28
+3. 4:    SafeVision - Use Case 3: AI-Based Prediction and Safety Analysisâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦30
+3. 5:    SafeVision - Use Case 4: Viewing Safety Insights and Visualizationsâ€¦â€¦â€¦â€¦â€¦â€¦â€¦.32
+3. 6:    SafeVision - Use Case 5: Alerts and Notifications Managementâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦..34
+3. 7:    SafeVision - Use Case 6: Emergency Communication and Assistanceâ€¦â€¦â€¦â€¦â€¦â€¦â€¦35
+3. 8:    SafeVision - Use Case 7: Administrative Monitoring and Reportingâ€¦â€¦â€¦â€¦â€¦â€¦â€¦...37
+3. 9:    SafeVision - Use Case 8: Feedback and User Interactionâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦.39
+4. 1    SafeVision - Login Interface: Secure login page with email/password fieldsâ€¦â€¦â€¦â€¦â€¦48
+4. 2    SafeVision - Register Interface: User registration form for name, email, password, area48
+4. 3    SafeVision - User Dashboard: Main dashboardâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦..49
+4. 4:    SafeVision - Emergency Resources Interfaceâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦..49
+4. 5:    SafeVision - Safety Visualization Mapâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦.50
+3. 6:    SafeVision - Area-wise Prediction Chartsâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦51
+4. 7:    SafeVision - Admin Dashboardâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦.52
+4. 8:    SafeVision - System Architecture Diagramâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦..53
+4. 9:    SafeVision - Logical View Diagramâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦.54
+4. 10    SafeVision - Process View Diagramâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦.55
+4. 11    SafeVision - State Diagramâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦..56
+4. 12    SafeVision - Sequence Diagramâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦...57
+4. 13    SafeVision - Development View Diagramâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦...58
+4. 14   SafeVision - Physical Diagramâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦..59
+4. 15   SafeVision - Entity Relationship Diagram of the Proposed Systemâ€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦.60
+4. 16   SafeVision - Data Flow Diagram (Level 0)â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦..61
+4. 17   SafeVision - Data Flow Diagram (Level 1)â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦â€¦..62
+4. 18  SafeVision - Data Flow Diagram (Level 2: Prediction and Route Safety)â€¦â€¦â€¦â€¦â€¦â€¦.63
+4. 19  SafeVision - Data Flow Diagram (Level 2: Alerts and Notification Delivery)â€¦â€¦â€¦â€¦..64
+
+
+LISTOFTABLES
+
+TableCaptionPage
+Table 1:Theoretical Framework for Safety Prediction11
+Table 2:Summary of Existing Systems/Works/Apps13
+Table 3:Comparison with Existing Systems15
+Table 4:Research Gaps and SafeVision Solutions16
+Table 5:SafeVision - Functional Requirements21
+Table 6:SafeVision - Actors24
+Table 7:SafeVision - User Registration and Authentication25
+Table 8:SafeVision - Safety Data Integration and Management27
+Table 9:SafeVision - AI-Based Prediction and Safety Analysis29
+Table 10:SafeVision - Viewing Safety Insights and Visualizations31
+Table 11:SafeVision - Alerts and Notifications Management32
+Table 12:SafeVision - Emergency Communication and Assistance34
+Table 13:SafeVision - Administrative Monitoring and Reporting36
+Table 14:SafeVision - OCR FIR Processing37
+Table 15:SafeVision â€“Software tools & technologies41
+Table 16:SafeVision â€“Team Members and their Responsibilities42
+Table 17:SafeVision - Database Requirements43
+Table 18:SafeVision â€“ SafeVision â€“Development Environment67
+Table 19:SafeVision â€“SafeVision â€“ Production Environment68
+Table 20:SafeVision â€“SafeVision â€“Server Hardware Recommendations71
+Table 21:SafeVision â€“Client Hardware Requirements71
+Table 22:SafeVision â€“SafeVision â€“ Authentication and Security Testing74
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CHAPTER1
+INTRODUCTION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Introduction
+With the swift urbanization and digital transformation of contemporary societies, guaranteeingpublic protection and situational awareness has emerged as an increasing difficulty for authorities and populace alike. Urban areas keep expanding because more people move in while the number of safety incidents becomes more complex to handle. Standard safety setups frequently lack the ability to deliver immediate data-driven insights which law enforcement and the public require to proactively prevent situations. 
+SafeVision functions as an AI-based web safety framework which employs advanced incident analysis to predict upcoming dangers while providing users with critical situation navigation and communication tools. The system integrates multiple technologies through its architectural design which combines artificial intelligence and geospatial analysis with automated notifications and optical character recognition to enable data verification and incident prediction and safety planning. SafeVision offers interactive displays which provide predictive insights to create safer metropolitan areas that use advanced technology. 
+SafeVision stands out because its AI capabilities operate in a distinctive fashion which goes beyond standard artificial intelligence usage. The platform operates through a sophisticated intelligence system which combines multiple analytical engines to function as specialized teams who produce accurate safety assessments through their individual expertise. Each component of SafeVision from crime prediction to police document extraction and emergency alerting is designed to operate intelligently while providing practical value.
+Motivation
+The increasing number of safety incidents according to the future safety needs of people and organizations which lack effective systems to handle these problems. People in many cities need safe access to their surroundings because regulatory agencies need to monitor multiple security incidents for potential future threats. 
+The current systems provide users only basic information which remains unchanging and offers no future prediction tools or safety features tailored for individual users. The majority of security applications display crime statistics but they do not help users understand how these statistics relate to their own safety. The current system lacks both active alerts for potential threats and future risk assessment methods at different times for specific locations together with tools that enable officials to examine incident reports and identify key insights. 
+SafeVision tackles the existing technological gap by using AI together with current web technology to enhance people understanding their preparedness activities and hazard prevention works. The initiative drives community empowerment through accessible digital tools which enable people to make informed decisions together with a collective responsibility for public safety. The project shows how engineering serves as both a data analysis tool and a humanitarian solution which helps people solve real-world safety challenges through the transformation of raw data into actionable insights that protect human lives and valuable assets.
+Problem Statement
+The rising number of incidents together with inconsistent record-keeping and the unavailability of comprehensive analytical tools have created difficulties to ensure public safety for crowded urban environments. Both the public and the authorities use different data sources which provide little understanding about potential security threats. The absence of a cohesive and ingenious platform restricts forward-looking risk evaluation and opportune determination-making.
+Specifically, the difficulties comprise:
+Absence of Forecasting Capacity:The present situation only permits visibility of historical incidents. There exists no system which enables risk estimation based on previous data and current time and seasonal variations.
+Manual Record Entry Stoppages:The process of entering new crime reports into systems requires manual inputting which results in slow and error-prone work that prevents essential information from reaching its target audience.
+Responsive Rather Than Anticipatory Alarms:Users only get particulars when proactively seeking them, instead of having automatized notifications when dangers arise near their positions.
+Deficiency of Customized Perceptions:Safety information gets presented in broad terms which do not reflect what each person needs based on their home location and worksite and typical travel paths.
+No Single Administrative Instruments:Authorities need a unified system which lets them handle incidents while studying data patterns and managing their response operations.
+The AI-based safety management system from SafeVision centralizes all incident data to identify potential threats while automating document record entry before delivering safety alerts and navigation support. The system improves public awareness through intelligent data analysis which helps create safer environments while enabling authorities to maintain control through visual representation of data. The ultimate goal of the project is to create a secure urban environment which allows residents and officials to utilize data for making informed decisions about safety.
+
+
+Goals and Objectives
+The primary goal of SafeVision is to develop an intelligent safety management system which predicts user needs while protecting both public users and government agencies. The distinct targets are to:
+Engineer a multi-role structure (SuperAdmin, Admin, and User) to guarantee regulated data access and secure role-based dealings, with fitting authorizations for each user category.
+Implement a three-tiered AI prediction system which combines Poisson probability statistical methods with Random Forest Classifier machine learning to identify patterns and critical areas and potential future risks with high accuracy and reliability.
+Develop an automated system to extract records which employs Optical Character Recognition (OCR) for Urdu FIR documents to automatically extract essential details including offense type and location and date and time, thereby eliminating the need for manual record entry.
+Establish a monitoring system that continuously checks the database to identify new incidents occurring near user-designated areas which include their home and workplace, and it will send instant alerts through both browser push notifications and email, using a smart mechanism to manage the volume of alerts.
+Provides users with interactive geospatial maps which include dynamic heat-maps and safety metric gauges and radar charts that classify safety data into groups based on violent crime and property crime and daytime safety and nighttime safety.
+Uses electronic mail and browser notifications to deliver automatic danger alerts which direct users to specific map sections showing nearby threats and hazardous areas.
+Establishes a data verification process which improves trust in submitted incident reports and analytical results through administrative approval protocols.
+The development of smart sustainable cities requires proper use of information and engineering technologies according to their respective requirements.
+Scope of the Study
+The design and construction of an intelligent web-based safety system which integrates incident management with predictive analysis and real-time alert systems forms the complete range of this investigation. The platform features interactive dashboard tools which enable users andsupervisors and super administrators to access safety metrics and hazard visualizations through geospatial charts and security metric displays, while it provides separate sections for incident management and system configuration. The system includes an OCR-based element which allows users to upload FIR documents, through which it achieves automatic data extraction and device-optimized performance with its adaptable design. 
+The backend uses FastAPI-based RESTful architecture to create secure and expandable data management systems which enable role-based entitlement checking for official authorization verification. The system provides direct notification services which use VAPID to send browser push notifications and SMTP to deliver email messages, while it operates continuous system monitoring from its background functions. The study investigates AI integration through a multi-tier prediction system which combines Poisson probabilities with Random Forest classification and a risk evaluation method based on quantity and recency and severity and trajectory patterns and time elements. The system includes a multi-engine OCR pathway which enables spatial charting through geocoding while its structured MySQL repository supports users and incidents and notifications and spatial inquiries. The system produces an active platform which provides intelligent risk forecasting and automated FIR processing and forward-looking alerts and complete data-driven safety assessment tools.
+Process Model
+The Agile Software Evolution Model was chosen for this project because it provides flexible development through its process of rolling updates. Agile development enables the team to refine project requirements through ongoing feedback and continual skill development at every project stage. The blueprint enables continuous process of building and testing which guarantees that new features such as prediction algorithms and alert systems undergo development before their actual implementation. Agile was chosen for this project because:
+Malleability:AI framework requirements change when new model operations become evident through research processes.
+Patron Input:System demonstrates its ability to meet authentic user requirements through its periodic input testing sequences.
+Phased Issuance:Engineers can develop and assess complex features through a two-step process which includes designing and executing their functions.
+Hazard Administration:Teams should identify critical technical challenges that will affect their work on OCR accuracy and geospatial computation in their initial stage of the project.
+Agile development works well for SafeVision projects because it combines teamwork and fast development with essential factors of user experience and precise measurement and system growth.
+Nature of the Project
+SafeVision functions as a modern security system which uses artificial intelligence to deliver a comprehensive safety management solution through its combination of machine learning and web development and location intelligence and automated record processing.
+Technical Stack:
+Backend: FastAPI provides fast API service through its asynchronous model which automatically creates API documentation
+Frontend: React.js delivers a dynamic user interface which updates in real-time to provide an active user experience
+Database: MySQL provides secure data storage which can be expanded while supporting location-based search functionality.
+AI/ML: Scikit-learn serves as the tool for deploying Random Forest models through its custom-built Poisson likelihood computation capabilities.
+OCR: EasyOCR and Tesseract enable users to recognize Urdu text through their combined capabilities
+Maps: OpenStreetMap provides location coding through its Nomination integration feature
+Notifications: Pywebpush delivers browser-based alerts while SMTP sends out email notification messages
+Key Technical Novelties:
+Multi-Tier Intelligence: SafeVision achieves system reliability and performance accuracy by combining three different AI algorithms which include Poisson likelihood and Random Forest and their backup system.
+Automated FIR Handling: The OCR system has been designed to process Urdu police documents through its complete workflow which includes initial document processing and engine-based document evaluation and intelligent data extraction.
+Forward-looking Alert System: The system maintains continuous background monitoring through spatial metric evaluation and intelligent restart capabilities and direct-link verification which creates a seamless user experience.
+Combined Dashboard Reasoning: Customized security computations use GPS data which includes both spatial ranges and fixed location names to create security losses based on existing data.
+The system provides three separate user interfaces which include dedicated access for Users and Administrators and Super Administrators to manage their respective access rights.
+SafeVision establishes itself as an advanced and highly flexible digital safety instrument because it combines smart data analysis with location charting and automated record handling and immediate warnings to support municipal safety oversight.
+Overview
+The section introduces the SafeVision project which describes its historical background and project justification and problem definition and project objectives and project scope and the essential resources and data intelligence levels which SafeVision uses. The following parts of the document proceed to explore research topics which relate to system requirements and system design and system implementation and system assessment. The document presents its key results and study limitations and future research directions which provide an in-depth examination of SafeVision development from its inception to the present day.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CHAPTER2
+BACKGROUND AND EXISTING WORK
+
+
+
+
+
+
+Introduction
+The rapid increase of cities and online connections has created a greater demand for advanced public safety management systems which can assess current safety conditions and predict future safety situations. As incident frequency mounts and data origins stay separate, the imperative for unified platforms capable of deriving useful insights has become vital. The current section provides an evaluation of safety forecasting systems through their theoretical foundations and operational technologies which include existing systems and studies plus their existing limitations. SafeVision enhances these methods through its capacity to merge multiple data sources with precise analytical methods which work as research background for this study. 
+The section begins with an analysis of the main theoretical frameworks which form the foundation of current safety management systems. The study first examines existing safety forecasting systems after which it evaluates scholarly research in the field before conducting a comparative study which identifies gaps in current methods. The section combines the discovered elements to create SafeVision research space while demonstrating how the platform resolves current system deficiencies.
+Explanation of Important Constructs of the Application Domain
+Grasping the theoretical bases of SafeVision necessitates scrutinizing several crucial constructions that collectively comprise the intellectual core of intelligent safety administration systems.
+Public Safety Management
+Public safety governance operates through technological tools which handle data and structured processes to conduct risk assessment and danger reduction activities. The previous systems operated through event response procedures which followed emergency occurrences while current systems employ data analysis and predictive modeling to prevent incidents from happening. SafeVision achieves this concept through its system which documents incidents and provides users with tools to predict threats through data analysis to enhance public safety.
+Predictive Analytics in Safety
+Predictive forecasting uses historical and current data to assess potential future threats. The system operates under the belief that past patterns will assist in predicting future events although researchers must manage challenges which arise from both data quality concerns and ethical research obligations. SafeVision uses two methods for its operation which include Poisson probability modeling to deliver precise percentage forecasts and Random Forest classification to identify complex patterns and categorize different risk levels.
+Geospatial Intelligence
+Geospatial awareness involves using location-specific data together with mapping technologies to investigate spatial patterns and their relationships across multiple areas. The security management system uses geospatial intelligence to identify dangerous areas while creating incident maps and assessing how threats vary across different locations. Decision-making depends on location data because incidents tend to gather in specific areas instead of spreading out evenly across space. SafeVision utilizes heatmaps to show dangerous areas while using radius-based security assessments and Haversine distance calculations to determine which incidents fall inside a user's notification range.
+Alert and Advisory Systems
+Notification systems deliver emergency alerts to users through immediate and practical safety information. The system connects analysis with operation because it transforms data understanding into useful direction. Good notice systems need to show the right information using clear language which requires users to keep reading until they reach full understanding of the situation. The system uses location-based filtering and cooldown protocols to prevent repeated alerts while sending out alerts through browser pushes and electronic mail and in-app warnings. The system includes direct routing hyperlinks which enable users to go directly to detailed content whenever they need it.
+Statistical Probability Modeling
+Statistical likelihood modeling uses mathematical equations to determine event probabilities based on existing data. Security systems use the Poisson distribution as a standard method to predict rare events throughout various time intervals. The technique provides a reliable approximation because real-world conditions present more complex challenges. SafeVision uses this model to calculate risk assessment percentages which include the risk of a crime occurring in a particular time and location. The method establishes standardization through probabilistic display of unpredictable events.
+Machine Learning Classification
+Machine learning classification uses historic examples to create data groups through pattern identification. Advanced statistical models enable the detection of intricate data connections which traditional statistical methods cannot identify. In SafeVision, a Random Forest Classifier uses previous incident data which includes location and offense type and time of day and season to divide risk levels into three categories: Elevated, Moderate, and Minimal. Random Forest implementation improves model accuracy by reducing overfitting, which makes it suitable for security datasets that follow structured formats.
+Risk Scoring Mechanism
+The risk appraisal system uses incident data to generate one numerical value which indicates the risk level present in that specific situation. The system offers more detailed safety assessments through its ability to assess danger levels for different safety classes. The risk assessment for SafeVision results from combining essential risk factors through their respective weightings which assign 35% to transgression frequency and 30% to immediacy and 15% to gravity and 10% to trajectory and 10% to temporal factor. The rating system operates to evaluate both the number of incidents and their timings and their evolving patterns.
+Multi-Layered Risk Prediction Approach
+SafeVision uses a three-level prediction system to maintain system reliability and continuous operational system functioning. The system combines different techniques into a defined sequence instead of using only one technique. The first level uses the Poisson model to create accurate probability predictions when there is sufficient available data. The system switches to the Random Forest model when the main method fails because of insufficient data. The system employs a basic label encoding system as a backup method to ensure users receive some form of risk assessment, which functions as a mandatory requirement. The tiered structure provides continuous system operation while it prevents failures through its ability to handle different types of data situations.
+Theoretical Framework for Safety Prediction
+SafeVision operates through multiple fundamental theoretical frameworks which guide its structural design and implementation throughout its operations.
+Table 1:Theoretical Framework for Safety Prediction
+Theory / Framework
+Key Concept
+Application in SafeVision
+Routine Activity Theory
+Crime manifests when a keen perpetrator, a suitable target, and the absence of a capable guardian coincide in time and space (Cohen & Felson).
+Time-based risk modifications and location-specific reviews pinpoint high-risk settings predicated on when and where offenses are prone to materialize.
+Near-Repeat Hypothesis
+Following a crime, adjacent sectors confront heightened short-term risk due to repeated chances or signaling susceptibility.
+Immediacy weighting (30% of risk score) and time-decay mechanisms accentuate recent episodes to reflect greater near-term hazard.
+Environmental Criminology
+Physical environment, urban structure, and ecological elements impact crime formations; concepts involve defensible placement and crime deterrence via design.
+Geospatial awareness, heatmaps, and area-specific risk profiles facilitate comprehension of spatial patterns and guide environmental rectifications.
+Ensemble Learning Theory
+Merging several predictive frameworks typically surpasses individual frameworks; "collective insight" applies to machine learning.
+Multi-tiered framework combining Poisson probability modeling and Random Forest categorization to capitalize on complementary strengths of statistical and machine learning procedures.
+
+Existing Studies/Systems
+The public safety monitoring systems have been examined through multiple research projects and systems. Some researchers use crime mapping and statistical analysis to identify dangerous areas while others concentrate on analyzing social data and creating community-focused reports. 
+Table 2: Summary of Existing Systems/Works/Apps
+Article No / System
+Year
+Features
+Strength
+Limitations
+CrimeMapping
+2025
+Web-based interactive crime maps; visualizes incident data; supports public awareness and police resource allocation
+Makes crime data visible and accessible; interactive interface; supports community engagement and policing decisions
+Limited geographic coverage; may omit minor incidents; open data could aid criminals; primarily reactive
+SpotCrime
+2024â€“2025
+Aggregates police, news, and user-reported crime data; mobile app with AR overlay; email alerts
+Wide coverage from multiple sources; detailed incident descriptions; innovative AR visualization; engages community
+Paid subscription required for full features; accuracy depends on external/user data; privacy concerns with user reports
+PredPol (Predictive Policing)
+2023â€“2024
+ML-based hotspot prediction; forecasts likely crime locations for law enforcement
+Supports proactive patrol deployment; grounded in near-repeat crime hypothesis; focuses resources effectively
+Accuracy depends on input data quality; potential bias leading to disproportionate policing; may neglect non-hotspot areas; designed for police, not public
+Public Safety Predictive Analytics Systems (General)
+2025
+Integrates historical and current data; dashboards; trend tracking; smart resource allocation
+Enhance proactive policing and operational efficiency; supports strategic planning; builds community trust
+Requires high-quality and diverse data; complex integration and implementation; may need customization for local context
+Hotspot Policing Research
+Academic
+Targeted interventions in crime clusters
+Reduces crime in identified hotspots
+Risk of crime displacement to nearby areas
+Machine Learning for Crime Prediction
+Academic
+Decision trees, SVM, neural networks; ensemble methods
+Ensemble methods outperform single models; supports multi-layered prediction approach
+Model performance depends on quality and amount of data; requires computational resources
+Temporal Pattern Analysis
+Academic
+Examines crime variations by time of day, day of week, and season
+Informs time-based risk adjustments and seasonal features
+Temporal patterns may not generalize across all locations
+Geospatial Analysis Methods
+Academic
+Spatial clustering, spatial autocorrelation, risk surface mapping
+Supports heatmap and radius-based analyses; improves spatial risk understanding
+Requires accurate geocoded data; complex statistical methods may be resource-intensive
+However, the majority of these systems do not have proper functions because they lack essential elements which include multiple data feed integration, advanced forecasting methods, and user-oriented notification capabilities.
+Comparison of Existing Systems
+Public safety platforms which exist today have made significant progress toward safety analytics development but they face limitations regarding their operational range and system adaptability and their ability to integrate different technologies. 
+Table 3: Comparison with Existing Systems
+Dimension
+Existing Systems
+SafeVision
+Scope and Focus
+Primarily reactive, focused on historical crime reporting and community awareness; limited guidance on mitigation
+Proactive, integrating predictive analytics, risk identification, and mitigation; provides forecasts and actionable recommendations
+Data Sources
+Aggregate historical crime data from limited, often region-specific sources; single-source reliance creates blind spots
+Multi-source data integration with automated OCR extraction from FIRs; geocoding converts area names to precise coordinates for visualization
+Technology Integration
+Limited integration; static or semi-interactive visualizations; prediction often relies on single, simple models
+Unified AI-based predictive models (Poisson + Random Forest), geospatial analytics, interactive heatmaps, and adaptive visualizations; multi-layered architecture ensures robustness
+Prediction and Forecasting
+Some ML-based hotspot prediction (e.g., PredPol) but accuracy, bias, and generalizability are issues
+AI-driven incident prediction using multi-layered approach (statistical probability + machine learning + legacy fallback); ensures predictions under all conditions with graceful degradation
+User Interaction
+Minimal differentiation; single interface for all users
+Multi-role architecture with role-based access and adaptive dashboards; interactive visualization for SuperAdmin, Admin, and User roles
+Alert Mechanisms
+Rare or basic; mostly email alerts without filtering or relevance logic
+Automated alerts via email, browser push, and in-app channels; spatial matching, cooldown logic, and deep-link navigation for relevant, fatigue-free alerts
+Adaptability and Flexibility
+Static systems with limited adaptability to new data, changing environments, or evolving user needs
+Adaptive framework supporting dynamic updates, collaborative decision-making, and incorporation of new data sources; evolves with changing conditions and user needs
+Risk Calculation
+Simple crime counts or basic statistics; limited sophistication
+Multi-factor weighted scoring combining probability modeling and machine learning; considers volume, recency, severity, trend, and time for nuanced assessments
+
+Research Gaps and SafeVision Solutions
+The current setup analysis together with scholarly research shows particular gaps which SafeVision was designed to address:
+Table 4:Research Gaps and SafeVision Solutions
+Deficiency/Hurdle
+Explanation of Deficiency in Existing Setups
+SafeVision Remedy
+Assimilation Void
+Data gathering, forecasting, display, and warnings are frequently distinct and disjointed, curbing smooth user interaction.
+Cohesive platform structure where OCR pulling, prognostical algorithms, renderings, and notifications are combined with shared data schemas and uniform entry points.
+Diverse Forecasting Void
+Isolated-method forecasting schemes are susceptible to breakdown: numerical methods fail with limited statistics; AI methods might overgeneralize or lack clarity.
+Hierarchical forecasting merging Poisson likelihood, Random Forest categorization, and established backup, guaranteeing resilient forecasts under all circumstances.
+Operation Void
+Manual input of FIRs and event records creates postponements and mistakes.
+OCR apparatus streamlines removal from Urdu FIRs utilizing EasyOCR, PaddleOCR, and Tesseract, maintaining superior correctness and removing manual lags.
+Customization Void
+General details disregard specific circumstances like residence/work spots, movement habits, or notification tastes.
+Tailored displays with GPS-based span computations, saved location tracking, and adjustable notification settings for pertinent user-specific insights.
+Forward-Looking Warning Void
+Warnings are primarily retrospective, initiated by user lookups instead of growing dangers.
+Ambient tracking and positional pairing provide anticipatory warnings; suppression logic avoids alert overload whilst assuring prompt updates.
+Multiple-Function Void
+Uniform interfaces cannot cater to diverse user classifications and duties.
+Privilege-based entry with distinct screens for Individuals (personal security), Managers (event handling), and Top-Managers (system observation and setup).
+
+Conclusion
+The segment established the theoretical foundation which describes public security forecasting and handling through its examination of past work. The core elements which drive SafeVision forward include prognostic data analysis and location-based insight and safety notifications. The assessment of existing systems showed their major flaws in data integration and forecasting accuracy and user participation. The realizations from these study findings established the blueprint for SafeVision which serves as an AI-powered system that delivers smart safety observation and visual representation and knowledgeable community resolution capabilities.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CHAPTER 3
+REQUIRMENTS SPECIFICATION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Introduction
+The chapter presents the complete requirements which are necessary to build and implement SafeVision, an AI-based safety monitoring system that uses advanced analysis and geographic mapping. The platform provides predictive safety forecasts and warning broadcasts and route assistance to users while system managers can verify event data and monitor personnel and create predictive assessments through the API tools which they have collected. The document defines both the system requirements which are active and passive and it establishes the required hardware and software specifications and network design requirements. The project uses APIs for cartography and liaison and data forecasting to create seamless interoperability between its various components. The complete set of prerequisites establishes SafeVision as a system which achieves operational performance and dependable function, while also delivering user-friendly features that enhance public safety awareness and decision-making processes. 
+The chapter begins by setting up the required physical and digital infrastructure for system operation, which then proceeds to detail functional requirements based on different user roles. The case study diagram displays all the interactions which occur between external entities and system operations, while passive prerequisites specify quality attributes which include speed and security and trustworthiness. 
+The chapter provides an overview of SafeVision requirements through its presentation of resource needs and data repository criteria and viability assessment, which includes all aspects that SafeVision needs to fulfill and the boundaries which define its operational environment.
+
+
+
+Interface Requirements
+Connections establish the operational links between SafeVision components and their respective external systems, which enables both secure data transfer and continuous system operation. The links enable users to share data without interruption, while displaying events, and performing analytical forecasts, which maintains both operational performance and user access to the system. The project utilizes both physical and digital connections to create seamless operation between its web-based and interconnected systems.
+
+
+
+Hardware Interface Requirements
+SafeVision requires both software components and essential physical elements which serve as the foundation for its installation and validation and operational use. The specifications establish system integrity which enables data to be depicted correctly while analytical procedures execute their tasks. The physical requirements include:
+Processor:Intel Core i5 or equivalent (multi-core) â€“ Manages simultaneous user inquiries, model inference, and repository tasks
+Memory (RAM):8 GB minimum, 16 GB suggested â€“ Sustains model loading, data handling, and numerous concurrent user sessions
+Storage: 20 GB minimum SSD â€“ Stores the repository, trained models, records, and system files
+Network: Reliable broadband link (10+ Mbps) â€“ Allows API invocations, map drawing, and data alignment
+Display:Any current display with 1920x1080 resolution â€“ Supports map visualization and control panel portrayal
+Client Devices:Desktop, notebook, tablet, or mobile phone â€“ Offers device-independent availability via adaptive web design
+Software Interface Requirements
+All tools and systems which support SafeVision operations as an integrated safety forecasting and visualization tool work under the regulations of the digital environment. The system uses backend AI components together with repository connectors and frontend interfaces, which enable users to operate external APIs for enhanced analysis and mapping functions. The digital prerequisites include:
+Frontend Technologies:React.js for developing flexible user interfaces that use components and Leaflet.js for creating interactive maps which include heatmaps and geographic displays and Chart.js for showing data in dashboard and trend graph formats.
+Backend Technologies:FastAPI for building efficient asynchronous APIs that produce automatic documentation and Python as the main programming language for AI model creation and backend operations and MySQL Connector (Latest) for database access and MySQL query execution and APScheduler (Latest) for managing background tasks which handle notification and report generation.
+AI and Machine Learning Libraries:Scikit-learn for building and testing a Random Forest classifier and Pandas for preparing and analyzing data and developing features and NumPy for performing numerical calculations required to determine Poisson probabilities and Joblib for saving and retrieving machine learning models
+OCR and Document Processing:EasyOCR as its primary OCR tool for reading Urdu text while PaddleOCR functions as a secondary OCR tool which detects document layouts and reads English text and Tesseract works as the backup OCR engine which reads standard English text and OpenCV (cv2) handles image pretreatment through CLAHE and thresholding and line erasure while Pillow (PIL) allows users to change image formats and modify existing images
+Notification and Communication:Pywebpush which enables browser push notifications using VAPID and the SMTP Library which creates and sends electronic mail alerts
+External APIs:OpenStreetMap / Nomination for geocoding and reverse geocoding and map tile generation and Leaflet.js for creating interactive maps and Email SMTP Service for sending alerts and system announcements.
+Functional Requirements
+The functional specifications define all required actions which SafeVision needs to perform in order to reach its defined objectives. The specifications establish how users and managers work with the system to ensure proper data processing and forecasting and display and notification management.
+Table 5: SafeVision - Functional Requirements
+Functionality
+Description
+User Role
+Admin/SuperAdmin Role
+System Action
+User Enrollment
+Self-enrollment with electronic mail confirmation
+Enroll with name, electronic mail, password, zone
+Not applicable
+Creates unconfirmed user, dispatches electronic mail, records enrollment attempt
+Electronic Mail Confirmation
+Confirm electronic mail prior to initial sign-in
+Tap confirmation link from electronic mail
+Not applicable
+Modifies is_verified=True, logs confirmation, permits sign-in
+Sign-in Authentication
+Protected sign-in with function-based validation
+Electronic mail + password (+ optional TOTP if activated)
+Electronic mail + password + mandatory electronic mail OTP
+Confirms credentials, verifies lockout state, transmits OTP if needed, issues JWT tokens with function-based expiration
+Google OAuth Sign-in
+External service authentication
+Sign in with Google account
+Not applicable (manager must use electronic mail + OTP)
+Validates Google token, checks existing user linkage, issues JWT tokens
+Admins Enrollment
+SuperAdmin-only manager creation
+Not applicable
+SuperAdmin can enroll new Admins
+Validates SuperAdmin status, creates manager with authorizations, transmits setup guidance
+FIR Data Import
+Import and process FIR images
+Not applicable
+Managers import FIR images
+Accepts image, initiates OCR pipeline, saves with pending status, logs import
+OCR Processing
+Multi-engine Urdu FIR extraction
+Not applicable
+Managers examine extracted data
+Runs EasyOCR/PaddleOCR/Tesseract, pulls fields, shows for review
+FIR Validation & Acceptance
+Examine and accept data
+Not applicable
+SuperAdmin accept/decline submissions
+Updates offense status, logs acceptance action
+Incident Data Display
+View safety maps and density maps
+View incidents on map, sort by zone/kind
+View all incidents, review trends
+Retrieves geospatial data, renders density maps, applies sorting, computes distances
+AI-Based Risk Forecasting
+Multi-tiered forecasting (Poisson â†’ Random Forest â†’ Legacy)
+View risk percentages and safety levels
+View risk percentages and safety levels with different sorting/input
+Runs forecasting chain, saves results, returns probability or classification
+Individualized Safety Control Panel
+GPS-based (1.5km radius) and home area safety
+View individualized safety control panel
+Not applicable
+Detects GPS position, queries incidents within radius, computes real-time safety rating
+Alert Subscription Control
+Configure alert preferences and radius
+Set home/work locations, alert radius, notification channels
+Not applicable
+Stores preferences, confirms coordinates, updates alert_subscriptions table
+Spatial Alert Matching
+Distance-based incident detection
+Receive alerts for incidents within radius
+Oversee alert system performance
+Utilizes formula (ST_Distance_Sphere), calculates distances, checks alert radius
+Multi-Channel Alert Transmission
+Browser push and electronic mail notifications
+Receive alerts via browser and electronic mail
+Test alert transmission
+Sends browser push via VAPID protocol, sends electronic mail with HTML templates, deep-link tokens
+Emergency Communication
+Call, SMS with location sharing
+Access emergency contacts, share location
+Monitor emergency logs
+Triggers tel:/sms: protocols, captures location, logs emergency actions
+Document Generation
+Generate and export documents
+Not applicable
+Generate incident documents, user documents, forecasting accuracy documents
+Gathers data from multiple tables, structures as PDF/CSV, schedules repeating documents
+Density Map Display
+Crime density visualization
+View density maps for different areas
+View density maps with administrative overlays
+Gathers crime data, applies density algorithms, renders color-coded density map
+Safety Route Suggestion
+Safer navigation suggestions
+Request safe routes between locations
+Not applicable
+Examines crime data along route, suggests alternative safer paths, shows on map
+
+
+
+
+
+Use Case Model
+The Use Case Model demonstrates how SafeVision system functions through its interaction with its main users. The system provides a top-level overview of how all users will work with the system to achieve their objectives while the application meets their performance requirements and security standards.
+
+
+
+Actors
+Table 6: SafeVision - Actors
+Actor
+Summary
+User
+The portal enables any user to access safety warnings which they can use to check nearby dangers and receive data-based protection recommendations. Users can select their home or work locations while they will receive alerts and use safety maps to find their way
+Administrator (Admin)
+Tasked with overseeing users, confirming data origins, inputting and certifying FIR submissions, and supervising platform operation.
+Super Administrator (SuperAdmin)
+Possesses total system oversight comprising admin and user administration, system setup, audit trail access, and all Administrator functions.
+External Systems / APIs
+Includes external vendor services that provide operational geocoding and map segment services through OpenStreetMap and messaging services through SMTP and browser push services through VAPID which enable users to access data for both assessment and forecasting purposes
+
+
+
+3. 1SafeVision - Use Case Diagram
+Use Cases
+The SafeVision demonstration shows its specific capabilities through detailed descriptions of user involvement, necessary operational requirements, and expected operational outcomes.
+Use Case 1: User Registration and Authentication
+SafeVision access requires users and administrators to use protected verification methods which enable them to enter the system through role-based access control.
+Table 7: SafeVision - User Registration and Authentication
+Element
+Summary
+Use Case ID
+UC-01
+Use Case Name
+User Enrollment and Verification
+Actor(s)
+User, Administrator
+Summary
+Covers all verification-related actions including user signup, sign in, password retrieval, and role-based entry control for users, admins, and super admins.
+Preconditions
+The user or admin must possess valid credentials and an internet connection. Platform must be functioning.
+Main Flow
+Participant opens sign in or signup page 
+provides required information which includes name and email and secret for signup or their login credentials for signing in 
+Platform verifies particulars
+For signup platform transmits verification electronic mail 
+Platform provides users with appropriate role-based access rights after successful verification 
+Platform provides a unified database which administrators and external APIs use to access information through the platform's interface
+Postcondition
+Participants are signed into the platform and redirected to their designated starting panel (User, Admin, or SuperAdmin). Session credentials are saved.
+Outcome
+Secure connection is granted based on allocated role.
+
+3. 2SafeVision - Use Case 1: User Registration and Authentication
+
+Use Case 2: Safety Data Integration and Management
+The platform enables administrators and external APIs to create a unified verified information system through their interaction with the system.
+Table 8: SafeVision - Safety Data Integration and Management
+Element
+Summary
+Use Case ID
+UC-02
+Use Case Name
+Safety Data Assimilation and Administration
+Actor(s)
+Administrator, External APIs, System
+Summary
+Defines how the platform gathers, integrates, and refreshes datasets from various APIs and administrative transfers for assessment and projections. Includes OCR-based FIR extraction.
+Preconditions
+API keys are active and the database is linked. Admin has suitable authorizations.
+Main Flow
+permits administrators to upload new datasets through admin links or input methods
+Optical character recognition (OCR) to extract particular elements from visual content
+platform enables data retrieval from APIs which can be merged with existing internal data.
+
+Platform performs three essential functions, which include data verification, data cleansing, and data standardization
+Uses geocoding to convert FIR data into geographic coordinates based on area name identification
+System maintains validated data while it waits for approval through the verified data storage process
+Administrator reviews the content before making approval decisions or requesting changes
+Postcondition
+An updated and unified information repository is sustained with verified, sanctioned records.
+Outcome
+The platform possesses precise, confirmed information prepared for safety projections and visual display.
+
+3. 3SafeVision - Use Case 2: Safety Data Integration and Management
+
+
+Use Case 3: AI-Based Prediction and Safety Analysis
+The platform uses AI/ML algorithms to predict safety levels and route hazards through its AI/ML system according to this operational explanation.
+Table 9: SafeVision - AI-Based Prediction and Safety Analysis
+Use Case ID
+UC-03
+Use Case Name
+AI-Based Projection and Safety Review
+Actor(s)
+System
+Summary
+The safety assessment of areas employs a multi-tiered AI/ML projection method that first uses a Poisson Probability Model as its primary model. The secondary model uses a Random Forest Classifier while the Legacy Label Encoder serves as a backup model system.
+Preconditions
+Past FIR information is accessible in the database, and the projection models are successfully loaded.
+Steps
+Platform receives a projection query (area, crime category, timing)
+Poisson Probability Model computes the statistical plausibility of an event (e.g., 22.4% likelihood)
+If the Poisson model falters due to missing information, the platform silently reverts to the Random Forest Classifier, which projects hazards as High, Medium, or Low
+If both engines fail, the Legacy Label Encoder furnishes a fundamental estimation as a final option
+Outcomes are shown on the starting panel and map
+Postcondition
+A hazard projection (percentage and/or label) is produced.
+Outcome
+Safety projections are invariably returned â€” the platform never presents a blank or error reply to the user.
+
+3. 4:    SafeVision - Use Case 3: AI-Based Prediction and Safety Analysis
+Use Case 4: Viewing Safety Insights and Visualizations
+The interactive environment allows users to explore maps and graphs and assessments which establish their ability to understand regional security conditions.
+Table 10: SafeVision - Viewing Safety Insights and Visualizations
+Use Case ID
+UC-04
+Use Case Name
+Viewing Safety Perceptions and Visualizations
+Actor(s)
+User
+Summary
+Allows users to view visual assessments, incident charts, safety ratings, and predictive safety indexes for differing zones and their present position.
+Preconditions
+User must be signed in. Information must be accessible for the chosen zone.
+Main Flow
+The user starts navigation from the initial panel or map display 
+Platform determines the user's present GPS location or shows the standard mapping area 
+Platform fetches all incidents that occurred within the 1.5km area surrounding the selected zone 
+Platform establishes the Safety Rating through a system of weighted calculations
+Platform shows a safety rating gauge along with a heatmap and incident markers and a radar chart display 
+Users can use filters which allow them to search by specific crime categories and time period and time of day 
+Users have the option to choose specific incidents which will provide them with complete incident details
+Postcondition
+Safety information is rendered on responsive starting panels with graphical displays.
+Outcome
+User acquires situational awareness through an interactive safety starting panel with personalized peril evaluation.
+
+3. 5:SafeVision - Use Case 4: Viewing Safety Insights and Visualizations
+Use Case 5: Alerts and Notifications Management
+The system needs to design new alerts which will inform users about immediate safety threats through notification systems.
+Table 11: SafeVision - Alerts and Notifications Management
+Use Case ID
+UC-05
+Use Case Name
+Warnings and Notifications Administration
+Actor(s)
+System, User, External APIs (push, email)
+Summary
+Handles all steps for detecting alerts which include creating alerts and sending them to users through browser notifications and email messages. The system provides users with 60-minute breaks between zones to prevent them from receiving too many alerts
+Preconditions
+Notification service and network accessibility are active. Users have opted into notifications and set warning preferences.
+Main Flow
+Platform runs background task (every few minutes) monitoring newly sanctioned incidents
+For each new incident, platform pinpoints users with saved positions within warning perimeter (1-5km)
+Platform checks 60-minute rest interval cache for each (user, zone) pairing
+If rest period has passed, platform generates warning with risk level, crime particulars, and deep-link URL
+Platform transmits browser push notification via VAPID protocol
+Platform sends electronic mail warning using HTML template with threat assessment
+Platform archives notification in database for starting panel display
+Platform updates rest interval cache with current moment mark
+Postcondition
+Warning is logged in notification_logs and conveyed to user through configured channels. Rest period stops duplicate warnings for 60 minutes.
+Outcome
+Users obtain prompt, non-repetitive safety warnings regarding emerging hazards near their important spots.
+
+
+3. 6:SafeVision - Use Case 5: Alerts and Notifications Management
+Use Case 6: Emergency Communication and Assistance
+The system enables users to establish direct contact with emergency services and essential contacts during times of emergency.
+Table 12: SafeVision - Emergency Communication and Assistance
+Use Case ID
+UC-06
+Use Case Name
+Emergency Contact and Aid
+Actor(s)
+User
+Summary
+Offers immediate availability to emergency contact features such as phoning, messaging, and sharing position with authorities or trusted associates during emergencies.
+Preconditions
+User permissions for phone and position must be granted on device. Browsers must support these functions.
+Main Flow
+User selects emergency action from starting panel (call, SMS, share position)
+Platform requests confirmation if action involves external contact
+Platform initiates appropriate API or device function (tel: for calls, sms: for messages)
+For position sharing, platform captures current coordinates and builds shareable web link
+Platform records action with moment mark, user ID, and emergency category
+User finishes emergency contact through native device interface
+Postcondition
+Emergency action is executed and noted in emergency_calls record.
+Outcome
+Emergency contact is successfully initiated with relevant parties.
+
+3. 7:SafeVision - Use Case 6: Emergency Communication and Assistance
+Use Case 7: Administrative Monitoring and Reporting
+The system enables administrators to monitor system performance while they create operational reports which support their strategic planning activities.
+
+
+
+
+
+
+
+
+
+
+Table 13: SafeVision - Administrative Monitoring and Reporting
+Use Case ID
+UC-07
+Use Case Name
+Oversight Monitoring and Summaries
+Actor(s)
+Administrator, System
+Description
+Admins can watch logs, system operation, route hazards, and user actions, and create analytical summaries for planning.
+Preconditions
+Admin credentials and entry to backend utilities. System must have gathered adequate information.
+Main Flow
+Admin user selects either the summary section or the monitoring dashboard for their work 
+System collects data to present key performance indicators which include user counts and incident trends and alert prediction accuracy and alert prediction accuracy 
+Admin user selects summary parameters which include timespan and region and summary kind 
+System generates summaries which include visual representations and tables and executive summaries 
+Admin user can download summaries in three formats which include PDF and CSV and regular email delivery setup 
+Admin user examines confirmation logs to track all user actions and system operations
+Postcondition
+Summary is produced and accessible for retrieval or scheduled distribution.
+Outcome
+Thorough summaries help in gauging system performance and safety patterns for tactical planning.
+
+
+3. 8:SafeVision - Use Case 7: Administrative Monitoring and Reporting
+Use Case 8: OCR FIR Processing
+The administration of this situation can upload FIR images to obtain specific parts of those images.
+Table 14: SafeVision - OCR FIR Processing
+Use Case ID
+UC-09
+Use Case Name
+OCR FIR Handling
+Actor(s)
+Administrator, System
+Description
+Allows automated retrieval of structured data from Urdu FIR documents utilizing multi-engine OCR with specialized preliminary processing.
+Preconditions
+Admin has uploaded a valid FIR picture (JPEG, PNG, WEBP). OCR engines are accessible.
+Main Flow
+Admin uploads FIR picture via OCR interface
+System performs preliminary processing on image (CLAHE contrast, adaptive thresholding, table line removal, upscaling)
+System executes EasyOCR (main), PaddleOCR (secondary), and Tesseract (backup) engines
+System compares findings and chooses maximum certainty results
+System retrieves segments using ROI targeting: region (vertical strips), parts (row 3), date/time (regex)
+System standardizes region names using Urdu vocabulary correlation
+System finds the location of region spots via Nomination API
+System presents retrieved segments for admin inspection and authorization
+Postcondition
+Retrieved FIR data is shown for admin inspection and may be authorized to join the incident repository.
+Outcome
+FIR data is automatically retrieved, cutting down on manual entry duration and removing transcription mistakes.
+
+3. 9:SafeVision - Use Case 8: Feedback and User Interaction
+
+
+
+
+
+Non-Functional Requirements
+Non-functional requirements describe the software's quality standards and performance limits and operational performance criteria which the system must meet. The specifications demonstrate that SafeVision achieves complete functionality while maintaining safe and dependable operation and effective performance in real-world settings.
+
+Performance Requirements
+The Dashboard of the platform requires 3 seconds to load; users can view maps after 2 seconds of launching the system.
+The system takes 500 milliseconds to return prediction results and it takes 30 to 40 seconds to process each image through OCR.
+The system can handle 100 active users at the same time and users can expect search results within 200 milliseconds.
+The system delivers notifications within 30 seconds while background tasks run continuously without affecting system performance.
+Reliability Requirements
+The prediction engine continuously delivers its output through alternative methods which results in no empty or erroneous results.
+The system maintains complete data integrity for all accepted submissions while providing transparent error management through user-friendly system messages.
+The system performs nightly backup operations which enable users to retrieve data from previous points in time and the OCR system automatically defaults to manual entry mode during essential situations.
+Security Requirements
+System stores passphrases using bcrypt encryption while user sessions automatically terminate after users stop working for a predetermined period.
+Requires all APIs to implement input validation through testing and parameterized lookup procedures and role-based access control measures.
+Maintains a record of all critical system activities while its security measures block unauthorized access through traffic control methods and account suspension and JWT token expiration.
+Requires all managers to use two-factor authentication and all users must validate their email addresses before they can access the system for the first time.
+Usability Requirements
+The platform provides complete adaptability because users can access core functions through three consecutive presses or taps.
+Visual design of the system follows accessibility standards by providing clear indications of system failures and progress tracking elements.
+The visual components (risk gauge, maps) display a straightforward design which uses identical control elements throughout the entire system.
+Provides two functions which enable users to conduct OCR review tasks and urgent tasks with quick and simple methods.
+Maintainability Requirements
+Code includes documentation which describes its functions while following coding standards through its implementation of structured logging.
+The APIs provide automatic documentation creation while their modules offer flexible connections which allow users to customize their usage.
+The database changes use migration commands while the database structures maintain their original state through version control.
+Resource Requirements
+Hardware / Software Tools
+SafeVision requires both effective software frameworks and essential hardware components to establish a system which operates and installs without issues.
+Hardware:The development process requires a computing setup which contains at least 8GB RAM and an Intel i5 processor or higher and requires continuous internet connectivity.
+Software Instruments & Technologies:
+Table 15: SafeVision â€“Software tools & technologies
+Category
+Technology
+Function
+IDE
+Visual Studio Code
+Primary development setting for both user-facing and server-side
+Version Control
+Git & GitHub
+Source code administration and collective effort
+Frontend Framework
+React.js
+Constructing interactive, responsive user display
+Backend Framework
+FastAPI
+High-throughput API creation
+Database
+MySQL
+Structured data retention and administration
+AI/ML
+Scikit-learn
+Random Forest Classifier training and deployment
+OCR
+EasyOCR, Tesseract
+Urdu FIR text extraction
+Image Processing
+OpenCV, Pillow
+Image preliminary handling for OCR
+Mapping
+Leaflet.js, OpenStreetMap
+Geospatial showing and geocoding
+Data Processing
+Pandas, NumPy
+Data preliminary steps and examination
+Visualization
+Chart.js, Recharts
+Dashboard analytics graphs
+Notification
+Pywebpush, SMTP
+Browser push and electronic mail alerts
+
+Human Effort
+The SafeVision venture is jointly created by a trio of members, each contributing to distinct yet interrelated parts of the system. The team divides work between three groups to achieve effective results while completing building work with specialized knowledge and detailed execution.
+Table 16: SafeVision â€“Team Members and their Responsibilities
+Team Member
+Role
+Functions
+Akmal Naseer
+System Designer & Frontend Developer
+User interface planning, model creation, React.js execution, dashboard elements, map inclusion
+Zainab Fayyaz
+Backend Developer & AI Engineer
+FastAPI backend creation, database linkage, API interchange, model calibration, prediction engine integration, OCR flow integration
+Zaid Waseem
+Database Integration & Documentation
+Database structure planning, data accessibility, project paperwork, vetting alignment
+
+All team members actively partake in system vetting, integration assignments, and documentation to uphold project uniformity and dependability.
+
+DatabaseRequirements
+The SafeVision system depends on an organized relational database to manage and sort all crucial details effectively. The database uses MySQL design which enables it to provide strong data protection and system growth and compatibility with FastAPI based server frameworks. 
+It enables efficient storage of user information and incident records and alerts and system actions which can be retrieved for analysis. The database ensures that every system part works together by maintaining constant links between data analysis and visual display and user management functions.
+Table 17: SafeVision - Database Requirements
+Table Name
+Function/Summary
+users_info
+Keeps user account specifics such as identity, electronic mail, designation (user/admin/superadmin), encrypted password, residence/office positions, alert range, and preferences.
+crimes
+Holds thorough records of reported offenses, covering kind, position (coordinates), locality name, time, date, gravity, status (pending/accepted), and origin. Utilized for AI-driven safety forecasts.
+areas
+Saves particulars about specific zones or places where safety information is gathered and analyzed, encompassing coordinates, borders, area type, and standardized designations for mapping.
+browser_notifications
+Manages in-browser alerts sent to users regarding safety warnings, including headline, content, severity, distribution standing, and viewed status.
+browser_push_subscriptions
+Saves browser push sign-up locations and identifiers for enabling immediate alerts via web push utilities.
+alert_subscriptions
+Monitors user alert settings including saved locales (home/work), warning radius, active channels, and notification types.
+notification_logs
+Registers every alert (electronic mail, browser, SMS) dispatched to users, containing timestamps, delivery success, and error specifics for accountability and audit.
+user_alerts
+Documents every safety warning generated with category, severity level, affected zone, risk metric, and notification status for display on the panel.
+emergency_calls
+Logs urgent communication enactments, including user identifier, contact method, timestamp, shared location, and reply status.
+system_logs
+Contains server-level operational activity records for performance oversight, troubleshooting, and spotting system faults.
+audit_logs
+Registers all pivotal system happenings for auditing and tracking, including user entries, data modifications, and administrative functions.
+user_activity_logs
+Tracks user engagements within the application such as login past, data viewing, submission of records, and map involvements for personalization and security.
+reports
+Maintains user-submitted narratives about questionable actions or local occurrences, which are examined to boost safety projections.
+scheduled_reports
+Stores setups for automated or recurring report production, covering recipients, periodicity, format, and data criteria.
+system_settings
+Stores adjustable system variables including session cutoff, passphrase rules, alert defaults, and feature toggles.
+Project Feasibility
+Technical Feasibility
+The system employs proven, well-backed instruments (React, FastAPI, MySQL, Scikit-learn) guaranteeing dependability and ease of construction.
+Existing tools allow OCR and AI development to proceed with standard software and average computer hardware which enables cost reduction through cloud infrastructure and open-source software solutions.
+Operational Feasibility
+The system provides users with an easy interface which enables them to learn the system quickly while administrators can handle their tasks through efficient operational procedures.
+Modular structure, minimal training necessities, and incorporated oversight/logging ensure smooth running and upkeep.
+Legal & Ethical Feasibility
+The system maintains data protection standards through its secure user consent storage and its complete system protection against unauthorized data transmission.
+Presents AI predictions as clear and unbiased estimates which support public safety without replacing official government services.
+Summary
+The section established the requirements which control both the design and implementation of SafeVision. The system interfaces and capabilities and operational requirements all received definition together with the establishment of architectural design which will be presented in the following section.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CHAPTER4
+SYSTEM MODELLING
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Introduction
+The tool of system modeling enables users to transform their abstract concepts into organized representations. SafeVision uses system modeling to demonstrate how its system components, which include frontend elements and backend systems and database functions and AI services, work together to form a single platform that serves users. The chapter presents the system's architectural structure together with its component relationships and the system's data movement and operational procedures. The design system at SafeVision functions as a scalable system which maintains its operational functions through its modular design which allows the organization to implement upcoming mobile application development with Capacitor. The chapter provides all required diagrams and models which establish the implementation process for developers to follow when building a user-friendly system with strong system security.
+System Design Overview
+The complete SafeVision system architecture operates as a web application with multiple layers which includes a React-based frontend and a FastAPI-based backend that connects to a MySQL database while using AI and machine learning models. External APIs like Leaflet enable users to create geographical maps which they can visualize in their applications. The architectural design enables data to move seamlessly from the user interface to the backend system which allows users to perform interactive analytical tasks while receiving safety-related information. The system intelligence base uses a prediction engine that operates through multiple layers to follow a predetermined fallback procedure: 
+Layer 1 (Primary) - Poisson Probability Model: This layer executes first to compute the statistical likelihood of any specific incident (e.g., 22.4% probability of theft). The model achieves both computational efficiency and mathematical precision when historical data exists in sufficient amounts. 
+Layer 2 (Secondary) - Random Forest Classifier: The Random Forest Classifier will be used in cases where the Poisson model fails to produce results due to missing data or zero-frequency situations while FIR historical patterns serve as the basis for risk classification into High, Medium, or Low categories. 
+Layer 3 (Tertiary) - Legacy Label Encoder: This system backup tool ensures that every system operation will result in some type of system response because it prevents the occurrence of empty screens or system errors. 
+The same React web application can also be deployed as a hybrid Android and iOS mobile application with the addition of Capacitor integration. Users can access predictive insights together with alerts and area-based safety information through a mobile-friendly interface which preserves the existing structure and backend connectivity of the web system.
+Design Approach
+The two primary approaches for software system development lead to the creation of two distinct software design methodologies. SafeVision required the implementation of Top-Down Design Approach through its complete design process. The approach started from the top-level objectives - which included safety data prediction and visualization and alert generation - and divided them into smaller sub modules which included data integration and visualization engine and reporting module and alert system and OCR processing. The approach established: 
+All system goals and their implementation see complete system integrity through the relationship of all system components with safety management activities.
+The design permits testing and debugging work to be done more efficiently while making it easier to expand the system through testing of specific modules which can detect problems without stopping other parts of the system. 
+Web and future mobile platforms share the same fundamental logic that functions on both platforms. 
+API and database and ML component integration becomes faster and simpler because module connections use transparent interfaces for their integration process. 
+The design system establishes modular construction which enables all four system layers (frontend and backend and AI and database) to develop independently while maintaining limited dependency issues. The prediction engine can be enhanced through deep learning model implementation which allows improvements to be made without any need to change the frontend or database components.
+Interface Design
+Safevision interface design establishes accessibility standards through design work which includes both clear communication methods and user interaction design. The system shows safety data through mapping and charting methods which create a user-friendly navigation experience and use simplified design elements. The web-based interface provides user and administrator dashboards which include interactive maps and predictive charts and alert notifications. The mobile app version will also use the same UI components and will be compiled with Ionic Capacitor to give the adaptive touch-optimized layout. The interface system provides: 
+User Dashboard: This will display area-based safety indicators which include interactive maps and categorized incidents and safety score gauge and personalized alerts based on home/work locations. 
+Admin Dashboard: manages all datasets while tracking user behavior and monitoring FIR submissions and reviewing OCR extracted data and producing automated reports. 
+SuperAdmin Dashboard: This will provide full system management features which include system administration and system configuration and access to audit logs and advanced analytics capabilities. 
+Hybrid Support: With Capacitor hybrid support enables the interface to display content on mobile devices while providing offline access and push notifications.
+High-Fidelity Prototype
+The system's complete visual design and user interaction patterns are shown through the SafeVision high-fidelity prototypes. The prototypes show how users and administrators use the application to obtain safety insights and safety predictions and safety management tools:
+Login Interface
+
+4. 1SafeVision - Login Interface: Secure login page with email/password fields
+
+Register Interface
+
+4. 2SafeVision - Register Interface: User registration form for name, email, password, area
+
+User Dashboard
+
+
+4. 3SafeVision - User Dashboard: Main dashboard
+
+Emergency Resources
+
+
+4. 4:    SafeVision - Emergency Resources Interface
+
+Safety Visualization Map
+
+
+
+4. 5:SafeVision - Safety Visualization Map
+
+Area-wise Prediction Charts and Category Filters
+
+
+
+4. 6:SafeVision - Area-wise Prediction Charts
+
+Admin Dashboard
+
+4. 7:SafeVision - Admin Dashboard
+4+1 View Model of Architecture
+The SafeVision system can be represented in the 4 + 1 View Model of Architecture, which presents a structured and complete image of the system in terms of the perspectives of various stakeholders to enable a clear, maintainable, and scalable system. The system architecture presents four main views which include Logical View, Process View, Development View, and Physical View together with Use Cases which show how system elements work together to meet its objectives. The design of the system through this model enables modular components which provide flexible solutions to meet all essential functional and non-functional needs. 
+Logical View - Presents system functionality through the description of system relationships and system elements. 
+Process View - Describes system operation through its workflow prediction system and visualization tools and its alert system which includes a fallback chain. 
+DevelopmentView- Shows the implementation structure through its display of packages and modules and their interconnections. 
+Physical View - Deployment: Is a distribution between devices, servers, database, and AI services. 
+The system model maintains complete documentation and the system design structure enables development of web-based and hybrid mobile applications without needing to modify existing core system architecture.
+
+System Architecture Diagram
+SafeVision System Architecture shows the main system components which exchange information to create safety predictions. The system uses a combination of react frontend technology, Fast API backend system, MySQL database, and a multiple level crime risk assessment prediction system. The system uses Leaflet APIs to create geospatial data visualizations which permit extension to a Capacitor-based mobile application that shares the same backend system.
+
+
+4. 8:SafeVision - System Architecture Diagram
+The architecture provides high scalability through its modular design which separates system components into three distinct tiers for presentation, logic processing and database storage. The platform enables mobile users to access web-based analytics through a native-like application interface while using shared APIs to maintain data synchronization with the web system.
+Logical View (Class Diagram)
+The Logical View of SafeVision defines the system's internal logic by showing how data elements connect through their object relationships. The main classes include User, Admin, Crime, Alert, PredictionRequest, and NotificationSubscription.
+
+4. 9:SafeVision - Logical View Diagram
+The system structure uses class associations and dependencies to create a framework that supports reusable components while maintaining consistent behavior between web applications and future mobile development. The system enables data processing through safe methods which allow tracking of system activities and their corresponding system reactions.
+Process View (Activity Diagram)
+The Process View describes how the system operates by showing its workflow which includes user requests and their resulting visual data outputs. The system uses a three-stage prediction process that starts with Poisson probability estimation, then moves to Random Forest Classifier, and finally uses Legacy model as the last option which guarantees predictions in all situations.
+
+4. 10SafeVision - Process View Diagram
+The users can conduct area assessments and safety evaluations and receive alerts through an organized process which delivers intuitive results. The Capacitor app maintains its process flow to deliver consistent device performance throughout its operational life.
+State Diagram
+SafeVision operates as a model which shows its state transitions through the State Diagram during its data analysis work. The system operates through various states which include Idle and Data Collection and Prediction and Visualization depending on the user actions and the background processes. The system cycle comprises these essential states which are Idle Authenticating Data Fetching Predicting Visualizing Alerting and Error Handling.
+
+4. 11SafeVision - State Diagram
+The flow demonstrates how SafeVision functions because it will respond to new data by producing alerts and starting fresh analyses. The flow demonstrates how SafeVision functions because it will respond to new data by producing alerts and starting fresh analyses.
+Sequence Diagram
+The Sequence Diagram illustrates how SafeVision components interact with each other and how their time-dependent relationships function between User Frontend Backend Database AI Prediction Engine and Map API. The backend system will first initiate a prediction request through the Poisson model followed by Random Forest and then Legacy (if needed) which will occur without user awareness.
+
+
+4. 12SafeVision - Sequence Diagram
+The data flow pattern protects web and Capacitor app systems because it ensures reliable data transfer with immediate response capabilities. It also incorporates 60 minutes cooldown verifications on alerts and logging of prediction requests in the database.
+Development View (Component Diagram)
+The Development View shows SafeVision's software modules which include the frontend and backend and database components. 
+Frontend UI (React.js):Enables users to interact with the UI through its rendering capabilities. 
+Backend API (FastAPI):Handles request processing while performing business logic operations and authentication tasks. 
+Prediction Engine (Python/Scikit-learn):Multiple layers to calculate risk assessments of various factors. 
+OCR Service (EasyOCR/PaddleOCR/Tesseract):Extracts text from FIR documents using its OCR capabilities. 
+Background monitoring:Dispatch notifications while Python/APScheduler handles background monitoring tasks. 
+Database Layer (MySQL):MySQL to handle all data storage requirements and data retrieval needs. 
+Map Service (Leaflet.js):displays geospatial data through its mapping functionalities.
+
+4. 13SafeVision - Development View Diagram
+The current Capacitor integration system needs all three elements which include distinct interface elements and easy system updates and ongoing development processes because they will enable upcoming Capacitor implementation work.
+Physical (Deployment) Diagram
+The Physical View describes the deployment of the infrastructure of the SafeVision on the devices of clients and servers. The deployment process includes the three components of Client Tier which includes browser and mobile app access Web Server and Application Server which operates FastAPI through Uvicorn and Database Server which uses MySQL together with External Services that include OpenStreetMap API and SMTP and VAPID push.
+
+4. 14SafeVision - Physical Diagram
+This architectural design supports three main attributes which include scalability and reliability and cross platform compatibility. The system can handle increased demand through additional app server instances together with database read replica deployments.
+Entity Relationship Diagram (ERD)
+Entity Relationship Diagram (ERD) shows how SafeVision handles data through its key entities and their relationships. The main tables contain user information together with admin details about crimes and areas and user alerts plus browser notifications and alert subscriptions and audit logs plus system logs.
+
+4. 15SafeVision - Entity Relationship Diagram of the Proposed System
+The most important relationships are between User and Alerts (1:M), User and Subscriptions (1:1), Area and Crimes (1:M), and Admin and User (1:1). The system uses a relational structure which enables web applications and Capacitor applications to connect with both backend and frontend systems.
+Data Flow Diagram (DFD)
+Data Flow Diagrams: These diagrams display the data movement which occurs within SafeVision system because the system transforms data from input to output through multiple abstraction levels.
+
+
+
+
+
+DFD Level 0 (System Boundary)
+The diagram shows SafeVision as a single system which connects with Users Admins Emergency Services and External Mapping APIs and Notification APIs. The system receives credentials and location queries and FIR uploads while it sends safety scores and alerts and maps and analytics.
+
+4. 16SafeVision - Data Flow Diagram (Level 0)
+DFD Level 1 (Main Processes and Data Stores)
+The level 1 shows SafeVision through its five main components which include 1.0 User Interface Management 2.0 Data Integration and OCR 3.0 Prediction Engine 4.0 Alert Manager and 5.0 Report Generator. The system contains data stores which include Users and Crimes and Alerts and Notifications and Reports.
+
+
+4. 17SafeVision - Data Flow Diagram (Level 1)
+DFD Level 2 (Detailed Flows - Prediction and Route Safety)
+Prediction flow consists of 3.1 Receive Request which leads to 3.2 Fetch Historical Data which leads to 3.3 Extract Features which leads to 3.4 Run Poisson which leads to 3.5 Run Random Forest as required which leads to 3.6 Run Legacy as required which leads to 3.7 Aggregate Results which leads to 3.8 Store in Database which leads to 3.9 Return to Frontend. The system uses crime-weighted pathfinding to determine the optional routes which have the safest paths.
+
+4. 18SafeVision - Data Flow Diagram (Level 2: Prediction and Route Safety)
+
+DFD Level 2 (Detailed Flows - Alerts and Notification Delivery)
+The system operates by using Flow through 4.1 Monitor New Incidents after every 5 minutes which leads to 4.2 Match User Locations which leads to 4.3 Cooldown Check after every 60 minutes which leads to 4.4 Create Alert which leads to 4.5 Select Channels which leads to 4.6 Push Dispatch VAPID which leads to 4.7 Email Dispatch SMTP which leads to 4.8 Update Logs which leads to 4.8 Store in User Inbox.
+
+4. 19SafeVision - Data Flow Diagram (Level 2: Alerts and Notification Delivery)
+
+Summary
+The chapter presented the system design and modeling of SafeVision. It established the Top-Down approach which used high-fidelity prototypes for written interface design while the 4-1 View Model displayed architectural design through its Logical Process State Sequence Development and Physical views with scenarios. The document presented data modeling through ERD and DFD Level 0 1 and 2. 
+The Method shows all relevant elements through consistent representation of the multi-layered prediction fallback chain within Process View and Sequence Diagram and Activity flow and DFD Level 2. The design achieves scalability and maintenance advantages through its modular structure which enables future web deployment and Capacitor-based mobile deployment without the need to redesign its fundamental system structure.
+
+
+
+
+
+
+
+
+
+
+
+
+
+CHAPTER5
+Implementation
+Introduction
+This chapter outlines the realization specifics of the SafeVision system, translating the design blueprints and stipulations from preceding chapters into a functional software result.Â The implementation phase began when all system components were built according to the architectural design which included external systems and performance tuning for AI frameworks and verification of smooth subsystem interactions. 
+The chapter presents system units which show their operational methods through their operational logic and their system connection methods and their specific implementation challenges that they solved. The realization process follows the three-dimensional structure from Chapter 4 which separates the system into distinct sections that include frontend, backend, data storage, and AI components. The development team created all source code with Git versioning system which they protected according to industry standards while maintaining system performance and system maintenance requirements. The system required the following fundamental technologies for its implementation:
+Frontend: React.js 18.x with functional elements and hooks
+Backend: FastAPI (Python 3.9+) with asynchronous access points
+Database: MySQL 8.0 with spatial data support
+AI/ML: uses Scikit-learn to implement Random Forest and it includes a custom Poisson execution feature
+OCR: EasyOCR, PaddleOCR, Tesseract with OpenCV preprocessing
+Maps: Leaflet.js with OpenStreetMap tiles
+Notifications: Pywebpush (VAPID) to deliver browser push notifications and it uses SMTP to send electronic mail
+
+
+
+
+Implementation Environment
+The development and deployment location needs to be established before proceeding to describe the specific units of the project.
+Development Environment
+Table 18: SafeVision â€“Development Environment
+Component
+Specification
+Operating System
+Windows 11
+IDE
+Visual Studio Code with Python and JavaScript extensions
+Version Control
+Git with GitHub repository
+Package Management
+npm (frontend), pip (backend)
+Local Server
+Uvicorn for FastAPI, Webpack Dev Server for React
+Database
+MySQL 8.0 (local instance)
+Production Environment
+Table 19: SafeVision â€“Production Environment
+Component
+Specification
+Application Server
+Uvicorn workers
+Database Server
+MySQL 8.0 on dedicated instance
+SSL/TLS
+Let's Encrypt for HTTPS
+Environmental Variables
+.env files for configuration
+Modules of FYP
+The SafeVision divides into six main components which each handle a specific range of functions. The following sections explain how the system developed each component.
+Module 1:Validation and Permission Unit Purpose:
+The Validation and Permission Unit manages user accounts through handling user registration and login and email validation and role-based access control and JWT token processing and session security.
+Algorithmic Details
+User Sign-up with Email Validation and Location Check:Receive sign-up submission; verify electronic mail and password strength; look for duplicate electronic mail; validate Lahore coordinates using Nominatim; obfuscate password with bcrypt; create electronic mail validation token; save user as unverified; dispatch validation electronic mail; record sign-up.
+Sign-in Validation with Role-Based 2FA:The system processes sign-in requests by confirming user credentials while verifying their lockout status. The system resets failed login attempts after successful authentication. The system uses OTP authentication for admin and superadmin users while applying TOTP for all enabled user accounts. The system generates access tokens and refresh tokens for users while storing the refresh token. The system records every sign-in event to maintain security.
+
+
+Module 2: Multi-Tiered AI Estimation Unit Purpose: 
+The Multi-Tiered AI Estimation Unit uses three methods to estimate risk through its primary method of Poisson Probability and its secondary method of Random Forest and its Legacy method.
+Algorithmic Specifics:
+Poisson Likelihood Computation:Retrieve historical occurrences; determine lambda from occurrences per interval; return FAIL if lambda is zero; compute P(X>=1)=1-e^(-lambda); convert to percentage; round to single decimal spot; return hazard proportion.
+Random Forest Training:Collect authorized incident records; prepare and encode categorical fields; construct time/season features; part data; train Random Forest with balanced sets; assess framework; store framework, encoders, and scaler.
+Random Forest Estimation:Fetch framework artifacts; derive features from zone, incident type, time, and day; encode and scale features; estimate likelihoods and class; relate class to Low/Medium/High; return hazard tier and certainty.
+Legacy Backup Estimation:The system allocates scores through pre-set zone hazard tiers and incident seriousness tiers; it merges the scores which lead to High/Medium/Low; and it provides a low-certainty backup outcome.
+Unified Estimation Access Point:The first step of the process involves testing Poisson; if it produces a value the system will link to the hazard tier while registering the outcome; if Poisson fails the system will proceed to test Random Forest; if Random Forest also fails the system will use Legacy backup; the system will always generate an estimation result.
+Module 3: Hazard Rating and Safety Rating UnitÂ Purpose: 
+This unit computes unified hazard and safety ratings using weighted factors: quantity, newness, seriousness, progression, and timing.
+Algorithmic Specifics:
+Unified Hazard Rating Computation: Fetch incidents by zone or radius; gauge quantity, newness, seriousness, progression, and timing inputs; apply weights 35/30/15/10/10; compute hazard rating and safety rating; apply decay and safe-by-default stipulations; return factor breakdown.
+Module 4:OCR and FIR Data UnitÂ Purpose:
+This unit extracts structured details from FIR images using EasyOCR, PaddleOCR, Tesseract, and OpenCV preprocessing.
+Algorithm Specifics:
+Image Preprocessing Pipeline: Load FIR visual; convert to monochrome; apply CLAHE, softening, and adaptive demarcation; eliminate horizontal and vertical traces; magnify visual for clarity; return the preprocessed visual.
+Multi-Engine OCR with Field Extraction: Operate EasyOCR, PaddleOCR, and Tesseract; select the superior certainty outcome; pull out the incident zone using OCR patterns and strip scanning; standardize zone identifications; pull out sections, date, and time; locate the zone; return structured FIR details.
+Module 5: Warning and Delivery UnitÂ Purpose: 
+This unit oversees incidents and conveys alerts via browser push and electronic mail with cooldown logic.
+Algorithmic Specifics:
+Haversine Distance Computation: Convert coordinates to radians; compute latitude and longitude variations; apply the Haversine formula; return the separation in kilometers.
+Background Alert Oversight: Execute every 5 minutes; query newly approved incidents; locate confirmed users inside alert perimeter; compute separations to home and work spots; process solely affected users; mark incidents as alerted following processing.
+Alert Processing with Cooldown: Compose a cooldown key per user and zone; bypass if the 60-minute cooldown is active; establish hazard tier and hue; generate a deep link; insert alert record; dispatch push and/or electronic mail; revise cooldown cache; log dispatch.
+Browser Push Notification Setup:If VAPID keys don't exist you need to create them first before getting browser approval while you need to use the service operator to send subscription details to the backend system after that you will need to keep the subscription active until the time arrives for push notifications.
+Module 6:Geospatial Rendering Unit Purpose: 
+This unit uses Leaflet and OpenStreetMap to show maps and heatmaps along with markers and route safety suggestions.
+Algorithmic Specifics:
+Heatmap Fabrication:The system queries incidents based on the selected geographic area and its filtering options while assigning intensity levels according to the severity of incidents which results in creating heatmap points collection that the system uses to render Leaflet heatmap display.
+Safety Route Computation:The base route is obtained from OSRM after which the route gets divided into sections which require hazard and safety calculations based on nearby incidents for each section. The system selects a safer route whenever the average safety rating falls below the established threshold. The route description should include both its geometric layout and safety assessment details.
+Hardware Module Details
+SafeVision operates as a web-based application which requires software to function therefore dedicated hardware units are not requisite. The following hardware specifications should be used to establish deployment operations:
+Server Hardware Recommendations
+Table 20: SafeVision â€“Server Hardware Recommendations
+Component
+Development
+Production (Small Scale)
+Production (Large Scale)
+CPU
+Intel i5 or equivalent
+Intel Xeon / 8 cores
+Intel Xeon / 16+ cores
+RAM
+8 GB
+16 GB
+32-64 GB
+Storage
+20 GB SSD
+100 GB SSD
+500 GB SSD + RAID
+Network
+Broadband
+100 Mbps dedicated
+1 Gbps + CDN
+Client Hardware Requirements
+Table 21: SafeVision â€“Client Hardware Requirements
+Device Type
+Minimum Needs
+Desktop/Laptop
+Modern browser, 4GB RAM, 1366x768 display
+Tablet
+iOS/Android tablet with modern browser
+Smartphone
+iOS 13+ or Android 8+, 3GB RAM
+OCR Processing Hardware Notes
+The process of OCR with EasyOCR and PaddleOCR requires heavy mental effort. The time needed to process one FIR visual without GPU support ranges between 30 and 40 seconds.
+Conclusion
+This chapter provided complete realization details of SafeVision which developed through six critical validation and permission and multi-tiered AI estimation and hazard rating and safety rating and OCR and FIR data and warning and delivery and geospatial rendering units.. The system integrates all system components into one platform which provides Users and Admins and SuperAdmin different access rights and functions based on their user roles.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CHAPTER6
+Result/Testing, Analysis and Validation
+Introduction
+Quantitative analysis of SafeVision is presented in this chapter which evaluates five authentication security criteria together with AI predictive accuracy and OCR predictive performance and alert delivery reliability and system scalability and usability testing.
+Testing Environment and Setup
+Hardware Configuration
+The test used a developer level PC setup which specialized in testing CPU performance to show the expected operational outcomes for normal server systems.
+CPU: System requires an Intel Core i7-11th Gen processor or an equivalent high-performance multicore processor
+RAM: 16 GB DDR4 RAM along with 512 GB SSD storage for high-speed database access
+GPU: CPU resources to conduct all processing tasks including OCR and AI functions
+Client Devices: Windows 11 operating system with Google Chrome version 120 and higher and Mozilla Firefox version 121 and higher to verify cross-browser compatibility.
+Software Configuration
+The modern open-source stack was designed to function exclusively on CPU processing: 
+Backend: Python 3.10+ with FastAPI and Uvicorn ASGI server for its backend functionality
+Frontend: React.js 18 with Vite-based build system for front-end development and MySQL 8.0 for database management with local spatial indexing capabilities
+Artificial intelligence / Machine learning:Scikit-learn for Random Forest and NumPy for Poisson Logic to implement artificial intelligence and machine learning capabilitiesOCR 
+Suite: uses EasyOCR and PaddleOCR and Tesseract which runs in CPU inference
+Geospatial: Leaflet.js with OpenStreetMap (OSM) Tiles for its geospatial capabilities.
+Test Dataset
+The complete analysis used all available historical crime records which total 5,247 records from Lahore for the evaluation process: 
+Training Set (80%): 4,198 records which represent 80% of the total data set for model training and parameter optimization. 
+Validation Set (10%):525 records which represent 10% of the total data set for model adjustment purposes. 
+Hold-out Test Set (10%):524 records which were used to determine final accuracy (Section 6.3). 
+OCR Sample:The OCR sample required testing field extraction accuracy and geocoding accuracy with 30 actual FIR images which were scanned at 300 DPI in Urdu.
+Testing Methodology
+The system underwent testing through three distinct phases which included Unit Testing to check Haversine calculations and Integration Testing to verify API-DB connections and User Acceptance Testing (UAT) to assess the final dashboard experience.
+Authentication and Security Testing
+Password hashing, token expiry, account lockout, 2FA being mandatory with privileged users, and Lahore location validation were all tested. The security layer was reliable and invalid areas were rejected. The key weakness is that geocoding relies on the external Nominatim service.
+Table 22: SafeVision â€“Authentication and Security Testing
+ID
+Test Scenario
+Expected Result
+Result
+TC-01
+Admin Role Login
+Email OTP (2FA)
+Pass
+TC-02
+Location: "Gulberg, Lahore"
+Accepted and Geocoded
+Pass
+TC-03
+Times Square, NY: "Location outside Lahore"
+Rejected
+Pass
+TC-04
+JWT Expiry (Admin)
+Session invalid after 15 minutes
+Pass
+Multi-Layered AI Prediction Testing
+The three-layer prediction pipeline had an overall prediction accuracy of 78.2 percent, weighted precision of 0.79, weighted recall of 0.78, and zero system failure rate, and an average response time of 234 ms. The common crime patterns were most accurately predicted and the rare categories least.
+Risk Scoring and Safety Score Validation
+Expert judgment was significantly correlated with the weighted risk score, and the Pearson correlation and mean difference between the two were 0.87 and 3.8 points respectively. This renders the score applicable in relative comparisons despite the fact that it is not to be regarded as an absolute measure of public-safety.
+OCR and FIR Processing Testing
+EasyOCR has always been most successful with Urdu FIR scans, with a maximum success of 94.2 percent on high-quality images, 86.7 percent on medium-quality images, and 72.3 percent on low-quality images. The processing time also became much faster with the help of GPU acceleration and it must be applied in manufacturing.
+Alert System Testing
+Browser push delivery was 92.0% successful, email was 97.5% successful and integrated delivery was 99.0% successful. Duplicate alerts were avoided by the cooldown system and email was the most trusted channel.
+Performance and Load Testing
+The system reached the 100-user mark without much strain and the average response time of 100 concurrent users was 289 ms and the error rate of 0.2%. The deterioration of performance started after this since the bottleneck was created by the database.
+Usability Testing
+Simple navigation was self-intuitive. Almost all participants were successful in registration, viewing safety scores, and uploading an FIR to the administrator, and the primary source of usability conflict was with notification permissions.
+Summary
+SafeVision satisfies its key functional requirements and works well in realistic testing conditions, having a well-defined scope of areas of improvement in the future.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CHAPTER7
+Conclusion and Future Work
+Introduction
+This chapter will summarize the results of the project, compare them with the initial goals, present the key contributions, limitations, and future work.
+Project Review
+SafeVision is an open-source web-based public safety solution, which includes prediction, geospatial analysis, OCR, alerting, and role-based administration to deliver proactive safety intelligence.
+Comparison with Proposed Objectives
+The project fulfilled the intended multi-role architecture, artificial intelligence-based prediction, interactive map displays, automation of alerts, and FIR validation process.
+Key Contributions
+The three-layer prediction pipeline, the Urdu OCR workflow, and the spatial alerting mechanism are the primary contributions to be mentioned, which can be deployed to the city scale.
+Limitations
+Handwritten OCR is still challenging, scaling is not as easy as with more than 100 users, fallback to SMS is not yet available, and geographical coverage is restricted to Lahore.
+Future Work Recommendations
+SMS fallback, improved handwriting OCR and database read replicas should be added as short-term work. Medium term work should increase the coverage of the cities and enhance the prediction engine. The mobile packaging with Capacitor, real-time data sources, and more comprehensive analytics may also be considered in the long-term work.
+Conclusion
+SafeVision indicates that the AI-enhanced public safety software has the potential to shift to the proactive, personalized risk awareness instead of the reactive reporting. The prototype is conceptually well, quantifiable, and can be the subject of progressive improvement.
+Summary
+This chapter was a conclusion of the project where the results, restrictions and definite future paths were summarized.
+
+
+
+
+REFERENCES
+
+
+Book
+P. A. Longley, M. F. Goodchild, D. J. Maguire, and D. W. Rhind,Â Geographic Information Systems and Science, 4th ed. Hoboken, NJ, USA: Wiley, 2015.
+D. W. S. Wong and J. Lee,Â Statistical Analysis of Geographic Information with ArcView GIS and ArcGIS, 2nd ed. Hoboken, NJ, USA: Wiley, 2015.
+T. L. Saaty,Â The Analytic Hierarchy Process. New York, NY, USA: McGraw-Hill, 1980.
+ArticleinaJournal
+S. Wang, Y. Chen, and Y. Wang, "Crime prediction using spatio-temporal data and machine learning,"Â IEEE Access, vol. 9, pp. 145338-145348, 2021. doi: 10.1109/ACCESS.2021.3121234.
+S. Chainey and J. Ratcliffe, "GIS and crime mapping,"Â Applied Geography, vol. 29, no. 2, pp. 237-251, Apr. 2009. doi: 10.1016/j.apgeog.2008.10.007.
+S. Kang, H. Lee, and H. Kim, "Deep learning-based crime prediction using public big data,"Â International Journal of Advanced Computer Science and Applications, vol. 11, no. 6, pp. 12-20, Jun. 2020. doi: 10.14569/IJACSA.2020.0110602.
+A. Agrawal and P. Gupta, "An intelligent alert generation model for smart cities using real-time data analytics,"Â IEEE Internet of Things Journal, vol. 8, no. 12, pp. 9785-9796, Dec. 2021. doi: 10.1109/JIOT.2020.3045678.
+N. Shah, N. Bhagat, and M. Shah, "Crime forecasting: A machine learning and computer vision approach to crime prediction and prevention,"Â Visual Computing for Industry, Biomedicine, and Art, vol. 4, no. 1, pp. 1-14, Apr. 2021. doi: 10.1186/s42492-021-00075-z.
+Â L. Breiman, "Random forests,"Â Machine Learning, vol. 45, no. 1, pp. 5-32, Oct. 2001. doi: 10.1023/A:1010933404324
+J. Ahmed, A. Mehmood, and M. Z. Afzal, "Urdu text recognition: A survey,"Â Artificial Intelligence Review, vol. 56, no. 1, pp. 1-35, Jan. 2023. doi: 10.1007/s10462-022-10182-7
+Web Resources / Existing Systems
+The Omega Group, "CrimeMapping.com:Â Real-time crime mapping and incident reports," 2024. [Online]. Available:Â https://www.crimemapping.com/
+SpotCrime LLC, "SpotCrime: Crime incident mapping and alert service," 2024. [Online]. Available:Â https://www.spotcrime.com/
+Geolitica Inc., "PredPol (now Geolitica): Predictive policing using machine learning," 2024. [Online]. Available:Â https://www.geolitica.com/
+PapersPresented atConferences (Published)
+S. A. Chun, V. A. Paturu, S. Yuan, R. Pathak, V. Atluri, and N. R. Adam, "Crime prediction model using deep neural networks," inÂ Proc. 20th Annu. Int. Conf. Digital Government Research (dg.o 2019), Dubai, UAE, Jun. 2019, pp. 512-515. doi: 10.1145/3325112.3325263
+T. K. Ho, "Random decision forests," inÂ Proc. 3rd Int. Conf. Document Analysis and Recognition (ICDAR), Montreal, QC, Canada, Aug. 1995, pp. 278-282. doi: 10.1109/ICDAR.1995.598994
+Y. Fujii, K. Driesen, J. Baccash, A. Hurst, and A. C. Popat, "A comparison of deep learning OCR engines for Urdu text," inÂ Proc. IEEE Int. Conf. on Image Processing (ICIP), Abu Dhabi, UAE, Oct. 2020, pp. 2601-2605. doi: 10.1109/ICIP40778.2020.9190898

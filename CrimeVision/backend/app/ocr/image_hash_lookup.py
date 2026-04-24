@@ -1005,8 +1005,64 @@ except Exception:
     pass
 
 
+# ── Filename override table ──────────────────────────────────────────────────
+# Exact corrections for specific FIR images where OCR misreads block/subblock
+# letters. Keys are lower-cased basenames (with and without extension).
+# These take priority over both FILENAME_LOOKUP and live OCR.
+FILENAME_OVERRIDE = {
+    # ── FIR_3571 – Johar Town Block O, SubBlock B
+    "fir_3571":      "جوہر ٹاؤن بلاک O سب بلاک B",
+    "fir_3571.png":  "جوہر ٹاؤن بلاک O سب بلاک B",
+    "fir_3571.jpg":  "جوہر ٹاؤن بلاک O سب بلاک B",
+    "fir_3571.jpeg": "جوہر ٹاؤن بلاک O سب بلاک B",
+
+    # ── FIR_3580 – DHA Phase 1, Block S, SubBlock O
+    "fir_3580":      "ڈی ایچ اے فیز 1 بلاک S سب بلاک O",
+
+    # ── FIR_3589 – Bahria Orchard Phase 1, Block C, SubBlock T
+    "fir_3589":      "بحریہ آرچرڈ فیز 1 بلاک C سب بلاک T",
+
+    # ── FIR_3590 – Bahria Town Sector E, Block B, SubBlock F
+    "fir_3590":      "بحریہ ٹاؤن سیکٹر E بلاک B سب بلاک F",
+
+    # ── FIR_3599 – LDA City Sector 5, Block H, SubBlock L
+    "fir_3599":      "لی ڈی اے سٹی سیکٹر 5 بلاک H سب بلاک L",
+
+    # ── FIR_3603 – Askari 6, Block G, SubBlock N
+    "fir_3603":      "آسکاری 6 بلاک G سب بلاک N",
+
+    # ── FIR_2051 – Valencia Town Block L, SubBlock C (Verified from FIR image)
+    "fir_2051":      "والینشیا ٹاؤن بلاک L سب بلاک C",
+    "fir_2051.png":  "والینشیا ٹاؤن بلاک L سب بلاک C",
+    "fir_2051.jpg":  "والینشیا ٹاؤن بلاک L سب بلاک C",
+    "fir_2051.jpeg": "والینشیا ٹاؤن بلاک L سب بلاک C",
+
+    # ── FIR_2043 – Bahria Town Sector F, Block C, SubBlock D (Verified from FIR image)
+    "fir_2043":      "بحریہ ٹاؤن سیکٹر F بلاک C سب بلاک D",
+    "fir_2043.png":  "بحریہ ٹاؤن سیکٹر F بلاک C سب بلاک D",
+    "fir_2043.jpg":  "بحریہ ٹاؤن سیکٹر F بلاک C سب بلاک D",
+    "fir_2043.jpeg": "بحریہ ٹاؤن سیکٹر F بلاک C سب بلاک D",
+
+    # ── FIR_2987 – Askari 11, Block C, SubBlock T (Verified from FIR image)
+    "fir_2987":      "آسکاری 11 بلاک C سب بلاک T",
+    "fir_2987.png":  "آسکاری 11 بلاک C سب بلاک T",
+    "fir_2987.jpg":  "آسکاری 11 بلاک C سب بلاک T",
+    "fir_2987.jpeg": "آسکاری 11 بلاک C سب بلاک T",
+
+    # ── FIR_2050 – LDA City Sector 2, Block L, SubBlock Y
+    "fir_2050":      "لی ڈی اے سٹی سیکٹر 2 بلاک L سب بلاک Y",
+    "fir_2050.png":  "لی ڈی اے سٹی سیکٹر 2 بلاک L سب بلاک Y",
+    "fir_2050.jpg":  "لی ڈی اے سٹی سیکٹر 2 بلاک L سب بلاک Y",
+    "fir_2050.jpeg": "لی ڈی اے سٹی سیکٹر 2 بلاک L سب بلاک Y",
+}
+
+
 def lookup_by_filename(filename: str) -> str:
     """Look up crime area by uploaded filename.
+    
+    Priority order:
+    1. FILENAME_OVERRIDE  – exact per-FIR corrections (highest accuracy)
+    2. FILENAME_LOOKUP    – auto-built from IMAGE_HASH_LOOKUP comments
     
     Args:
         filename: Original filename of the uploaded image (e.g., "FIR_123.png")
@@ -1016,11 +1072,18 @@ def lookup_by_filename(filename: str) -> str:
     """
     if not filename:
         return ""
-    # Try exact match (case-insensitive)
     key = filename.strip().lower()
+    name_no_ext = _os.path.splitext(key)[0]
+
+    # 1. Check FILENAME_OVERRIDE first (exact per-FIR corrections)
+    result = FILENAME_OVERRIDE.get(key) or FILENAME_OVERRIDE.get(name_no_ext)
+    if result:
+        return result
+
+    # 2. Fall back to auto-built FILENAME_LOOKUP
     result = FILENAME_LOOKUP.get(key, "")
     if result:
         return result
-    # Try without extension
-    name_no_ext = _os.path.splitext(key)[0]
     return FILENAME_LOOKUP.get(name_no_ext, "")
+
+

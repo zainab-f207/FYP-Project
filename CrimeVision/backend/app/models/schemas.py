@@ -87,6 +87,7 @@ class UserProfileUpdate(BaseModel):
     weekly_reports_enabled: Optional[bool] = None
     incident_alerts_enabled: Optional[bool] = None
     live_alerts_enabled: Optional[bool] = None
+    alert_channel_preferences: Optional[Dict[str, Dict[str, bool]]] = None
 
 
 class UserLocationUpdate(BaseModel):
@@ -153,6 +154,7 @@ class RiskZoneAlert(BaseModel):
     location_type: str = "monitored"      # "home", "work", "current", "monitored"
     incident_type: Optional[str] = None   # For new incident alerts (e.g. "Murder")
     distance_km: Optional[float] = None   # For proximity alerts
+    radius_km: Optional[float] = None     # Effective policy radius used for this alert
     timestamp: Optional[str] = None       # Generation time
     precautions: Optional[str] = None
     incidents_list: Optional[List[Dict[str, Any]]] = None  # [{type, time, severity}]

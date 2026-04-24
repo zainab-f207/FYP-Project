@@ -4,11 +4,11 @@ import apiService from '../../services/apiService_updated';
 import styles from './SuperAdminReportsPanel.module.css';
 
 const PAGE_SIZE = 50;
-const RISK_COLORS = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
+const RISK_COLORS = { High: '#dc2626', Medium: '#f9a826', Low: '#1dd1a1' };
 const STATUS_CFG  = {
-  verified: { color: '#22c55e', icon: 'fa-circle-check' },
-  pending:  { color: '#f59e0b', icon: 'fa-clock' },
-  rejected: { color: '#ef4444', icon: 'fa-circle-xmark' },
+  verified: { color: '#1dd1a1', icon: 'fa-circle-check' },
+  pending:  { color: '#f9a826', icon: 'fa-clock' },
+  rejected: { color: '#dc2626', icon: 'fa-circle-xmark' },
 };
 
 const SuperAdminReportsPanel = ({ token }) => {
@@ -118,14 +118,14 @@ const SuperAdminReportsPanel = ({ token }) => {
   const sortIcon        = col => sortCol === col ? (sortAsc ? ' ↑' : ' ↓') : '';
 
   // ── Chart data ──────────────────────────────────────────────────────────────
-  const colors       = ['#8b5cf6','#06b6d4','#f59e0b','#ef4444','#10b981','#ec4899','#14b8a6','#6366f1','#f97316','#84cc16'];
+  const colors       = ['#1a3a5f','#2d7fb8','#00a6a6','#f9a826','#1dd1a1','#0b7285','#f97316','#dc2626','#64748b','#94a3b8'];
   const chartOpts    = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
   const areaChartData  = { labels: byArea.slice(0, 10).map(([a]) => a), datasets: [{ label: 'Crimes', data: byArea.slice(0, 10).map(([, c]) => c), backgroundColor: colors, borderRadius: 6 }] };
   const typeChartData  = { labels: byType.slice(0, 8).map(([t]) => t),  datasets: [{ data: byType.slice(0, 8).map(([, c]) => c),  backgroundColor: colors, borderWidth: 0 }] };
-  const riskChartData  = { labels: ['High','Medium','Low'], datasets: [{ data: [byRisk.High, byRisk.Medium, byRisk.Low], backgroundColor: ['#ef4444','#f59e0b','#10b981'], borderWidth: 0 }] };
-  const trendChartData = { labels: byMonth.map(([m]) => m), datasets: [{ label: 'Crimes', data: byMonth.map(([, c]) => c), borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.4, pointRadius: 3 }] };
+  const riskChartData  = { labels: ['High','Medium','Low'], datasets: [{ data: [byRisk.High, byRisk.Medium, byRisk.Low], backgroundColor: ['#dc2626','#f9a826','#1dd1a1'], borderWidth: 0 }] };
+  const trendChartData = { labels: byMonth.map(([m]) => m), datasets: [{ label: 'Crimes', data: byMonth.map(([, c]) => c), borderColor: '#2d7fb8', backgroundColor: 'rgba(45,127,184,0.10)', fill: true, tension: 0.4, pointRadius: 3 }] };
   const hourLabels     = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-  const hourChartData  = { labels: hourLabels, datasets: [{ label: 'Incidents', data: byHour, backgroundColor: 'rgba(139,92,246,0.65)', borderRadius: 4 }] };
+  const hourChartData  = { labels: hourLabels, datasets: [{ label: 'Incidents', data: byHour, backgroundColor: 'rgba(45,127,184,0.65)', borderRadius: 4 }] };
 
   // ── Enriched CSV export ─────────────────────────────────────────────────────
   const exportCSV = () => {
@@ -157,18 +157,18 @@ const SuperAdminReportsPanel = ({ token }) => {
   };
 
   const SUMMARY_CARDS = [
-    { icon: 'fa-database',            color: '#8b5cf6', val: crimes.length.toLocaleString(),        label: 'Total Crimes',       accent: true },
-    { icon: 'fa-triangle-exclamation',color: '#ef4444', val: byRisk.High.toLocaleString(),           label: 'High Risk' },
-    { icon: 'fa-circle-exclamation',  color: '#f59e0b', val: byRisk.Medium.toLocaleString(),         label: 'Medium Risk' },
-    { icon: 'fa-circle-check',        color: '#10b981', val: byRisk.Low.toLocaleString(),            label: 'Low Risk' },
-    { icon: 'fa-map-location-dot',    color: '#06b6d4', val: masterAreas.length,                     label: 'Areas Covered' },
-    { icon: 'fa-tags',                color: '#6366f1', val: masterTypes.length,                     label: 'Crime Types' },
-    { icon: 'fa-circle-check',        color: '#22c55e', val: byStatus.verified.toLocaleString(),     label: 'Verified FIRs' },
-    { icon: 'fa-clock',               color: '#f59e0b', val: byStatus.pending.toLocaleString(),      label: 'Pending Review',     pending: true },
-    { icon: 'fa-circle-xmark',        color: '#ef4444', val: byStatus.rejected.toLocaleString(),     label: 'Rejected FIRs' },
-    { icon: 'fa-percent',             color: '#8b5cf6', val: `${verificationRate}%`,                 label: 'Verification Rate' },
-    { icon: 'fa-hourglass-half',      color: '#f59e0b', val: approvalStats.pending,                  label: 'Pending Approvals',  pending: true },
-    { icon: 'fa-user-check',          color: '#22c55e', val: approvalStats.approved,                 label: 'Approved Requests' },
+    { icon: 'fa-database',            color: '#1a3a5f', val: crimes.length.toLocaleString(),        label: 'Total Crimes',       accent: true },
+    { icon: 'fa-triangle-exclamation',color: '#dc2626', val: byRisk.High.toLocaleString(),           label: 'High Risk' },
+    { icon: 'fa-circle-exclamation',  color: '#f9a826', val: byRisk.Medium.toLocaleString(),         label: 'Medium Risk' },
+    { icon: 'fa-circle-check',        color: '#1dd1a1', val: byRisk.Low.toLocaleString(),            label: 'Low Risk' },
+    { icon: 'fa-map-location-dot',    color: '#2d7fb8', val: masterAreas.length,                     label: 'Areas Covered' },
+    { icon: 'fa-tags',                color: '#00a6a6', val: masterTypes.length,                     label: 'Crime Types' },
+    { icon: 'fa-circle-check',        color: '#1dd1a1', val: byStatus.verified.toLocaleString(),     label: 'Verified FIRs' },
+    { icon: 'fa-clock',               color: '#f9a826', val: byStatus.pending.toLocaleString(),      label: 'Pending Review',     pending: true },
+    { icon: 'fa-circle-xmark',        color: '#dc2626', val: byStatus.rejected.toLocaleString(),     label: 'Rejected FIRs' },
+    { icon: 'fa-percent',             color: '#2d7fb8', val: `${verificationRate}%`,                 label: 'Verification Rate' },
+    { icon: 'fa-hourglass-half',      color: '#f9a826', val: approvalStats.pending,                  label: 'Pending Approvals',  pending: true },
+    { icon: 'fa-user-check',          color: '#1dd1a1', val: approvalStats.approved,                 label: 'Approved Requests' },
   ];
 
   return (

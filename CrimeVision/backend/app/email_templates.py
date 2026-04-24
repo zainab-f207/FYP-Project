@@ -541,9 +541,10 @@ This is an automated alert based on real incident data and predictive analysis.
         area_name = area_name_raw.split('(')[0].strip()
         
         dominant_crime = alert_data.get('dominant_crime') or 'Incidents of concern'
-        total        = int(alert_data.get('incidents_90d', 0))
-        historical_total = int(alert_data.get('total_crimes_365', 0))
-        high_risk    = int(alert_data.get('high_risk_90d', 0))
+        # Support both legacy and current payload keys from alert_notifications.py
+        total = int(alert_data.get('incidents_90d', alert_data.get('total_crimes', 0)) or 0)
+        historical_total = int(alert_data.get('total_crimes_365', 0) or 0)
+        high_risk = int(alert_data.get('high_risk_90d', alert_data.get('high_risk_crimes', 0)) or 0)
         time_label   = alert_data.get('time_risk_label', 'Night')
         trigger_reason = alert_data.get('alert_trigger_reason', 'Elevated crime activity detected')
         timestamp    = alert_data.get('timestamp', datetime.now().strftime('%H:%M:%S'))
@@ -560,14 +561,17 @@ This is an automated alert based on real incident data and predictive analysis.
         badge_bg = "#fef3c7" if is_historical else "#fee2e2"
         badge_text = "#92400e" if is_historical else "#b91c1c"
 
+        radius_km = float(alert_data.get('radius_km', 1.0) or 1.0)
+        radius_label = f"{radius_km:g}"
+
         # Why You're Seeing This Bullet Points
         why_bullets = ""
         if is_historical:
-            why_bullets += f'<li style="margin-bottom:8px;">You are within 1 km of a historically high-risk area ({historical_total} cases)</li>'
+            why_bullets += f'<li style="margin-bottom:8px;">You are within {radius_label} km of a historically high-risk area ({historical_total} cases)</li>'
             why_bullets += f'<li style="margin-bottom:8px;">No high-severity incidents have been recorded recently (last 90 days)</li>'
         else:
             why_bullets += f'<li style="margin-bottom:8px;">Recently high-severity activity detected in your surroundings</li>'
-            why_bullets += f'<li style="margin-bottom:8px;">Within 1 km of <strong>{total}</strong> recent incidents</li>'
+            why_bullets += f'<li style="margin-bottom:8px;">Within {radius_label} km of <strong>{total}</strong> recent incidents</li>'
         
         why_bullets += f'<li style="margin-bottom:8px;">Risk level is elevated during <strong>{time_label}</strong> hours</li>'
 
@@ -618,7 +622,7 @@ This is an automated alert based on real incident data and predictive analysis.
         <span class="loc-label">📍 Current Location</span>
         <div class="loc-val">{area_name}</div>
         <div class="intel-line">
-           <strong>📡 Within 1 km radius:</strong><br/>
+            <strong>📡 Within {radius_label} km radius:</strong><br/>
            {trigger_reason}
         </div>
         <div style="margin-top:12px; font-size:0.8em; font-weight:bold; color:{badge_text}; background:{badge_bg}; display:inline-block; padding:3px 12px; border-radius:15px;">
@@ -628,7 +632,7 @@ This is an automated alert based on real incident data and predictive analysis.
 
       <div class="status-card">
         <div class="status-title">Current Risk Status</div>
-        <div class="status-val">{risk_pct:.0f}%</div>
+        <div class="status-val">{risk_pct:.1f}%</div>
         <div class="status-desc">{risk_level.upper()}</div>
         <div class="status-note">
            {"No recent incidents detected in your surroundings. However, this area has a notable history of crime." if is_historical else "Recent incident patterns detected in your immediate surroundings. High caution advised."}
@@ -676,7 +680,7 @@ You have just entered a high-risk zone
 ⏰ {time_label} (highest risk period)
 
 ⚠️ Current Risk Status
-{risk_pct:.0f}%
+{risk_pct:.1f}%
 {risk_level.upper()}
 
 { "No recent incidents detected in your surroundings. However, this area has a notable history of crime." if is_historical else "Recent incident patterns detected in your immediate surroundings. High caution advised." }

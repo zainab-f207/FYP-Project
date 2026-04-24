@@ -78,10 +78,29 @@ def _stabilize_for_sparse_data(risk_score: float, total_crimes: float, observati
 
 
 def _volume_score(total_crimes: float, observation_days: int = 365, baseline_daily: float = 0.35) -> float:
-    """Poisson-based volume score: P(>=1 event) scaled to 0..100."""
+    """
+    Incident-volume score with high-count sensitivity.
+
+    The original Poisson-only formulation quickly saturates near 100 for large counts,
+    which makes 2k and 6k incidents appear nearly identical. We blend:
+    - Poisson probability (short-window event likelihood)
+    - Log-scaled count ratio (relative incident burden)
+    """
+    tc = float(max(0.0, total_crimes))
     days = max(1, int(observation_days))
-    lam = float(max(0.0, total_crimes)) / float(days)
-    score = 100.0 * (1.0 - math.exp(-max(lam, 1e-9)))
+
+    # Component 1: event likelihood in the observation window.
+    lam = tc / float(days)
+    poisson_score = 100.0 * (1.0 - math.exp(-max(lam, 1e-9)))
+
+    # Component 2: gradual scaling by absolute incident volume.
+    # Use a broader reference so historical-heavy areas (e.g., 2k-6k incidents)
+    # remain differentiated instead of saturating at the top.
+    volume_ref = max(3000.0, float(days) * 30.0)
+    count_scale = 100.0 * (math.log1p(tc) / math.log1p(volume_ref))
+
+    # Keep compatibility with prior behavior while restoring differentiation.
+    score = (0.60 * poisson_score) + (0.40 * count_scale)
     return float(_clamp(score))
 
 
@@ -238,11 +257,26 @@ def calculate_unified_risk_summary(stats: Optional[Dict[str, Any]], observation_
     )
 
     # Decay historical risk if recent activity is truly zero
+    # BUT: Use context-aware decay — with strong historical evidence, decay less aggressively
     last_90 = float(stats.get("last_90_days", 0) or 0)
     if last_90 == 0:
-        # Reduce risk score by 40% if no incidents in 90 days, reflecting improved safety
-        # and decaying the weight of old records
-        raw_risk *= 0.6
+        # Adaptive decay based on historical crime volume and severity:
+        # - Minimal decay (0.85): Strong historical evidence (1000+ total crimes or 50+ high-risk)
+        # - Standard decay (0.70): Moderate evidence (100-999 crimes)
+        # - Aggressive decay (0.60): Weak evidence (0-99 crimes)
+        # This preserves risk differentiation across areas while acknowledging stale data
+        
+        if total_crimes >= 1000 or high_risk_count >= 50:
+            # Strong historical evidence => minimal decay (15% reduction)
+            decay_factor = 0.85
+        elif total_crimes >= 100:
+            # Moderate evidence => standard decay (30% reduction)
+            decay_factor = 0.70
+        else:
+            # Weak evidence => aggressive decay (40% reduction)
+            decay_factor = 0.60
+        
+        raw_risk *= decay_factor
         
     risk_score = _stabilize_for_sparse_data(raw_risk, total_crimes, observation_days)
     safety_score = float(_clamp(100.0 - risk_score))

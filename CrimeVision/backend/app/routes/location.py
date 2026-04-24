@@ -10,7 +10,7 @@ from ..core.database import get_db_connection
 from ..models.schemas import LocationUpdateRequest, LocationHistoryResponse, LocationTrackingPreferences, RiskZoneAlert
 from ..dependencies import get_current_user
 from ..alert_notifications import AlertNotificationSystem
-from .alerts import check_location_risk, alert_notification_system, send_alert_notification, create_and_send_alert
+from .alerts import check_location_risk, alert_notification_system, send_alert_notification, create_and_send_alert, meets_alert_threshold
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -109,12 +109,34 @@ async def update_location(
         device_type = getattr(location_data, 'device_type', 'desktop')
         location_source = getattr(location_data, 'location_source', 'gps')
         
-        # More lenient accuracy thresholds
-        accuracy_threshold = 50000  # 50km threshold for all devices
+        # More lenient accuracy threshold (configurable from system settings)
+        accuracy_threshold = 50000
+        try:
+            from app.routes.admin import get_setting, SYSTEM_SETTINGS_DEFAULTS
+            default_threshold = int(SYSTEM_SETTINGS_DEFAULTS["location_accuracy_threshold_meters"]["value"])
+            raw_threshold = get_setting("location_accuracy_threshold_meters")
+            accuracy_threshold = int(raw_threshold) if raw_threshold is not None else default_threshold
+            accuracy_threshold = max(100, min(200000, accuracy_threshold))
+        except Exception:
+            accuracy_threshold = max(100, min(200000, accuracy_threshold))
+
+        low_accuracy_policy = "accept_warn"
+        try:
+            from app.routes.admin import get_setting, SYSTEM_SETTINGS_DEFAULTS
+            default_policy = str(SYSTEM_SETTINGS_DEFAULTS.get("low_accuracy_location_policy", {}).get("value", "accept_warn")).strip().lower()
+            raw_policy = get_setting("low_accuracy_location_policy")
+            low_accuracy_policy = str(raw_policy if raw_policy is not None else default_policy).strip().lower()
+        except Exception:
+            low_accuracy_policy = "accept_warn"
 
         if location_data.accuracy and location_data.accuracy > accuracy_threshold:
             logger.warning(f"Low accuracy location from user {user_id}: {location_data.accuracy}m")
-            # Don't reject, just warn and proceed
+            if low_accuracy_policy == "reject":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Location accuracy too low ({location_data.accuracy}m > {accuracy_threshold}m threshold)."
+                )
+            # Default policy: don't reject, just warn and proceed
             logger.info(f"Accepting low accuracy location for user {user_id}")
 
         # Calculate accuracy score
@@ -235,12 +257,8 @@ async def update_location(
         risk_lvl = str(risk_data.get("risk_level", "Low")).lower() if risk_data else "low"
         is_high_risk = bool(risk_data.get("is_high_risk", False)) if risk_data else False
         
-        # Trigger alerts for Moderate, High, and Critical risk zones.
-        # Avoid triggering for 'Low' risk areas to prevent user fatigue in safe zones.
-        # 'medium' and 'moderate' are considered elevated risk for live alerts.
-        is_risky = (
-            risk_lvl in ["high", "critical", "moderate", "medium", "warning"] or is_high_risk
-        )
+        # Trigger alerts only when the user's current risk meets the global policy.
+        is_risky = meets_alert_threshold(risk_data.get("risk_level", "Low") if risk_data else "Low") or is_high_risk
         
         # ✅ FIX: Only trigger alerts for REAL device GPS locations, NOT dashboard entries
         # Real location sources: 'gps', 'gps_high_accuracy' (actual device tracking)

@@ -47,7 +47,9 @@ import logging
 import os
 import threading
 import time
-from typing import Callable, Optional, Set
+from typing import Callable, Dict, Optional, Set
+
+from app.core.database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
@@ -59,21 +61,78 @@ _COUNTER_FILE = os.path.join(_MODELS_DIR, 'oov_counts.json')
 _LOCK_FILE    = os.path.join(_MODELS_DIR, '_retrain.lock')
 
 # Thresholds that trigger a retrain
-OOV_PAIR_THRESHOLD   = 20   # new unseen (area, crime_type) combos since last train
-NEW_RECORD_THRESHOLD = 50   # total new records since last retrain (even if no OOV)
+DEFAULT_OOV_PAIR_THRESHOLD   = 20   # new unseen (area, crime_type) combos since last train
+DEFAULT_NEW_RECORD_THRESHOLD = 50   # total new records since last retrain (even if no OOV)
 
 # Minimum gap between automatic retrains (seconds) — avoids thrashing
-MIN_RETRAIN_INTERVAL = 3600  # 1 hour
+DEFAULT_MIN_RETRAIN_INTERVAL = 3600  # 1 hour
 
 # ── Module-level state ────────────────────────────────────────────────────────
 
 _reload_callback: Optional[Callable] = None   # set by register_reload_callback()
 _retrain_lock = threading.Lock()
 _last_retrain_ts: float = 0.0
+_runtime_config_cache: Optional[Dict[str, int]] = None
+_runtime_config_ts: float = 0.0
 
 # Known values cached in memory to avoid reading the JSON on every API call
 _known_areas:        Optional[Set[str]] = None
 _known_crime_types:  Optional[Set[str]] = None
+
+
+def _load_system_setting_ints(defaults: Dict[str, int]) -> Dict[str, int]:
+    """Load integer system settings in one query with default fallbacks."""
+    conn = None
+    cursor = None
+    resolved = dict(defaults)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        keys = list(defaults.keys())
+        placeholders = ','.join(['%s'] * len(keys))
+        cursor.execute(
+            f"SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ({placeholders})",
+            tuple(keys),
+        )
+        rows = cursor.fetchall() or []
+        for row in rows:
+            key = row.get('setting_key')
+            if key in resolved:
+                try:
+                    resolved[key] = int(row.get('setting_value'))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+    return resolved
+
+
+def _get_runtime_config() -> Dict[str, int]:
+    """Return runtime auto-retrain thresholds with short-lived cache."""
+    global _runtime_config_cache, _runtime_config_ts
+    now = time.time()
+    if _runtime_config_cache and (now - _runtime_config_ts) < 60:
+        return _runtime_config_cache
+
+    values = _load_system_setting_ints({
+        'auto_retrain_oov_pair_threshold': DEFAULT_OOV_PAIR_THRESHOLD,
+        'auto_retrain_new_record_threshold': DEFAULT_NEW_RECORD_THRESHOLD,
+        'auto_retrain_min_interval_seconds': DEFAULT_MIN_RETRAIN_INTERVAL,
+    })
+
+    cfg = {
+        'oov_pair_threshold': max(1, min(100_000, int(values['auto_retrain_oov_pair_threshold']))),
+        'new_record_threshold': max(1, min(1_000_000, int(values['auto_retrain_new_record_threshold']))),
+        'min_retrain_interval_seconds': max(30, min(86_400, int(values['auto_retrain_min_interval_seconds']))),
+    }
+    _runtime_config_cache = cfg
+    _runtime_config_ts = now
+    return cfg
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -220,18 +279,19 @@ def _check_and_maybe_retrain(area: str, crime_type: str) -> None:
         new_records  = counters.get('new_records', 0)
         last_retrain = counters.get('last_retrain', 0.0)
         now          = time.time()
-        time_ok      = (now - last_retrain) >= MIN_RETRAIN_INTERVAL
+        cfg = _get_runtime_config()
+        time_ok      = (now - last_retrain) >= cfg['min_retrain_interval_seconds']
 
         should_retrain = time_ok and (
-            oov_count  >= OOV_PAIR_THRESHOLD or
-            new_records >= NEW_RECORD_THRESHOLD
+            oov_count  >= cfg['oov_pair_threshold'] or
+            new_records >= cfg['new_record_threshold']
         )
 
         if should_retrain:
             logger.info(
                 "[auto_retrain] Threshold crossed (OOV=%d/%d, new=%d/%d) — "
                 "launching background retrain…",
-                oov_count, OOV_PAIR_THRESHOLD, new_records, NEW_RECORD_THRESHOLD,
+                oov_count, cfg['oov_pair_threshold'], new_records, cfg['new_record_threshold'],
             )
             _run_retrain(counters)
 

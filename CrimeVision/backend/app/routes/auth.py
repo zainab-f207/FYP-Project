@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 import re
+import json
 
 from app.auth_updated import create_access_token, get_password_hash, verify_password, create_refresh_token, verify_refresh_token, verify_google_token, create_or_get_google_user
 from app.core.database import get_db_connection, log_user_activity
@@ -801,7 +802,8 @@ def get_user_info(current_user: str = Depends(get_username_from_token)) -> Dict[
         cursor.execute("""
             SELECT id, username, first_name, last_name, email, profile_picture, 
                    home_area, work_area, alert_radius, role, created_at, phone_number,
-                   browser_notifications_enabled, two_factor_enabled, monitor_live_location,
+                   browser_notifications_enabled, email_alerts_enabled, alert_preferences,
+                   two_factor_enabled, monitor_live_location,
                    weekly_reports_enabled, incident_alerts_enabled, live_alerts_enabled
             FROM users_info WHERE LOWER(username) = LOWER(%s)
         """, (current_user.lower(),))
@@ -822,6 +824,28 @@ def get_user_info(current_user: str = Depends(get_username_from_token)) -> Dict[
 
         logger.info(f"User data for {current_user}: browser_notifications_enabled = {user.get('browser_notifications_enabled')}")
 
+        default_email_enabled = bool(user.get("email_alerts_enabled", True))
+        default_browser_enabled = bool(user.get("browser_notifications_enabled", False))
+
+        alert_channel_preferences = {
+            "incident": {"email": default_email_enabled, "browser": default_browser_enabled},
+            "live": {"email": default_email_enabled, "browser": default_browser_enabled},
+            "weekly": {"email": default_email_enabled, "browser": default_browser_enabled},
+        }
+
+        raw_alert_preferences = user.get("alert_preferences")
+        if raw_alert_preferences:
+            try:
+                parsed_preferences = raw_alert_preferences if isinstance(raw_alert_preferences, dict) else json.loads(raw_alert_preferences)
+                stored_channels = parsed_preferences.get("alert_channel_preferences", {}) if isinstance(parsed_preferences, dict) else {}
+                for alert_type in ("incident", "live", "weekly"):
+                    type_prefs = stored_channels.get(alert_type, {}) if isinstance(stored_channels, dict) else {}
+                    if isinstance(type_prefs, dict):
+                        alert_channel_preferences[alert_type]["email"] = bool(type_prefs.get("email", alert_channel_preferences[alert_type]["email"]))
+                        alert_channel_preferences[alert_type]["browser"] = bool(type_prefs.get("browser", alert_channel_preferences[alert_type]["browser"]))
+            except Exception as pref_error:
+                logger.warning(f"Could not parse alert_preferences for {current_user}: {pref_error}")
+
         response_data = {
             "username": user.get("username", ""),
             "first_name": user.get("first_name", ""),
@@ -835,10 +859,12 @@ def get_user_info(current_user: str = Depends(get_username_from_token)) -> Dict[
             "role": user.get("role", "user"),
             "two_factor_enabled": two_factor_enabled,
             "browser_notifications_enabled": user.get("browser_notifications_enabled", False),
+            "email_alerts_enabled": user.get("email_alerts_enabled", True),
             "monitor_live_location": bool(user.get("monitor_live_location", False)),
             "weekly_reports_enabled": bool(user.get("weekly_reports_enabled", True)),
             "incident_alerts_enabled": bool(user.get("incident_alerts_enabled", True)),
             "live_alerts_enabled": bool(user.get("live_alerts_enabled", True)),
+            "alert_channel_preferences": alert_channel_preferences,
             "created_at": user.get("created_at", "")
 
         }
@@ -1088,6 +1114,56 @@ def update_user_profile(
             update_fields.append("live_alerts_enabled = %s")
             live_alerts_enabled = 1 if bool(profile_data.live_alerts_enabled) else 0
             params.append(live_alerts_enabled)
+
+        if profile_data.alert_channel_preferences is not None:
+            incoming = profile_data.alert_channel_preferences if isinstance(profile_data.alert_channel_preferences, dict) else {}
+
+            normalized_channels = {
+                "incident": {
+                    "email": bool((incoming.get("incident") or {}).get("email", False)),
+                    "browser": bool((incoming.get("incident") or {}).get("browser", False)),
+                },
+                "live": {
+                    "email": bool((incoming.get("live") or {}).get("email", False)),
+                    "browser": bool((incoming.get("live") or {}).get("browser", False)),
+                },
+                "weekly": {
+                    "email": bool((incoming.get("weekly") or {}).get("email", False)),
+                    "browser": bool((incoming.get("weekly") or {}).get("browser", False)),
+                },
+            }
+
+            cursor.execute("SELECT alert_preferences FROM users_info WHERE username = %s", (current_user,))
+            existing_pref_row = cursor.fetchone()
+            merged_preferences: Dict[str, Any] = {}
+
+            try:
+                if existing_pref_row and existing_pref_row[0]:
+                    existing_raw = existing_pref_row[0]
+                    if isinstance(existing_raw, dict):
+                        merged_preferences = dict(existing_raw)
+                    elif isinstance(existing_raw, str):
+                        merged_preferences = json.loads(existing_raw)
+            except Exception:
+                merged_preferences = {}
+
+            merged_preferences["alert_channel_preferences"] = normalized_channels
+
+            if "alert_preferences = %s" not in update_fields:
+                update_fields.append("alert_preferences = %s")
+                params.append(json.dumps(merged_preferences))
+
+            # Keep legacy/global flags aligned so existing logic still works.
+            any_email = any(v.get("email", False) for v in normalized_channels.values())
+            any_browser = any(v.get("browser", False) for v in normalized_channels.values())
+
+            if "email_alerts_enabled = %s" not in update_fields:
+                update_fields.append("email_alerts_enabled = %s")
+                params.append(1 if any_email else 0)
+
+            if "browser_notifications_enabled = %s" not in update_fields:
+                update_fields.append("browser_notifications_enabled = %s")
+                params.append(1 if any_browser else 0)
 
 
 

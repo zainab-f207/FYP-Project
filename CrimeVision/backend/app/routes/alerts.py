@@ -14,6 +14,7 @@ from app.utils.area_normalization import area_like_pattern, normalize_area_name
 from app.alert_notifications import AlertNotificationSystem
 from app.dependencies import get_username_from_token, get_current_user
 from app.utils.risk import calculate_unified_risk_summary
+from .admin import get_setting
 from app.models.schemas import (
     AlertSubscription, RiskZoneAlert, LocationAlertRequest,
     AlertCreate, UserAlertResponse
@@ -58,6 +59,83 @@ if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
 
 alert_notification_system = AlertNotificationSystem(ALERT_EMAIL_CONFIG, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
 alert_cooldown_cache: Dict[str, datetime] = {}
+
+
+def _resolve_alert_category(alert: RiskZoneAlert) -> str:
+    """Map alert payloads to the three user-facing categories."""
+    if alert.alert_type == "weekly_safety_report":
+        return "weekly"
+    if alert.alert_type == "new_incident_alert":
+        return "incident"
+    if alert.location_type == "current" or "live" in str(alert.alert_type or "").lower():
+        return "live"
+    return "incident"
+
+
+def _default_channel_preferences(email_enabled: bool, browser_enabled: bool) -> Dict[str, Dict[str, bool]]:
+    return {
+        "incident": {"email": bool(email_enabled), "browser": bool(browser_enabled)},
+        "live": {"email": bool(email_enabled), "browser": bool(browser_enabled)},
+        "weekly": {"email": bool(email_enabled), "browser": bool(browser_enabled)},
+    }
+
+
+def _load_alert_channel_preferences(user_data: Dict[str, Any]) -> Dict[str, Dict[str, bool]]:
+    defaults = _default_channel_preferences(
+        bool(user_data.get("email_alerts_enabled", True)),
+        bool(user_data.get("browser_notifications_enabled", False)),
+    )
+
+    raw_preferences = user_data.get("alert_preferences")
+    if not raw_preferences:
+        return defaults
+
+    try:
+        parsed = raw_preferences if isinstance(raw_preferences, dict) else json.loads(raw_preferences)
+        stored = parsed.get("alert_channel_preferences", {}) if isinstance(parsed, dict) else {}
+        for category in ("incident", "live", "weekly"):
+            category_prefs = stored.get(category, {}) if isinstance(stored, dict) else {}
+            if isinstance(category_prefs, dict):
+                if "email" in category_prefs:
+                    defaults[category]["email"] = bool(category_prefs.get("email"))
+                if "browser" in category_prefs:
+                    defaults[category]["browser"] = bool(category_prefs.get("browser"))
+    except Exception as pref_error:
+        logger.warning(f"Unable to parse alert channel preferences for user {user_data.get('id')}: {pref_error}")
+
+    return defaults
+
+
+def get_alert_threshold_policy() -> str:
+    """Return the global alert threshold setting from admin policy."""
+    value = (get_setting("alert_threshold", "medium") or "medium").strip().lower()
+    return value if value in {"low", "medium", "high"} else "medium"
+
+
+def get_global_notification_radius_km() -> float:
+    """Return validated global alert radius in kilometers from system settings."""
+    raw = get_setting("notification_radius", "5")
+    try:
+        radius = float(raw) if raw is not None else 5.0
+    except (TypeError, ValueError):
+        radius = 5.0
+    return max(1.0, min(50.0, radius))
+
+
+def meets_alert_threshold(risk_level: str, threshold: Optional[str] = None) -> bool:
+    """Determine whether a risk label should produce an alert under the global policy."""
+    policy = (threshold or get_alert_threshold_policy()).strip().lower()
+    normalized_risk = (risk_level or "").strip().lower().split()[0]
+
+    order = {"low": 0, "moderate": 1, "high": 2, "critical": 3}
+    threshold_map = {
+        "low": "moderate",
+        "medium": "high",
+        "high": "critical",
+    }
+
+    min_level = threshold_map.get(policy, "high")
+    return order.get(normalized_risk, 0) >= order[min_level]
 
 # These functions are now in app.utils.risk for consistency
 
@@ -354,7 +432,7 @@ async def check_location_for_alerts(
             raise HTTPException(status_code=404, detail="User not found")
         
         user_id = user["id"]
-        alert_radius = float(user.get("alert_radius") or 5.0)
+        alert_radius = get_global_notification_radius_km()
         
         # Check location risk using your existing function
         risk_assessment = await check_location_risk(
@@ -504,6 +582,7 @@ async def monitor_saved_locations():
      cursor = None
      try:
         logger.info("🔄 Starting enhanced saved locations monitoring...")
+        global_radius_km = get_global_notification_radius_km()
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -597,7 +676,7 @@ async def monitor_saved_locations():
                                OR (LOWER(area) LIKE %s))
                               AND crime_date >= (NOW() - INTERVAL 1 HOUR)
                               AND (risk_level = 'High' OR risk_level = 'Medium')
-                        """, (home_lng, home_lat, float(user.get('alert_radius', 5.0)) * 1000, f"%{(home_area or '').lower()}%"))
+                        """, (home_lng, home_lat, global_radius_km * 1000, f"%{(home_area or '').lower()}%"))
                         
                         recent_check = cursor.fetchone()
                         has_fresh_incident = int(recent_check['recent_count'] or 0) > 0
@@ -689,7 +768,7 @@ async def monitor_saved_locations():
                                OR (LOWER(area) LIKE %s))
                               AND crime_date >= (NOW() - INTERVAL 1 HOUR)
                               AND (risk_level = 'High' OR risk_level = 'Medium')
-                        """, (work_lng, work_lat, float(user.get('alert_radius', 5.0)) * 1000, f"%{(work_area or '').lower()}%"))
+                        """, (work_lng, work_lat, global_radius_km * 1000, f"%{(work_area or '').lower()}%"))
                         
                         recent_check_work = cursor.fetchone()
                         has_fresh_incident_work = int(recent_check_work['recent_count'] or 0) > 0
@@ -728,12 +807,12 @@ async def monitor_saved_locations():
             conn.close()
 
 
-async def get_real_safety_data_from_endpoints(latitude: float, longitude: float, address: Optional[str] = None) -> Dict[str, Any]:
+async def get_real_safety_data_from_endpoints(latitude: float, longitude: float, address: Optional[str] = None, radius_km: Optional[float] = None) -> Dict[str, Any]:
     try:
         print(f"🔍 Fetching REAL safety data for: {latitude}, {longitude}")
 
-        radius_km = 1.0
-        coord_stats = await get_safety_stats_by_coords(latitude, longitude, radius_km)
+        effective_radius_km = float(radius_km) if radius_km is not None else get_global_notification_radius_km()
+        coord_stats = await get_safety_stats_by_coords(latitude, longitude, effective_radius_km)
 
         # ── Area Name Priority: Use provided address if valid, fallback to reverse geocode ──
         area_name = address if address and address != "Unknown" and address != "Work Location" and address != "Home Location" else None
@@ -832,9 +911,11 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
         area_name = display_area_title
 
         # --- Multi-Level Matching: Radius + Specific Name + Parent Discovery ---
-        # 1. Spatial Search Params
-        spatial_filter = "ST_Distance_Sphere(point(longitude, latitude), point(%s, %s)) <= 1200"
-        spatial_params = (float(lng), float(lat))
+        # 1. Spatial Search Params (honor global configured radius)
+        effective_radius_km = get_global_notification_radius_km()
+        spatial_radius_m = max(100, int(round(float(effective_radius_km) * 1000.0)))
+        spatial_filter = "ST_Distance_Sphere(point(longitude, latitude), point(%s, %s)) <= %s"
+        spatial_params = (float(lng), float(lat), spatial_radius_m)
         
         # 2. Name Search Params (Specific + Phase Fallback)
         name_filters = ["LOWER(area) LIKE %s"]
@@ -862,8 +943,14 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
         _was_radius = "radius" in str(risk_assessment.get('scope_mode', '')).lower() or location_type == "current"
         
         # Combined filter for contextual queries
-        active_filter = f"({spatial_filter} OR {name_filter_group})" if _was_radius else name_filter_group
-        active_params = (spatial_params + tuple(name_params)) if _was_radius else tuple(name_params)
+        # For live current-location alerts, use SPATIAL-ONLY so radius actually controls results
+        # For background home/work monitoring, use OR to include area names as fallback
+        if location_type == "current":
+            active_filter = spatial_filter
+            active_params = tuple(spatial_params)
+        else:
+            active_filter = f"({spatial_filter} OR {name_filter_group})" if _was_radius else name_filter_group
+            active_params = (spatial_params + tuple(name_params)) if _was_radius else tuple(name_params)
 
         # ── Fetch sub-areas and richer notification data ─────────────────────
         try:
@@ -1015,7 +1102,7 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
                 alert_type = "medium_risk_zone"
         
         # ── Human-readable alert trigger reason (Trigger Transparency) ─────────
-        _trigger_method = "Within 1 km radius" if _was_radius else "Area name match"
+        _trigger_method = f"Within {effective_radius_km:g} km radius" if _was_radius else "Area name match"
         _7d_bit = f", incl. {recent_7d_crimes} in the last 7 days" if recent_7d_crimes > 0 else ""
         _top_crime_bit = f" — {top_crimes_list[0]['crime_type']} is the most frequent" if top_crimes_list else ""
         
@@ -1109,6 +1196,7 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
             "id": user_data.get("id"), "username": user_data.get("username"), "email": user_data.get("email"),
             "area_type": location_type, "area_name": area_name, "address": address,
             "safety_score": safety_score, "risk_pct": _rp, "risk_level": risk_level,
+            "radius_km": effective_radius_km,
             "incidents_90d": incidents_90d, "high_risk_90d": high_risk_90d, "recent_7d_crimes": recent_7d_crimes,
             "total_crimes": incidents_90d, "total_crimes_365": incidents_365d,
             "high_risk_crimes": high_risk_90d, "medium_risk_crimes": medium_risk_90d,
@@ -1202,6 +1290,7 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
             alert_type=alert_type,
             severity=severity,
             location_type=location_type,
+            radius_km=effective_radius_km,
             message=message,
             precautions=risk_assessment.get("precautions", "Stay alert and aware of your surroundings.")
         )
@@ -1417,7 +1506,7 @@ async def send_alert_notification(alert: RiskZoneAlert):
         # Get complete user data including id
         cursor.execute(
             """
-            SELECT id, username, email, browser_notifications_enabled, email_alerts_enabled
+            SELECT id, username, email, browser_notifications_enabled, email_alerts_enabled, alert_preferences
             FROM users_info 
             WHERE id = %s
             """,
@@ -1432,10 +1521,27 @@ async def send_alert_notification(alert: RiskZoneAlert):
 
         user_data = cast(Dict[str, Any], user_row)
 
+        # Respect the system-wide alert policy for risk-based alerts.
+        # Weekly reports are handled separately and should not be blocked here.
+        if alert.alert_type not in {"weekly_safety_report", "safe_area"} and not meets_alert_threshold(str(alert.risk_level or "Low")):
+            logger.info(
+                f"⚪ Skipping alert for user {alert.user_id} due to global threshold policy "
+                f"(alert_type={alert.alert_type}, risk_level={alert.risk_level}, policy={get_alert_threshold_policy()})"
+            )
+            return {
+                "email_sent": False,
+                "browser_sent": False,
+                "alert_message": alert.message,
+                "skipped_by_threshold": True,
+            }
+
+        category = _resolve_alert_category(alert)
+        channel_prefs = _load_alert_channel_preferences(user_data)
+
         # Send email notification
         email_success = False
         user_email = user_data.get('email')
-        email_alerts_enabled = bool(user_data.get('email_alerts_enabled', True))
+        email_alerts_enabled = bool(channel_prefs.get(category, {}).get('email', bool(user_data.get('email_alerts_enabled', True))))
         
         # CRITICAL REFINEMENT: Immediate email alerts are only sent for LIVE (current) locations 
         # OR for specific URGENT new incidents discovered near saved locations.
@@ -1453,7 +1559,8 @@ async def send_alert_notification(alert: RiskZoneAlert):
 
         # Now call send_browser_notification with complete user_data
         browser_success = False
-        if user_data.get('browser_notifications_enabled'):
+        browser_notifications_enabled = bool(channel_prefs.get(category, {}).get('browser', bool(user_data.get('browser_notifications_enabled', True))))
+        if browser_notifications_enabled:
             try:
                 print("🌐 Attempting to send browser push...")
                 browser_success = await alert_notification_system.send_browser_notification(alert, user_data)
@@ -2165,7 +2272,8 @@ async def check_location_risk(user_id: int, lat: float, lng: float, radius_km: f
     Area names stored in the DB (e.g. 'Bahria Town') are matched even when
     coordinate radius yields 0 results (GPS drift / wide area coverage)."""
     try:
-        stats = await get_safety_stats_by_coords(lat, lng, radius_km)
+        effective_radius_km = get_global_notification_radius_km()
+        stats = await get_safety_stats_by_coords(lat, lng, effective_radius_km)
         safety_score = stats['safety_score']
         high_risk_count = stats['high_risk_count']
         total_crimes = stats['total_crimes']
@@ -2176,7 +2284,7 @@ async def check_location_risk(user_id: int, lat: float, lng: float, radius_km: f
         # fall back to name-based lookup to handle wide areas like 'Bahria Town'
         # where crimes are stored by area name but GPS coords may not cluster within 1-2 km.
         if total_crimes == 0 and area_name:
-            name_stats = await get_safety_stats_by_coords(lat, lng, radius_km)
+            name_stats = await get_safety_stats_by_coords(lat, lng, effective_radius_km)
             # Use full name-based query directly
             try:
                 _conn = get_db_connection()
@@ -2370,6 +2478,7 @@ async def dispatch_new_incident_alerts(crime_info: Dict[str, Any]):
         from app.utils.area_normalization import area_like_pattern as _alp
         area_search = area_translit or area or "Unknown"
         area_pattern = _alp(area_search)
+        global_radius_km = get_global_notification_radius_km()
 
         # Get users whose home/work area matches this incident's area
         # Note: do NOT require incident_alerts_enabled in case column is unset
@@ -2385,11 +2494,11 @@ async def dispatch_new_incident_alerts(crime_info: Dict[str, Any]):
                     (u.work_area IS NOT NULL AND LOWER(%s) LIKE LOWER(CONCAT('%%', u.work_area, '%%'))) OR
                     (s.areas IS NOT NULL AND s.areas LIKE %s) OR
                     (u.home_latitude IS NOT NULL AND u.home_longitude IS NOT NULL AND
-                     SQRT(POW(111.32 * (u.home_latitude - %s), 2) + POW(111.32 * (%s - u.home_longitude) * COS(u.home_latitude / 57.3), 2)) <= COALESCE(u.alert_radius, 5.0))
+                     SQRT(POW(111.32 * (u.home_latitude - %s), 2) + POW(111.32 * (%s - u.home_longitude) * COS(u.home_latitude / 57.3), 2)) <= %s)
                 )
                 AND u.is_active = TRUE AND u.email IS NOT NULL
                 """,
-                (area_search, area_search, area_pattern, lat, lng)
+                (area_search, area_search, area_pattern, lat, lng, global_radius_km)
             )
         else:
             cursor.execute(
@@ -2531,7 +2640,7 @@ async def dispatch_weekly_safety_reports():
             SELECT id, email, username, first_name,
                    home_area, home_latitude, home_longitude,
                    work_area, work_latitude, work_longitude,
-                   alert_radius
+                 alert_radius, email_alerts_enabled, browser_notifications_enabled, alert_preferences
             FROM users_info
             WHERE is_active = TRUE AND email IS NOT NULL AND weekly_reports_enabled = TRUE
               AND (home_area IS NOT NULL OR work_area IS NOT NULL
@@ -2630,8 +2739,33 @@ async def dispatch_weekly_safety_reports():
                     }
                 }
 
-                await alert_notification_system.send_weekly_safety_report(user_email, report_data)
-                logger.info(f"✅ Weekly {area_label} report sent to {user_email} ({area_name})")
+                channel_prefs = _load_alert_channel_preferences(user)
+                weekly_email_enabled = bool(channel_prefs.get("weekly", {}).get("email", True))
+                weekly_browser_enabled = bool(channel_prefs.get("weekly", {}).get("browser", False))
+
+                if weekly_email_enabled:
+                    await alert_notification_system.send_weekly_safety_report(user_email, report_data)
+                    logger.info(f"✅ Weekly {area_label} email report sent to {user_email} ({area_name})")
+
+                if weekly_browser_enabled:
+                    weekly_summary_alert = RiskZoneAlert(
+                        user_id=user_id,
+                        username=user.get("username", ""),
+                        email=user_email,
+                        latitude=float(user.get("home_latitude") or 0.0),
+                        longitude=float(user.get("home_longitude") or 0.0),
+                        address=area_name,
+                        risk_level=weekly_risk_level,
+                        safety_score=weekly_safety_score,
+                        high_risk_crimes=high_7d,
+                        medium_risk_crimes=medium_7d,
+                        total_crimes=total_curr,
+                        alert_type="weekly_safety_report",
+                        location_type=area_label.lower(),
+                        message=f"📊 Weekly {area_label} Safety Summary: {total_curr} incidents, risk {weekly_risk_level}, score {weekly_safety_score:.1f}%"
+                    )
+                    await alert_notification_system.send_browser_notification(weekly_summary_alert, user)
+                    logger.info(f"✅ Weekly {area_label} browser report sent to user {user_id} ({area_name})")
 
             except Exception as _ae:
                 logger.error(f"❌ _send_area_report failed for {area_label}={area_name}: {_ae}")

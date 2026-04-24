@@ -6,6 +6,34 @@ import { useAuth } from '../../contexts/AuthContext_updated';
 // OCR backend URL - uses main backend (same origin, port 8000)
 const OCR_API_URL = 'http://localhost:8000';
 
+const normalizeToISODate = (raw) => {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+
+  // Already ISO (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY
+  const dmy = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmy) {
+    const dd = dmy[1].padStart(2, '0');
+    const mm = dmy[2].padStart(2, '0');
+    const yyyy = dmy[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // MM/DD/YYYY fallback from legacy data
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) {
+    const mm = mdy[1].padStart(2, '0');
+    const dd = mdy[2].padStart(2, '0');
+    const yyyy = mdy[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return '';
+};
+
 const OCRPanel = ({ token }) => {
   const { refreshAuthToken, token: liveToken } = useAuth();
   const [selectedFile, setSelectedFile] = useState(null);
@@ -128,7 +156,12 @@ const OCRPanel = ({ token }) => {
       const result = await response.json();
       setExtractedText(result.text || '');
       setConfidence(result.confidence ?? null);
-      if (result.fields) setExtractedFields(result.fields);
+      if (result.fields) {
+        setExtractedFields({
+          ...result.fields,
+          crime_date: normalizeToISODate(result.fields.crime_date),
+        });
+      }
       if (result.sections) setExtractedSections(result.sections);
       setNewSectionInput('');
     } catch (err) {
@@ -185,6 +218,96 @@ const OCRPanel = ({ token }) => {
         [key]: value,
       },
     }));
+  };
+
+  // ── Admin crime-area helpers (live transliteration + re-geocode) ──────────
+  // Gemini occasionally misreads individual Urdu words (e.g. "بگو متہ" when
+  // the image says "گجوماتا"). The admin fixes the Urdu in the text box; we
+  // provide:
+  //   1. A live English transliteration underneath so the admin can verify
+  //      without having to read Urdu script directly.
+  //   2. A "Re-geocode" button that re-runs Nominatim on the corrected Urdu
+  //      so the saved lat/long actually match the corrected text.
+  const [crimeAreaEnglish, setCrimeAreaEnglish] = useState('');
+  const [regeocoding, setRegeocoding] = useState(false);
+  const translitTimer = useRef(null);
+
+  useEffect(() => {
+    const urdu = (extractedFields?.crime_area || '').trim();
+    if (!urdu) { setCrimeAreaEnglish(''); return; }
+    // Debounce — transliteration calls out to MyMemory and we don't want to
+    // fire one on every keystroke.
+    if (translitTimer.current) clearTimeout(translitTimer.current);
+    translitTimer.current = setTimeout(() => {
+      fetch(`${OCR_API_URL}/api/ocr/transliterate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urdu_text: urdu }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data && typeof data.english === 'string') setCrimeAreaEnglish(data.english); })
+        .catch(() => {});
+    }, 600);
+    return () => { if (translitTimer.current) clearTimeout(translitTimer.current); };
+  }, [extractedFields?.crime_area]);
+
+  const [convertingToUrdu, setConvertingToUrdu] = useState(false);
+  const [romanInput, setRomanInput] = useState('');
+  const handleRomanToUrdu = async () => {
+    const raw = (romanInput || '').trim();
+    if (!raw) return;
+    setConvertingToUrdu(true);
+    try {
+      const resp = await fetch(`${OCR_API_URL}/api/ocr/roman-to-urdu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roman_text: raw }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data?.urdu) {
+        setExtractedFields(prev => ({ ...(prev || {}), crime_area: data.urdu }));
+        setRomanInput('');
+      } else {
+        alert(data?.error || 'Could not convert to Urdu. Check the text and try again.');
+      }
+    } catch (err) {
+      alert(`Roman→Urdu failed: ${err.message || err}`);
+    } finally {
+      setConvertingToUrdu(false);
+    }
+  };
+
+  const handleRegeocode = async () => {
+    const urdu = (extractedFields?.crime_area || '').trim();
+    if (!urdu) return;
+    setRegeocoding(true);
+    try {
+      const resp = await fetch(`${OCR_API_URL}/api/ocr/regeocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ area: urdu }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data?.success && data.latitude != null && data.longitude != null) {
+        setExtractedFields(prev => ({
+          ...(prev || {}),
+          location: {
+            ...(prev?.location || {}),
+            latitude: data.latitude,
+            longitude: data.longitude,
+            display_name: data.display_name || '',
+            mappable: true,
+            source: 'nominatim_free',
+          },
+        }));
+      } else {
+        alert(data?.error || 'Could not geocode the corrected area. Try adjusting the Urdu text.');
+      }
+    } catch (err) {
+      alert(`Re-geocode failed: ${err.message || err}`);
+    } finally {
+      setRegeocoding(false);
+    }
   };
 
   const addSectionWithMeaning = async () => {
@@ -496,17 +619,64 @@ const OCRPanel = ({ token }) => {
                   </div>
                   <div className={styles.fieldCard}>
                     <div className={styles.fieldLabel}><i className="fas fa-map-marker-alt"></i> Crime Area (Thana)</div>
-                    <input
-                      type="text"
-                      className={styles.fieldValue}
-                      value={extractedFields.crime_area || ''}
-                      onChange={(e) => handleFieldEdit('crime_area', e.target.value)}
-                      style={{ fontFamily: "'Noto Nastaliq Urdu', serif" }}
-                    />
-                    {nearestAreaEnglish && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <input
+                        type="text"
+                        className={styles.fieldValue}
+                        value={extractedFields.crime_area || ''}
+                        onChange={(e) => handleFieldEdit('crime_area', e.target.value)}
+                        dir="rtl"
+                        lang="ur"
+                        placeholder="علاقہ / Area (Urdu)"
+                        style={{ fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Segoe UI', Tahoma, Arial, sans-serif", width: '100%', textAlign: 'right', fontSize: '1rem' }}
+                      />
+                      <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 4 }}>
+                        Correct via Roman typing
+                      </div>
+                      <input
+                        type="text"
+                        className={styles.fieldValue}
+                        value={romanInput}
+                        onChange={(e) => setRomanInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleRomanToUrdu(); } }}
+                        placeholder="e.g. lohari gate"
+                        style={{ width: '100%' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRomanToUrdu}
+                        disabled={convertingToUrdu || !romanInput.trim()}
+                        className={styles.submitApprovalBtn}
+                        style={{ padding: '8px 12px', whiteSpace: 'nowrap', background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
+                        title="Convert the Roman text to Urdu and replace the Urdu field"
+                      >
+                        {convertingToUrdu
+                          ? <i className={`fas fa-spinner ${styles.spin}`}></i>
+                          : (<><i className="fas fa-language"></i> Convert to Urdu</>)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRegeocode}
+                        disabled={regeocoding || !(extractedFields?.crime_area || '').trim()}
+                        className={styles.submitApprovalBtn}
+                        style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}
+                        title="Re-run Nominatim with the Urdu text to refresh latitude/longitude"
+                      >
+                        {regeocoding
+                          ? <i className={`fas fa-spinner ${styles.spin}`}></i>
+                          : (<><i className="fas fa-sync-alt"></i> Re-geocode</>)}
+                      </button>
+                    </div>
+                    {crimeAreaEnglish && (
                       <div className={styles.fieldValueSub}>
-                        <i className="fas fa-language" style={{ marginRight: 4, color: '#3b82f6' }}></i>
-                        {nearestAreaEnglish}
+                        <i className="fas fa-language" style={{ marginRight: 4, color: '#10b981' }}></i>
+                        {crimeAreaEnglish}
+                      </div>
+                    )}
+                    {nearestAreaEnglish && nearestAreaEnglish !== crimeAreaEnglish && (
+                      <div className={styles.fieldValueSub}>
+                        <i className="fas fa-map-pin" style={{ marginRight: 4, color: '#3b82f6' }}></i>
+                        Nearest mapped area: {nearestAreaEnglish}
                       </div>
                     )}
                   </div>
