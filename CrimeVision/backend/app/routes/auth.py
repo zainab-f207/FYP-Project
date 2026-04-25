@@ -800,11 +800,12 @@ def get_user_info(current_user: str = Depends(get_username_from_token)) -> Dict[
     try:
         logger.info(f"Querying /auth/me for username: '{current_user}'")
         cursor.execute("""
-            SELECT id, username, first_name, last_name, email, profile_picture, 
+            SELECT id, username, first_name, last_name, email, profile_picture,
                    home_area, work_area, alert_radius, role, created_at, phone_number,
                    browser_notifications_enabled, email_alerts_enabled, alert_preferences,
                    two_factor_enabled, monitor_live_location,
-                   weekly_reports_enabled, incident_alerts_enabled, live_alerts_enabled
+                   weekly_reports_enabled, incident_alerts_enabled, live_alerts_enabled,
+                   password_must_change
             FROM users_info WHERE LOWER(username) = LOWER(%s)
         """, (current_user.lower(),))
         user = cast(Optional[Dict[str, Any]], cursor.fetchone())
@@ -865,8 +866,8 @@ def get_user_info(current_user: str = Depends(get_username_from_token)) -> Dict[
             "incident_alerts_enabled": bool(user.get("incident_alerts_enabled", True)),
             "live_alerts_enabled": bool(user.get("live_alerts_enabled", True)),
             "alert_channel_preferences": alert_channel_preferences,
-            "created_at": user.get("created_at", "")
-
+            "created_at": user.get("created_at", ""),
+            "password_must_change": bool(user.get("password_must_change", False)),
         }
 
         # For admin/superadmin users, also fetch permissions and department from admins table

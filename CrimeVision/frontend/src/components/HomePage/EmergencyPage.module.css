@@ -449,24 +449,110 @@
 
 @media (max-width: 768px) {
     .pageTitle {
-        font-size: 2rem;
+        font-size: clamp(1.4rem, 5.5vw, 2rem) !important;
     }
 
     .pageSubtitle {
-        font-size: 1rem;
+        font-size: 0.95rem !important;
     }
 
     .emergencyBanner {
         flex-direction: column;
         text-align: center;
+        padding: 18px !important;
     }
 
+    /* All Emergency page card grids: 2 per row */
+    .statsGrid,
+    .numbersGrid,
     .tipsGrid,
     .scenariosGrid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+    }
+
+    .contactsWrapper {
+        padding: 16px !important;
+        border-radius: 18px !important;
+    }
+
+    .statCard,
+    .numberCard {
+        padding: 18px 14px !important;
+        border-radius: 16px !important;
+    }
+    .statValue {
+        font-size: 1.6rem !important;
+    }
+    .statLabel {
+        font-size: 0.7rem !important;
+        letter-spacing: 0.5px !important;
+    }
+    .numberIcon {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 1.4rem !important;
+        margin-bottom: 12px !important;
+    }
+    .phoneNumber {
+        font-size: 1.8rem !important;
+        margin-bottom: 8px !important;
+    }
+    .numberCard h3 {
+        font-size: 0.95rem !important;
+        margin-bottom: 8px !important;
+    }
+    .numberCard p {
+        font-size: 0.78rem !important;
+        line-height: 1.4 !important;
+    }
+
+    .importantNumbersSection h2,
+    .safetyTipsSection h2,
+    .sectionHeader h2 {
+        font-size: clamp(1.2rem, 5vw, 1.7rem) !important;
+        margin-bottom: 24px !important;
+    }
+    .sectionHeader p {
+        font-size: 0.85rem !important;
     }
 
     .whatToDoSection {
-        padding: 40px 25px;
+        padding: 32px 14px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .statsGrid,
+    .numbersGrid,
+    .tipsGrid,
+    .scenariosGrid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+    .statCard,
+    .numberCard {
+        padding: 12px 8px !important;
+    }
+    .statValue {
+        font-size: 1.2rem !important;
+    }
+    .statLabel {
+        font-size: 0.6rem !important;
+    }
+    .numberIcon {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.1rem !important;
+        margin-bottom: 8px !important;
+    }
+    .phoneNumber {
+        font-size: 1.3rem !important;
+    }
+    .numberCard h3 {
+        font-size: 0.8rem !important;
+    }
+    .numberCard p {
+        font-size: 0.68rem !important;
     }
 }

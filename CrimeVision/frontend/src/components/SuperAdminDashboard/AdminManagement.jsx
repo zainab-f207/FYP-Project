@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
+  Alert,
   Badge,
   Button,
   Descriptions,
@@ -11,8 +12,10 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tag,
   Tooltip,
+  Typography,
   message,
 } from 'antd';
 import {
@@ -21,8 +24,10 @@ import {
   ExclamationCircleOutlined,
   EyeOutlined,
   FilterOutlined,
+  InfoCircleOutlined,
   LockOutlined,
   ReloadOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
   UnlockOutlined,
   UserAddOutlined,
@@ -33,8 +38,14 @@ import dayjs from 'dayjs';
 import apiService from '../../services/apiService_updated';
 import usePaginatedResource from './hooks/usePaginatedResource';
 import { USER_BULK_ACTIONS, USER_PERMISSIONS, USER_ROLES } from './constants/permissions';
+import {
+  DEPARTMENTS,
+  DEPARTMENT_PERMISSIONS,
+} from './constants/adminPermissions';
+import PermissionMatrix from './PermissionMatrix';
 import styles from './SuperAdminDashboard.module.css';
 
+const { Text } = Typography;
 const { confirm } = Modal;
 
 /**
@@ -111,12 +122,24 @@ const AdminManagement = ({ token }) => {
       role: admin.role || '',
       department: admin.department || '',
       password: '',
+      permissions: Array.isArray(admin.permissions) ? admin.permissions : [],
     });
   };
 
   const handleEditSubmit = async (values) => {
     try {
-      await apiService.updateAdmin(token, editModal.admin.id, values);
+      const payload = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        username: values.username,
+        email: values.email,
+        role: values.role,
+        department: values.department,
+        permissions: values.permissions || [],
+      };
+      if (values.password) payload.password = values.password;
+
+      await apiService.updateAdmin(token, editModal.admin.id, payload);
       message.success('Admin updated successfully');
       setEditModal({ visible: false, admin: null });
       loadData();
@@ -200,7 +223,11 @@ const AdminManagement = ({ token }) => {
         key: 'role',
         width: 100,
         filters: USER_ROLES.map((role) => ({ text: role.label, value: role.value })),
-        render: (role) => <Tag color="geekblue">{role?.toUpperCase()}</Tag>,
+        render: (role) => {
+          const effective = (role && String(role).trim()) || 'admin';
+          const isSuper = effective === 'superadmin' || effective === 'super_admin';
+          return <Tag color={isSuper ? 'magenta' : 'geekblue'}>{effective.toUpperCase()}</Tag>;
+        },
       },
       {
         title: 'Status',
@@ -441,87 +468,205 @@ const AdminManagement = ({ token }) => {
         )}
       </Drawer>
 
-      {/* ── Edit Admin Modal ── */}
+      {/* ── Edit Admin Modal (Profile + Department & Permissions tabs) ── */}
       <Modal
-        title={<span style={{ color: '#e0e0e0' }}>Edit Admin</span>}
+        title={
+          <Space>
+            <EditOutlined style={{ color: '#f9a826' }} />
+            <span style={{ color: '#e0e0e0', fontWeight: 600 }}>
+              Edit Administrator
+              {editModal.admin?.username ? (
+                <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginLeft: 8 }}>
+                  · {editModal.admin.username}
+                </Text>
+              ) : null}
+            </span>
+          </Space>
+        }
         open={editModal.visible}
         onCancel={() => setEditModal({ visible: false, admin: null })}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
+        width={920}
         styles={{
-          content: { background: 'rgba(13,20,30,0.98)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 },
+          content: { background: 'rgba(13,20,30,0.98)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16 },
           header: { background: 'transparent', borderBottom: '1px solid rgba(255,255,255,0.08)' },
+          body: { padding: '20px 24px 24px' },
         }}
       >
         <Form
           form={editForm}
           layout="vertical"
           onFinish={handleEditSubmit}
-          style={{ marginTop: 8 }}
+          initialValues={{ permissions: [] }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-            <Form.Item
-              name="firstName"
-              label={<span style={{ color: '#d0d0d0' }}>First Name</span>}
-              rules={[{ required: true, message: 'Required' }]}
-            >
-              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
-            </Form.Item>
-            <Form.Item
-              name="lastName"
-              label={<span style={{ color: '#d0d0d0' }}>Last Name</span>}
-              rules={[{ required: true, message: 'Required' }]}
-            >
-              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
-            </Form.Item>
-          </div>
-          <Form.Item
-            name="username"
-            label={<span style={{ color: '#d0d0d0' }}>Username</span>}
-            rules={[{ required: true, message: 'Required' }]}
-          >
-            <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+          <Form.Item dependencies={['department']} noStyle>
+            {() => {
+              const dept = editForm.getFieldValue('department');
+              const recommendedPerms = (dept && DEPARTMENT_PERMISSIONS[dept]) || [];
+              return (
+                <Tabs
+                  defaultActiveKey="profile"
+                  items={[
+                    {
+                      key: 'profile',
+                      label: (
+                        <span>
+                          <UserAddOutlined /> Profile Info
+                        </span>
+                      ),
+                      children: (
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                            <Form.Item
+                              name="firstName"
+                              label={<span style={{ color: '#d0d0d0' }}>First Name</span>}
+                              rules={[{ required: true, message: 'Required' }]}
+                            >
+                              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+                            </Form.Item>
+                            <Form.Item
+                              name="lastName"
+                              label={<span style={{ color: '#d0d0d0' }}>Last Name</span>}
+                              rules={[{ required: true, message: 'Required' }]}
+                            >
+                              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+                            </Form.Item>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                            <Form.Item
+                              name="username"
+                              label={<span style={{ color: '#d0d0d0' }}>Username</span>}
+                              rules={[{ required: true, message: 'Required' }]}
+                            >
+                              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+                            </Form.Item>
+                            <Form.Item
+                              name="email"
+                              label={<span style={{ color: '#d0d0d0' }}>Email</span>}
+                              rules={[
+                                { required: true, message: 'Required' },
+                                { type: 'email', message: 'Enter a valid email' },
+                              ]}
+                            >
+                              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
+                            </Form.Item>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                            <Form.Item
+                              name="role"
+                              label={<span style={{ color: '#d0d0d0' }}>Role</span>}
+                              rules={[{ required: true, message: 'Required' }]}
+                            >
+                              <Select classNames={{ popup: { root: 'dark-select-dropdown' } }} style={{ background: 'transparent' }}>
+                                {USER_ROLES.map((role) => (
+                                  <Select.Option key={role.value} value={role.value}>
+                                    {role.label}
+                                  </Select.Option>
+                                ))}
+                              </Select>
+                            </Form.Item>
+                            <Form.Item
+                              name="password"
+                              label={
+                                <span style={{ color: '#d0d0d0' }}>
+                                  New Password{' '}
+                                  <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: 12 }}>
+                                    (leave blank to keep current)
+                                  </span>
+                                </span>
+                              }
+                            >
+                              <Input.Password
+                                placeholder="Enter new password"
+                                style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }}
+                              />
+                            </Form.Item>
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'access',
+                      label: (
+                        <span>
+                          <SafetyCertificateOutlined /> Department & Permissions
+                        </span>
+                      ),
+                      children: (
+                        <div>
+                          <Form.Item
+                            name="department"
+                            label={
+                              <span style={{ color: '#d0d0d0' }}>
+                                Department <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 400, fontSize: 12 }}>· choosing a department adds its recommended permissions</Text>
+                              </span>
+                            }
+                            rules={[{ required: true, message: 'Please select a department' }]}
+                          >
+                            <Select
+                              showSearch
+                              optionLabelProp="label"
+                              placeholder="Select department"
+                              classNames={{ popup: { root: 'dark-select-dropdown' } }}
+                              filterOption={(input, option) =>
+                                (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                              }
+                              onChange={(newDept) => {
+                                const suggested = DEPARTMENT_PERMISSIONS[newDept] || [];
+                                const current = editForm.getFieldValue('permissions') || [];
+                                const merged = Array.from(new Set([...current, ...suggested]));
+                                editForm.setFieldsValue({ permissions: merged });
+                              }}
+                            >
+                              {DEPARTMENTS.map((d) => (
+                                <Select.Option key={d.value} value={d.value} label={d.label}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+                                    <span style={{ fontSize: 18 }}>{d.icon}</span>
+                                    <div>
+                                      <div style={{ fontWeight: 600, color: '#e0e0e0' }}>{d.label}</div>
+                                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{d.desc}</div>
+                                    </div>
+                                  </div>
+                                </Select.Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+
+                          <Alert
+                            message="All permissions are freely selectable"
+                            description="Recommendations highlighted with a gold tag are based on the chosen department, but you can check or uncheck ANY permission across ALL categories — independent of the recommendation."
+                            type="success"
+                            showIcon
+                            icon={<InfoCircleOutlined />}
+                            style={{
+                              marginBottom: 16,
+                              background: 'rgba(29,209,161,0.08)',
+                              border: '1px solid rgba(29,209,161,0.25)',
+                              borderRadius: 12,
+                            }}
+                          />
+
+                          <Form.Item
+                            name="permissions"
+                            rules={[{
+                              required: true,
+                              message: 'Please select at least one permission',
+                              type: 'array',
+                              min: 1,
+                            }]}
+                          >
+                            <PermissionMatrix recommendedPerms={recommendedPerms} compact />
+                          </Form.Item>
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
+              );
+            }}
           </Form.Item>
-          <Form.Item
-            name="email"
-            label={<span style={{ color: '#d0d0d0' }}>Email</span>}
-            rules={[
-              { required: true, message: 'Required' },
-              { type: 'email', message: 'Enter a valid email' }
-            ]}
-          >
-            <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            label={<span style={{ color: '#d0d0d0' }}>New Password <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: 12 }}>(leave blank to keep current)</span></span>}
-          >
-            <Input.Password
-              placeholder="Enter new password"
-              style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }}
-            />
-          </Form.Item>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-            <Form.Item
-              name="role"
-              label={<span style={{ color: '#d0d0d0' }}>Role</span>}
-              rules={[{ required: true, message: 'Required' }]}
-            >
-              <Select classNames={{ popup: { root: 'dark-select-dropdown' } }} style={{ background: 'transparent' }}>
-                {USER_ROLES.map((role) => (
-                  <Select.Option key={role.value} value={role.value}>
-                    {role.label}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <Form.Item
-              name="department"
-              label={<span style={{ color: '#d0d0d0' }}>Department</span>}
-            >
-              <Input style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)', color: '#e0e0e0' }} />
-            </Form.Item>
-          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
             <Button onClick={() => setEditModal({ visible: false, admin: null })}>Cancel</Button>
             <Button type="primary" htmlType="submit" style={{ background: '#2d7fb8', borderColor: '#2d7fb8' }}>

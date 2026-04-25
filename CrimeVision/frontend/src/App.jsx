@@ -7,6 +7,8 @@ import { cleanupInvalidTokens } from './utils/tokenCleanup';
 import AppRouter from './components/AppRouter';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
+import './components/AdminDashboard/dashboard-theme.css';
+import './responsive.css';
 import { NotificationProvider } from './contexts/NotificationContext';
 
 // Initialize token cleanup

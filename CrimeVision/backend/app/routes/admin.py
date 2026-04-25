@@ -617,6 +617,11 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
         department = body.get("department", "").strip()
         new_username = body.get("username", "").strip()
         new_password = body.get("password", "").strip()
+        # Optional permissions update — only applied when key is present
+        permissions_provided = "permissions" in body
+        new_permissions = body.get("permissions") if permissions_provided else None
+        if permissions_provided and not isinstance(new_permissions, list):
+            raise HTTPException(status_code=400, detail="permissions must be a list of strings")
 
         if not email:
             raise HTTPException(status_code=400, detail="Email is required")
@@ -647,6 +652,10 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
             admin_fields += ", password_hash = %s"
             admin_params.append(get_password_hash(new_password))
 
+        if permissions_provided:
+            admin_fields += ", permissions = %s"
+            admin_params.append(json.dumps(new_permissions))
+
         admin_params.append(admin_id)
         cursor.execute(f"UPDATE admins SET {admin_fields} WHERE id = %s", tuple(admin_params))
 
@@ -663,6 +672,10 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
                 ui_fields += ", password_hash = %s"
                 ui_params.append(get_password_hash(new_password))
 
+            if permissions_provided:
+                ui_fields += ", permissions = %s"
+                ui_params.append(json.dumps(new_permissions))
+
             ui_params.append(old_username)
             cursor.execute(f"UPDATE users_info SET {ui_fields} WHERE username = %s", tuple(ui_params))
 
@@ -672,7 +685,8 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
             target_type="admin",
             target_id=admin_id,
             details={"firstName": first_name, "lastName": last_name, "email": email, "role": role,
-                      "department": department, "usernameChanged": bool(new_username), "passwordChanged": bool(new_password)},
+                      "department": department, "usernameChanged": bool(new_username), "passwordChanged": bool(new_password),
+                      "permissionsUpdated": permissions_provided},
             request=request,
         )
 

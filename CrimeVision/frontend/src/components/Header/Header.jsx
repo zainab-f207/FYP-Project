@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './Header2.css';
 import apiService from '../../services/apiService_updated';
-import SafeVisionLogo from '../../../../../branding/safevision/concept4.svg';
+import SafeVisionLogo from '../common/SafeVisionLogo';
 
 const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, onCrimeSelect }) => {
   const [searchResults, setSearchResults] = useState([]);
@@ -13,6 +13,8 @@ const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, 
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeNav, setActiveNav] = useState('home');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLogoPopupOpen, setIsLogoPopupOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDarkTheme, setIsDarkTheme] = useState(true);
   const searchInputRef = useRef(null);
@@ -156,7 +158,27 @@ const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, 
     e.preventDefault();
     setActiveNav(item.id);
     navigate(item.route);
+    setIsMobileMenuOpen(false);
   };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((prev) => !prev);
+  };
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll when mobile menu or logo popup open
+  useEffect(() => {
+    if (isMobileMenuOpen || isLogoPopupOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobileMenuOpen, isLogoPopupOpen]);
 
   const toggleSearch = () => {
     setIsSearchOpen(!isSearchOpen);
@@ -208,20 +230,23 @@ const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, 
         ref={navbarRef}
       >
         <div className="nav-container">
-          {/* Enhanced Logo Section */}
-          <Link to="/" className="logo-section">
-            <div className="logo-orbital">
-              <div className="logo-core">
-                <img src={SafeVisionLogo} alt="SafeVision" className="logo-img" />
-              </div>
-            </div>
-            <div className="logo-text">
+          {/* Enhanced Logo Section — icon click opens popup, text navigates home */}
+          <div className="logo-section">
+            <button
+              type="button"
+              className="logo-brand logo-brand-button"
+              onClick={() => setIsLogoPopupOpen(true)}
+              aria-label="View SafeVision logo"
+            >
+              <SafeVisionLogo size={42} className="logo-svg" />
+            </button>
+            <Link to="/" className="logo-text">
               <span className="logo-main">SafeVision</span>
               <span className="logo-sub">Spatial Analysis & Visualization</span>
-            </div>
-          </Link>
+            </Link>
+          </div>
 
-          {/* Enhanced Navigation */}
+          {/* Desktop-only navigation rail */}
           <nav className="main-nav">
             <div className="nav-rail">
               {navItems.map((item) => (
@@ -242,15 +267,13 @@ const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, 
 
           {/* Enhanced Action Section */}
           <div className="action-section">
-            <button className="theme-toggle" onClick={toggleTheme}>
-              <i className={isDarkTheme ? 'fas fa-sun' : 'fas fa-moon'}></i>
-            </button>
+            <div className="live-status-pill" title="Live monitoring active">
+              <span className="live-status-dot"></span>
+              <span className="live-status-text">LIVE</span>
+            </div>
 
-            <button
-              className={`search-btn ${isSearchOpen ? 'active' : ''}`}
-              onClick={toggleSearch}
-            >
-              <i className="fas fa-search"></i>
+            <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+              <i className={isDarkTheme ? 'fas fa-sun' : 'fas fa-moon'}></i>
             </button>
 
             <button className="login-btn" onClick={showLoginModal}>
@@ -258,108 +281,85 @@ const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, 
               <span className="login-text">Login</span>
             </button>
 
-            <button className="mobile-trigger" onClick={toggleSidebar}>
-              <div className="hamburger">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
+            <button
+              className={`mobile-trigger ${isMobileMenuOpen ? 'active' : ''}`}
+              onClick={toggleMobileMenu}
+              aria-label="Toggle navigation menu"
+              aria-expanded={isMobileMenuOpen}
+            >
+              <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
             </button>
           </div>
         </div>
-        {/* Add Search Panel - placed inside header so it opens directly under the nav */}
-        <div className={`search-panel ${isSearchOpen ? 'open' : ''}`}>
-            <div className="search-container">
-              <div className="search-field-container">
-                <div className="search-field">
-                  <i className="fas fa-search search-icon"></i>
-                  <input
-                    type="text"
-                    className="search-input"
-                    placeholder="Search areas, crime types, incidents..."
-                    ref={searchInputRef}
-                    value={searchQuery}
-                    onChange={handleSearchInput}
-                    onFocus={() => searchQuery.length >= 1 && setShowSearchDropdown(true)}
-                  />
-                  <button className="search-close" onClick={() => {
-                    setIsSearchOpen(false);
-                    setSearchQuery('');
-                    setShowSearchDropdown(false);
-                  }}>
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
+      </header>
 
-                {/* Search Results Dropdown */}
-                {showSearchDropdown && (
-                  <div className="search-dropdown" ref={searchDropdownRef}>
-                    <div className="dropdown-content">
-                      {searchResults.length > 0 ? (
-                        <>
-                          {Object.entries(
-                            searchResults.reduce((groups, result) => {
-                              if (!groups[result.category]) groups[result.category] = [];
-                              groups[result.category].push(result);
-                              return groups;
-                            }, {})
-                          ).map(([category, items]) => (
-                            <div key={category} className="result-category">
-                              <div className="category-header">
-                                <i className={`fas fa-${category === 'Areas' ? 'map-marker-alt' : category === 'Crime Types' ? 'exclamation-triangle' : category === 'Pages' ? 'file-alt' : 'star'}`}></i>
-                                {category}
-                              </div>
-                              <div className="category-items">
-                                {items.map((item, index) => (
-                                  <div
-                                    key={index}
-                                    className="result-item"
-                                    onClick={() => handleSearchResultSelect(item)}
-                                  >
-                                    <i className={`fas fa-${item.type === 'area' ? 'location-arrow' : item.type === 'crime' ? 'exclamation-circle' : item.type === 'page' ? 'link' : 'bolt'}`}></i>
-                                    <span>{item.display}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </>
-                      ) : searchQuery.length >= 1 && (
-                        <div className="no-results">
-                          <i className="fas fa-search"></i>
-                          <span>No results found for "{searchQuery}"</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Access Section */}
-              <div className="quick-access">
-                <div className="quick-header">Quick Access</div>
-                <div className="quick-grid">
-                  <Link to="/crime-map" className="quick-item" onClick={() => setIsSearchOpen(false)}>
-                    <i className="fas fa-map-marked-alt"></i>
-                    <span>Interactive Maps</span>
-                  </Link>
-                  <Link to="/risk-prediction" className="quick-item" onClick={() => setIsSearchOpen(false)}>
-                    <i className="fas fa-chart-network"></i>
-                    <span>AI Analytics</span>
-                  </Link>
-                  <Link to="/emergency" className="quick-item" onClick={() => setIsSearchOpen(false)}>
-                    <i className="fas fa-shield-alt"></i>
-                    <span>Safety Resources</span>
-                  </Link>
-                  <Link to="/about-project" className="quick-item" onClick={() => setIsSearchOpen(false)}>
-                    <i className="fas fa-video"></i>
-                    <span>Project Video</span>
-                  </Link>
-                </div>
-              </div>
+      {/* Mobile Drawer — rendered OUTSIDE <header> so it escapes the header's
+          backdrop-filter containing block (which would otherwise trap position:fixed) */}
+      {isMobileMenuOpen && (
+        <div
+          className="mobile-nav-overlay"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`mobile-drawer ${isMobileMenuOpen ? 'mobile-open' : ''}`}
+        aria-hidden={!isMobileMenuOpen}
+      >
+        <div className="mobile-drawer-header">
+          <div className="mobile-drawer-brand">
+            <div className="mobile-drawer-logo">
+              <SafeVisionLogo size={42} />
+            </div>
+            <div>
+              <div className="mobile-drawer-title">SafeVision</div>
+              <div className="mobile-drawer-subtitle">Spatial Visualytics</div>
             </div>
           </div>
-      </header>
+          <button
+            className="mobile-drawer-close"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div className="mobile-drawer-nav">
+          {navItems.map((item) => (
+            <Link
+              key={item.id}
+              to={item.route}
+              className={`mobile-drawer-item ${activeNav === item.id ? 'active' : ''}`}
+              onClick={(e) => handleNavClick(item, e)}
+            >
+              <span className="mobile-drawer-icon">
+                <i className={item.icon}></i>
+              </span>
+              <span className="mobile-drawer-label">{item.label}</span>
+              <i className="fas fa-chevron-right mobile-drawer-chevron"></i>
+            </Link>
+          ))}
+
+        </div>
+
+        <div className="mobile-drawer-footer">
+          <button
+            className="mobile-drawer-action mobile-drawer-action--primary"
+            onClick={() => { setIsMobileMenuOpen(false); showLoginModal && showLoginModal(); }}
+          >
+            <i className="fas fa-user"></i>
+            <span>Login / Sign In</span>
+          </button>
+          <button
+            className="mobile-drawer-action mobile-drawer-action--secondary"
+            onClick={toggleTheme}
+          >
+            <i className={isDarkTheme ? 'fas fa-sun' : 'fas fa-moon'}></i>
+            <span>{isDarkTheme ? 'Light Theme' : 'Dark Theme'}</span>
+          </button>
+        </div>
+      </aside>
       {/* Ultra Modern Hero Section - Only show on home page */}
       {location.pathname === '/' && (
         <section className="hero" id="home">
@@ -468,6 +468,36 @@ const Header = ({ toggleSidebar, showLoginModal, showReportModal, onAreaSelect, 
             </div>
           </div>
         </section>
+      )}
+
+      {/* Logo Popup — clickable logo opens a big preview */}
+      {isLogoPopupOpen && (
+        <div
+          className="logo-popup-overlay"
+          onClick={() => setIsLogoPopupOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="SafeVision brand"
+        >
+          <button
+            className="logo-popup-close"
+            onClick={() => setIsLogoPopupOpen(false)}
+            aria-label="Close"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+          <div className="logo-popup-content" onClick={(e) => e.stopPropagation()}>
+            <div className="logo-popup-frame">
+              <SafeVisionLogo size={280} />
+            </div>
+            <h2 className="logo-popup-title">SafeVision</h2>
+            <p className="logo-popup-tagline">Spatial Analysis &amp; Visualization</p>
+            <p className="logo-popup-desc">
+              AI-powered crime intelligence platform delivering real-time risk insights,
+              hotspot prediction, and community safety analytics across Lahore.
+            </p>
+          </div>
+        </div>
       )}
     </>
   );

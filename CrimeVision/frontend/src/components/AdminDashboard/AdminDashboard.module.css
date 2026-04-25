@@ -819,34 +819,46 @@
 
 @media (max-width: 992px) {
   .sidebar {
-    width: var(--sidebar-collapsed-width);
-  }
-
-  .sidebarHeader h3,
-  .sidebarSubtitle {
-    opacity: 0;
-  }
-
-  .adminInfoSidebar {
-    opacity: 0;
     width: 0;
-    height: 0;
-    overflow: hidden;
+    transform: translateX(-100%);
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    z-index: 1250;
   }
 
-  .sidebarMenu span {
-    opacity: 0;
-    width: 0;
-    height: 0;
-    overflow: hidden;
+  .sidebarMobileOpen {
+    width: var(--sidebar-width) !important;
+    transform: translateX(0) !important;
+  }
+
+  /* Mobile-open state — restore EVERY label to its full size */
+  .sidebarMobileOpen .sidebarHeader h3,
+  .sidebarMobileOpen .sidebarSubtitle,
+  .sidebarMobileOpen .adminInfoSidebar,
+  .sidebarMobileOpen .sidebarMenu span,
+  .sidebarMobileOpen .logoutLink span {
+    opacity: 1 !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: revert !important;
   }
 
   .mainContent {
-    margin-left: var(--sidebar-collapsed-width);
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-top: 70px !important;
+  }
+
+  .mobileToggle {
+    display: flex !important;
   }
 
   .searchBar {
-    width: 260px;
+    width: 100% !important;
   }
 
   .dashboardCards {

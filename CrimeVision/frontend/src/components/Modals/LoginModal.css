@@ -17,7 +17,7 @@
   --info-color: #3b82f6;
 
   --base-scale: 0.85;
-  --modal-max-width: 1200px;
+  --modal-max-width: 980px;
   --modal-max-height: 90vh;
 }
 
@@ -47,37 +47,42 @@ html {
   color: var(--text-primary);
 }
 
-/* Login Page Container - No Scrolling */
+/* Login Page Container - constrained to viewport, scrolls if content taller */
 .login-page {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1rem;
+  padding: 1.5rem;
   background: rgba(15, 23, 42, 0.95);
-  overflow: hidden;
-  /* Prevent any scrolling */
+  overflow: auto;
   z-index: 9999;
 }
 
 /* Auth Container - Two Column Layout */
 .auth-container {
   width: 100%;
-  max-width: var(--modal-max-width);
-  height: var(--modal-max-height);
+  max-width: min(var(--modal-max-width), calc(100vw - 3rem));
+  height: auto;
+  max-height: calc(100vh - 3rem);
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  /* Prevent internal scrolling */
+  overflow: visible;
   position: relative;
+}
+.auth-container > .auth-layout {
+  overflow: hidden;
+  border-radius: 16px;
 }
 
 /* Animated Background Elements */
@@ -586,7 +591,10 @@ html {
   cursor: not-allowed;
 }
 
-/* Modal Overlay (for modal usage) */
+/* Modal Overlay (for modal usage).
+   NOTE: backdrop-filter REMOVED — it was creating a containing block that
+   trapped position:fixed children (the close button). The 0.95 alpha on the
+   background is dark enough on its own. */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -599,7 +607,6 @@ html {
   align-items: center;
   padding: 1rem;
   z-index: 10000;
-  backdrop-filter: blur(4px);
 }
 
 .modal-content {
@@ -696,15 +703,22 @@ html {
 
   .login-page,
   .modal-overlay {
-    padding: 0.5rem;
+    padding: 12px !important;
   }
 
   .auth-container,
   .modal-content {
-    max-width: 100%;
-    height: 100%;
-    max-height: 100vh;
-    border-radius: 0;
+    max-width: calc(100% - 0px) !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: calc(100vh - 24px) !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    margin: 0 auto !important;
+  }
+  /* Visible breathing room around modal on phones */
+  .login-page {
+    padding: 14px !important;
   }
 
   .auth-character-section {
@@ -829,15 +843,310 @@ html {
   }
 }
 
+/* Field spacing — generous padding INSIDE every input + spacing AROUND each field */
+.form-group {
+  margin: 0 0 1.4rem 0 !important;
+  padding: 0 !important;
+}
+.form-group label {
+  margin: 0 0 0.6rem 0 !important;
+  display: block;
+  font-size: 0.92rem !important;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 1rem 1.1rem 1rem 3rem !important;
+  font-size: 1rem !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+.form-group .input-icon {
+  left: 1.1rem !important;
+  font-size: 0.95rem !important;
+}
+.form-group .password-toggle-icon {
+  right: 1.1rem !important;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-form {
+  padding: 0.5rem 0 !important;
+}
+/* Generous side & vertical padding inside the form column */
+.auth-form-section {
+  padding: 2rem 2rem !important;
+}
+@media (max-width: 768px) {
+  .auth-form-section {
+    padding: 1.5rem 1.4rem !important;
+  }
+  .form-group {
+    margin: 0 0 1.1rem 0 !important;
+  }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 0.85rem 1rem 0.85rem 2.7rem !important;
+    font-size: 0.95rem !important;
+  }
+}
+
+/* Light theme for login/signup modal */
+body[data-theme="light"] .login-page,
+body[data-theme="light"] .modal-overlay {
+  background: rgba(15, 23, 42, 0.55) !important;
+}
+body[data-theme="light"] .auth-container,
+body[data-theme="light"] .modal-content {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.10) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .auth-form-section {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .auth-character-section {
+  background: linear-gradient(135deg, #e0f2fe 0%, #ddd6fe 50%, #fce7f3 100%) !important;
+}
+/* Light theme for the SafeVisionCharacter SVG — surgical color overrides
+   (no invert filter, which produces inaccurate colors). Each dark fill
+   and stroke is mapped to a corresponding light-theme color. */
+
+/* Sky gradient → soft blue→purple */
+body[data-theme="light"] .SafeVision-character #skyGradient stop:nth-child(1) {
+  stop-color: #e0f2fe !important;
+}
+body[data-theme="light"] .SafeVision-character #skyGradient stop:nth-child(2) {
+  stop-color: #c7d2fe !important;
+}
+
+/* Building gradient → mid-grey to slate */
+body[data-theme="light"] .SafeVision-character #buildingGradient stop:nth-child(1) {
+  stop-color: #cbd5e1 !important;
+}
+body[data-theme="light"] .SafeVision-character #buildingGradient stop:nth-child(2) {
+  stop-color: #94a3b8 !important;
+}
+
+/* Window glow stays cyan but darker for light bg readability */
+body[data-theme="light"] .SafeVision-character #windowGradient stop {
+  stop-color: #0891b2 !important;
+}
+
+/* Dark direct fills → mid grey */
+body[data-theme="light"] .SafeVision-character path[fill="#1e293b"],
+body[data-theme="light"] .SafeVision-character rect[fill="#1e293b"] {
+  fill: #94a3b8 !important;
+}
+body[data-theme="light"] .SafeVision-character path[fill="#0f172a"],
+body[data-theme="light"] .SafeVision-character rect[fill="#0f172a"] {
+  fill: #64748b !important;
+}
+
+/* Road lines + grid lines → light slate */
+body[data-theme="light"] .SafeVision-character line[stroke="#334155"],
+body[data-theme="light"] .SafeVision-character path[stroke="#334155"] {
+  stroke: #94a3b8 !important;
+}
+
+/* Floating glassmorphic widget cards → translucent white */
+body[data-theme="light"] .SafeVision-character rect[fill*="rgba(15, 23, 42"],
+body[data-theme="light"] .SafeVision-character rect[fill*="rgba(15,23,42"] {
+  fill: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Widget border colors — keep accent hues but tweak alpha for visibility */
+body[data-theme="light"] .SafeVision-character rect[stroke*="rgba(0, 212, 255"],
+body[data-theme="light"] .SafeVision-character rect[stroke*="rgba(0,212,255"] {
+  stroke: rgba(8, 145, 178, 0.55) !important;
+}
+body[data-theme="light"] .SafeVision-character rect[stroke*="rgba(16, 185, 129"],
+body[data-theme="light"] .SafeVision-character rect[stroke*="rgba(16,185,129"] {
+  stroke: rgba(5, 150, 105, 0.55) !important;
+}
+body[data-theme="light"] .SafeVision-character rect[stroke*="rgba(239, 68, 68"],
+body[data-theme="light"] .SafeVision-character rect[stroke*="rgba(239,68,68"] {
+  stroke: rgba(220, 38, 38, 0.55) !important;
+}
+
+/* Text inside widgets — convert white to slate so it's readable on white card bg */
+body[data-theme="light"] .SafeVision-character text[fill="#fff"],
+body[data-theme="light"] .SafeVision-character text[fill="#ffffff"] {
+  fill: #0f172a !important;
+}
+
+/* Accent label colors — darken slightly for white background contrast */
+body[data-theme="light"] .SafeVision-character text[fill="#00d4ff"] {
+  fill: #0891b2 !important;
+}
+body[data-theme="light"] .SafeVision-character text[fill="#10b981"] {
+  fill: #059669 !important;
+}
+body[data-theme="light"] .SafeVision-character text[fill="#ef4444"] {
+  fill: #dc2626 !important;
+}
+
+/* Graph lines + accent paths */
+body[data-theme="light"] .SafeVision-character path[stroke="#00d4ff"] {
+  stroke: #0891b2 !important;
+}
+body[data-theme="light"] .SafeVision-character circle[fill="#00d4ff"] {
+  fill: #0891b2 !important;
+}
+body[data-theme="light"] .SafeVision-character circle[fill="#fff"],
+body[data-theme="light"] .SafeVision-character circle[fill="#ffffff"] {
+  fill: #0f172a !important;
+}
+body[data-theme="light"] .SafeVision-character circle[fill="#10b981"] {
+  fill: #059669 !important;
+}
+body[data-theme="light"] .SafeVision-character circle[fill="#ef4444"] {
+  fill: #dc2626 !important;
+}
+
+/* Title overlay text on top of the SVG (stays correct color in both themes) */
+body[data-theme="light"] .auth-character-section .character-title,
+body[data-theme="light"] .auth-character-section .character-subtitle {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .auth-character-section .character-title {
+  color: #0891b2 !important;
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  filter: none !important;
+}
+body[data-theme="light"] .auth-character-section .character-subtitle {
+  color: #475569 !important;
+  filter: none !important;
+}
+body[data-theme="light"] .auth-title,
+body[data-theme="light"] .auth-form h1,
+body[data-theme="light"] .auth-form h2,
+body[data-theme="light"] .auth-form h3 {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .auth-subtitle,
+body[data-theme="light"] .form-group label {
+  color: #475569 !important;
+}
+body[data-theme="light"] .form-group input,
+body[data-theme="light"] .form-group select,
+body[data-theme="light"] .form-group textarea {
+  background: #f8fafc !important;
+  border: 1px solid rgba(15, 23, 42, 0.15) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .form-group input::placeholder {
+  color: #94a3b8 !important;
+}
+body[data-theme="light"] .form-group input:focus,
+body[data-theme="light"] .form-group select:focus,
+body[data-theme="light"] .form-group textarea:focus {
+  background: #ffffff !important;
+  border-color: #0891b2 !important;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.15) !important;
+}
+body[data-theme="light"] .form-group .input-icon,
+body[data-theme="light"] .form-group .password-toggle-icon {
+  color: #64748b !important;
+}
+body[data-theme="light"] .character-title,
+body[data-theme="light"] .character-subtitle {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .character-subtitle {
+  color: #475569 !important;
+}
+body[data-theme="light"] .auth-badge {
+  background: rgba(8, 145, 178, 0.10) !important;
+  border: 1px solid rgba(8, 145, 178, 0.30) !important;
+  color: #0891b2 !important;
+}
+body[data-theme="light"] .toggle-link,
+body[data-theme="light"] .forgot-password,
+body[data-theme="light"] .auth-toggle a {
+  color: #0891b2 !important;
+}
+/* Character SVG colors in light theme — make sure shapes have contrast */
+body[data-theme="light"] .auth-character-section svg path[fill="#fff"],
+body[data-theme="light"] .auth-character-section svg path[fill="#ffffff"] {
+  fill: #0f172a !important;
+}
+body[data-theme="light"] .auth-character-section svg circle[fill="#fff"],
+body[data-theme="light"] .auth-character-section svg circle[fill="#ffffff"] {
+  fill: #0f172a !important;
+}
+
+/* Persistent modal close button — FIXED to viewport so nothing can clip
+   or hide it (was getting clipped by .auth-container's overflow:hidden). */
+.auth-modal-close {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  width: 48px !important;
+  height: 48px !important;
+  border: 3px solid #ffffff !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.25rem !important;
+  z-index: 999999 !important;
+  box-shadow: 0 10px 28px rgba(239, 68, 68, 0.65), 0 0 0 5px rgba(15, 23, 42, 0.5) !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none !important;
+}
+.auth-modal-close:hover {
+  background: #dc2626;
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.6);
+}
+.auth-modal-close:active {
+  transform: scale(0.95);
+}
+.auth-modal-close i {
+  font-size: 1.1rem;
+  line-height: 1;
+  pointer-events: none;
+}
+@media (max-width: 768px) {
+  .auth-modal-close {
+    top: 10px;
+    right: 10px;
+    width: 38px;
+    height: 38px;
+    font-size: 1rem;
+  }
+  /* Hide the inner duplicate close button on mobile to avoid duplicates */
+  .modal-close-button {
+    display: none !important;
+  }
+}
+
 /* Modal Close Button */
 .modal-close-button {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: rgba(239, 68, 68, 0.1);
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.20);
   color: #ef4444;
   border-radius: 50%;
   cursor: pointer;
@@ -846,13 +1155,14 @@ html {
   justify-content: center;
   font-size: 1.2rem;
   transition: all 0.3s ease;
-  z-index: 10;
+  z-index: 1000;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.30);
 }
 
 .modal-close-button:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.35);
   transform: scale(1.1) rotate(90deg);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
 }
 
 .modal-close-button:active {
@@ -861,11 +1171,15 @@ html {
 
 @media (max-width: 768px) {
   .modal-close-button {
-    top: 0.5rem;
-    right: 0.5rem;
-    width: 32px;
-    height: 32px;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
     font-size: 1rem;
+    background: #ef4444;
+    color: #ffffff;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.5);
   }
 }
 

@@ -887,32 +887,27 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
     setLoading(true);
     try {
       const data = await apiService.verifyLoginOtp(pendingOtpData.user_id, emailOtpCode);
-      if (data.requires_password_change) {
-        // Admin must change password on first login
-        setPendingPasswordChangeToken(data.access_token);
-        setPendingPasswordChangeRole(data.role || pendingOtpData.role);
-        setRequiresPasswordChange(true);
-        setRequiresEmailOtp(false);
-        setOtpCountdown(0);
-        // Clear OTP persistence
-        sessionStorage.removeItem('pending_otp_data');
-        sessionStorage.removeItem('otp_expiry_time');
-        notif.warning('Password Change Required', 'You must change your password before continuing.');
-      } else if (data.access_token) {
-        // Login complete
+      // Note: If `data.requires_password_change` is true the backend returns the access_token
+      // and the dashboard surfaces a non-blocking change-password modal that supports "Remind Me Later".
+      if (data.access_token) {
+        // Login complete (works for both first-login & subsequent logins)
         const result = await completeOtpLogin(data.access_token, data.refresh_token);
         if (result.success) {
           setRequiresEmailOtp(false);
           setPendingOtpData(null);
           setEmailOtpCode('');
           setOtpCountdown(0);
-          // Clear OTP persistence
           sessionStorage.removeItem('pending_otp_data');
           sessionStorage.removeItem('otp_expiry_time');
-          notif.success('Login Successful', `Welcome back, ${pendingOtpData.username || 'Admin'}!`);
-          // FIXED: Respect the redirect state
-          const fromPath = location.state?.from 
-            ? `${location.state.from.pathname}${location.state.from.search}${location.state.from.hash}` 
+          // Surface a hint when this is a first login that still has the change-required flag,
+          // so the dashboard popup is expected by the user.
+          if (data.requires_password_change) {
+            notif.warning('Password Change Recommended', 'For security, please change your temporary password from the Profile menu.');
+          } else {
+            notif.success('Login Successful', `Welcome back, ${pendingOtpData.username || 'Admin'}!`);
+          }
+          const fromPath = location.state?.from
+            ? `${location.state.from.pathname}${location.state.from.search}${location.state.from.hash}`
             : '/dashboard';
           navigate(fromPath, { replace: true });
           if (isModal) closeModal();
@@ -1064,6 +1059,8 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
         <div className="auth-floating-orb orb-3"></div>
       </div>
 
+      {/* (close button moved out — see Modal/Page render below) */}
+
       {/* Two Column Layout */}
       <div className="auth-layout">
         {/* Left Side - Character */}
@@ -1075,7 +1072,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
         <div className="auth-form-section">
           <div className="auth-header">
             {isModal && (
-              <button 
+              <button
                 type="button"
                 className="modal-close-button"
                 onClick={closeModal}
@@ -1615,12 +1612,22 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
               if (animationStage === "entered") closeModal();
             }}
           >
+            {/* Persistent close button — sibling of .modal-content,
+                anchored to viewport via position:fixed so nothing can clip it. */}
+            <button
+              type="button"
+              className="auth-modal-close"
+              onClick={(e) => { e.stopPropagation(); closeModal(); }}
+              aria-label="Close"
+            >
+              <i className="fas fa-times"></i>
+            </button>
             <div
               className={`modal-content ${animationStage}`}
               onClick={(e) => e.stopPropagation()}
               style={{ position: 'relative' }}
             >
-          
+
               {Content}
             </div>
           </div>
@@ -1637,11 +1644,24 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
   // Render as page
   return (
     <div className="login-page">
+      {/* Persistent close button — always shown so users can return home
+          even when login is rendered on the standalone /login page route. */}
+      <button
+        type="button"
+        className="auth-modal-close"
+        onClick={() => {
+          if (typeof closeModal === 'function') closeModal();
+          else if (typeof window !== 'undefined') window.location.href = '/';
+        }}
+        aria-label="Close"
+      >
+        <i className="fas fa-times"></i>
+      </button>
       {Content}
       <ToastContainer />
       {/* Global NotificationContainer is mounted at app root */}
-      <ForgotPasswordModal 
-        show={showForgotPassword} 
+      <ForgotPasswordModal
+        show={showForgotPassword}
         onHide={() => setShowForgotPassword(false)}
       />
     </div>

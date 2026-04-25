@@ -975,8 +975,14 @@
     text-align: center;
   }
 
+  /* Contact cards: 2-per-row on mobile (was 1) */
   .contacts-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+  .services-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
   }
 
   .stats-grid {
@@ -996,7 +1002,7 @@
   .contact-header {
     flex-direction: column;
     text-align: center;
-    gap: 1rem;
+    gap: 0.6rem;
   }
 
   .contact-actions {
@@ -1004,8 +1010,14 @@
     justify-content: center;
   }
 
+  /* Stay 2-per-row at 480px */
+  .contacts-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
   .services-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
   }
 
   .emergency-alert-modal {

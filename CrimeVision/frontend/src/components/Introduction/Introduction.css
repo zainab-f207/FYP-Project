@@ -77,10 +77,23 @@
   }
 }
 
-/* Section Header */
+/* Section Header — title centered (user requested) */
 .section-header {
-  text-align: center;
+  text-align: center !important;
   margin-bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.introduction-section .section-title {
+  text-align: center !important;
+  margin-left: auto;
+  margin-right: auto;
+}
+.introduction-section .section-subtitle {
+  text-align: center !important;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .section-badge {
@@ -127,13 +140,19 @@
   color: var(--text-muted);
 }
 
-/* What is SafeVision Section */
+/* What is SafeVision Section — visual on LEFT, content on RIGHT (mirrors hero) */
 .what-is-safevision {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.2fr;
   gap: 80px;
   align-items: center;
   margin-bottom: 120px;
+}
+.what-is-safevision .intro-visual {
+  order: 1;
+}
+.what-is-safevision .intro-content {
+  order: 2;
 }
 
 .intro-content {
@@ -605,51 +624,233 @@
   }
 }
 
+/* On mobile, force all opacity-zero animated elements to be visible immediately
+   so users don't see blank space when the IntersectionObserver hasn't fired yet */
+@media (max-width: 1024px) {
+  .intro-content,
+  .intro-visual,
+  .stat-card,
+  .video-container {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 @media (max-width: 768px) {
   .introduction-section {
-    padding: 80px 0;
+    padding: 56px 0;
   }
-  
+  .intro-container {
+    padding: 0 1rem;
+  }
+  .section-header {
+    margin-bottom: 36px;
+  }
   .section-title {
-    font-size: 2.5rem;
+    font-size: clamp(1.5rem, 5.5vw, 2.2rem) !important;
+    line-height: 1.2 !important;
+    margin-bottom: 0.8rem;
   }
-  
+  .section-subtitle {
+    font-size: 0.95rem !important;
+    line-height: 1.5;
+  }
+  .section-badge {
+    padding: 0.45rem 1rem;
+    font-size: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  /* Side-by-side on tablet/mobile too — visual on left, content on right */
+  .what-is-safevision {
+    grid-template-columns: minmax(180px, 0.85fr) 1.2fr !important;
+    gap: 16px !important;
+    margin-bottom: 40px !important;
+    align-items: center !important;
+  }
+  .what-is-safevision .intro-visual {
+    height: 280px !important;
+    order: 1 !important;
+  }
+  .what-is-safevision .intro-content {
+    order: 2 !important;
+  }
+  .what-is-safevision .data-flow-animation {
+    width: 220px !important;
+    height: 220px !important;
+  }
+  .what-is-safevision .data-node {
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 1.05rem !important;
+  }
+  .what-is-safevision .node-center {
+    width: 70px !important;
+    height: 70px !important;
+    font-size: 1.4rem !important;
+  }
   .intro-heading {
-    font-size: 2rem;
+    font-size: clamp(1.3rem, 5vw, 1.8rem) !important;
+    line-height: 1.25 !important;
+    margin-bottom: 0.8rem;
   }
-  
+  .intro-description {
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+    margin-bottom: 1.5rem !important;
+  }
   .infographics-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    margin-bottom: 1.5rem !important;
   }
-  
+  .infographic-item {
+    padding: 1rem !important;
+    border-radius: 14px !important;
+  }
+  .infographic-icon {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 1.05rem !important;
+    border-radius: 12px !important;
+    margin-bottom: 0.6rem !important;
+  }
+  .infographic-content h4 {
+    font-size: 0.95rem !important;
+    margin-bottom: 0.3rem !important;
+  }
+  .infographic-content p {
+    font-size: 0.78rem !important;
+    line-height: 1.4 !important;
+  }
+  .intro-visual {
+    height: 280px !important;
+  }
+  .data-flow-animation {
+    width: 240px;
+    height: 240px;
+  }
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
   }
-  
+  .stat-card {
+    padding: 1.4rem 1rem !important;
+    border-radius: 16px !important;
+  }
+  .key-statistics {
+    margin-bottom: 56px !important;
+  }
   .video-placeholder {
-    height: 300px;
+    height: 240px;
   }
-  
   .play-button {
-    width: 80px;
-    height: 80px;
+    width: 70px;
+    height: 70px;
   }
-  
   .play-button i {
-    font-size: 2rem;
+    font-size: 1.6rem;
   }
 }
 
 @media (max-width: 480px) {
+  .introduction-section {
+    padding: 44px 0;
+  }
+  .intro-container {
+    padding: 0 14px;
+  }
+  .section-header {
+    margin-bottom: 28px;
+  }
   .section-title {
-    font-size: 2rem;
+    font-size: clamp(1.25rem, 6vw, 1.6rem) !important;
   }
-  
+  .section-subtitle {
+    font-size: 0.88rem !important;
+  }
+  /* Even at 480px, keep side-by-side with smaller visual */
+  .what-is-safevision {
+    grid-template-columns: minmax(160px, 0.9fr) 1fr !important;
+    gap: 12px !important;
+    margin-bottom: 28px !important;
+  }
+  .what-is-safevision .intro-visual {
+    height: 220px !important;
+  }
+  .what-is-safevision .data-flow-animation {
+    width: 180px !important;
+    height: 180px !important;
+  }
+  .what-is-safevision .data-node {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 0.9rem !important;
+  }
+  .what-is-safevision .node-center {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 1.1rem !important;
+  }
   .intro-heading {
-    font-size: 1.8rem;
+    font-size: clamp(1.15rem, 5.5vw, 1.5rem) !important;
   }
-  
+  .intro-description {
+    font-size: 0.9rem !important;
+  }
+  .infographic-icon {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 0.9rem !important;
+  }
+  .infographic-content h4 {
+    font-size: 0.85rem !important;
+  }
+  .infographic-content p {
+    font-size: 0.72rem !important;
+  }
+  .stat-icon {
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 1.2rem !important;
+    border-radius: 14px !important;
+    margin-bottom: 0.8rem !important;
+  }
   .stat-number {
-    font-size: 2.5rem;
+    font-size: 1.7rem !important;
+  }
+  .stat-label {
+    font-size: 0.7rem !important;
+    letter-spacing: 0.5px;
+  }
+  .stat-card {
+    padding: 1.1rem 0.6rem !important;
+    border-radius: 14px !important;
+  }
+  .intro-visual {
+    height: 220px !important;
+  }
+  .data-flow-animation {
+    width: 200px;
+    height: 200px;
+  }
+  .data-node {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 1rem !important;
+  }
+  .node-center {
+    width: 70px !important;
+    height: 70px !important;
+    font-size: 1.4rem !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .section-title {
+    font-size: clamp(1.1rem, 6.5vw, 1.4rem) !important;
+  }
+  .infographics-grid,
+  .stats-grid {
+    gap: 8px !important;
   }
 }

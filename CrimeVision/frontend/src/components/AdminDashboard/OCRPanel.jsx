@@ -3,8 +3,11 @@ import styles from './OCRPanel.module.css';
 import { apiService } from '../../services/apiService_updated';
 import { useAuth } from '../../contexts/AuthContext_updated';
 
-// OCR backend URL - uses main backend (same origin, port 8000)
-const OCR_API_URL = 'http://localhost:8000';
+// OCR backend URL — reads from env so production hits the deployed backend.
+const OCR_API_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:8000';
 
 const normalizeToISODate = (raw) => {
   const s = String(raw || '').trim();

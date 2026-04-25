@@ -15,14 +15,24 @@ body,
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: var(--text-dark, #343a40);
-  background-color: var(--light-bg, #f8f9fa);
+  /* Default to dark; the toggle in the header sets data-theme="light" on body
+     to switch to light theme. We do NOT honor prefers-color-scheme so devices
+     set to system "light" don't override our default. */
+  color-scheme: dark;
+  color: #e2e8f0;
+  background-color: #0a0f1c;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Light theme overrides (activated by [data-theme="light"] on body) */
+body[data-theme="light"] {
+  color-scheme: light;
+  background-color: #f8fafc;
+  color: #0f172a;
 }
 
 a {
@@ -41,8 +51,15 @@ body {
   min-width: 320px;
   min-height: 100vh;
   height: 100%;
-  background: var(--bg-primary, #0f172a);
+  background: #0a0f1c;
+  color: #e2e8f0;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body[data-theme="light"] {
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 h1 {
@@ -73,17 +90,5 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: var(--text-dark, #343a40);
-    background-color: var(--light-bg, #f8f9fa);
-  }
-
-  a:hover {
-    color: var(--secondary, #00a6a6);
-  }
-
-  button {
-    background-color: var(--primary, #1a3a5f);
-  }
-}
+/* Force dark theme — ignore OS prefers-color-scheme so the website
+   doesn't go white on devices set to "light" mode. */

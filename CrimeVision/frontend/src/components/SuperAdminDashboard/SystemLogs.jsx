@@ -16,7 +16,11 @@ const SystemLogs = () => {
 
   useEffect(() => {
     const tok = localStorage.getItem('SafeVision_token') || sessionStorage.getItem('SafeVision_token');
-    const base = window._apiBase || (window.location.hostname === 'localhost' ? 'http://localhost:8000' : '');
+    const base =
+      window._apiBase ||
+      import.meta.env.VITE_API_URL ||
+      import.meta.env.VITE_API_BASE_URL ||
+      'http://localhost:8000';
     fetch(`${base}/admin/notifications`, { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {

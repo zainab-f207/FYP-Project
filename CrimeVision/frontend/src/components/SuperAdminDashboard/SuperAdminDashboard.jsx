@@ -14,6 +14,9 @@ import PendingApprovalsPanel from '../AdminDashboard/PendingApprovalsPanel';
 import PPCManagement from './PPCManagement';
 import SuperAdminPredictionPanel from './SuperAdminPredictionPanel';
 import CrimeHeatmapPanel from '../AdminDashboard/CrimeHeatmapPanel';
+import AdminPasswordChangeReminder, { isPwChangeSnoozed } from '../Modals/AdminPasswordChangeReminder';
+import SafeVisionLogo from '../common/SafeVisionLogo';
+import AdminProfileSettings from '../Modals/AdminProfileSettings';
 import styles from './SuperAdminDashboard.module.css';
 import { 
   CrownIcon, 
@@ -41,7 +44,16 @@ const SuperAdminDashboard = () => {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [pwReminderOpen, setPwReminderOpen] = useState(false);
   const { user, logout, token } = useAuth();
+
+  // Surface first-login password reminder once per session for SuperAdmin
+  useEffect(() => {
+    if (user?.password_must_change && !isPwChangeSnoozed()) {
+      setPwReminderOpen(true);
+    }
+  }, [user?.password_must_change]);
 
   // Fetch real data from API
   useEffect(() => {
@@ -250,45 +262,75 @@ const SuperAdminDashboard = () => {
   };
 
   return (
-    <div className={styles.appContainer}>
-      {/* Floating Action Button for Mobile */}
-      <button 
+    <div className={styles.appContainer} data-sv-panel="superadmin">
+      {/* Mobile sidebar overlay */}
+      {mobileSidebarOpen && (
+        <div data-sv-overlay onClick={toggleMobileSidebar}></div>
+      )}
+
+      {/* Mobile/tablet hamburger trigger (shown by theme CSS ≤992px) */}
+      <button
         className={styles.floatingActionBtn}
         onClick={toggleMobileSidebar}
+        data-sv-mobile-toggle
+        aria-label="Open sidebar"
       >
-        <i className="fas fa-cogs"></i>
+        <i className={`fas fa-${mobileSidebarOpen ? 'times' : 'bars'}`}></i>
       </button>
 
       {/* Sidebar */}
-      <div className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''} ${mobileSidebarOpen ? styles.sidebarMobileOpen : ''}`} aria-label="SuperAdmin Sidebar">
-        <div className={styles.sidebarHeader}>
+      <div
+        className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''} ${mobileSidebarOpen ? styles.sidebarMobileOpen : ''}`}
+        aria-label="SuperAdmin Sidebar"
+        data-sv-sidebar
+        data-sv-mobile-open={mobileSidebarOpen ? 'true' : 'false'}
+      >
+        <div className={styles.sidebarHeader} data-sv-sidebar-header>
           <div className={styles.logo}>
-            <CrownIcon size={28} className={styles.logoIcon} />
+            <SafeVisionLogo size={36} />
           </div>
-          <h3>SuperAdmin</h3>
-          <div className={styles.adminBadge}>
+          <h3 data-sv-sidebar-title>SuperAdmin</h3>
+          <div className={styles.adminBadge} data-sv-admin-badge>
             <span>SUPER</span>
             <div className={styles.badgeGlow}></div>
           </div>
+          {/* Close (×) — only visible on tablets/phones via theme CSS */}
+          <button
+            type="button"
+            data-sv-sidebar-close
+            aria-label="Close sidebar"
+            onClick={toggleMobileSidebar}
+          >
+            <i className="fas fa-times"></i>
+          </button>
         </div>
 
-        <div className={styles.userProfileSidebar}>
+        <div
+          className={styles.userProfileSidebar}
+          data-sv-sidebar-profile
+          role="button"
+          tabIndex={0}
+          onClick={() => setProfileOpen(true)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setProfileOpen(true); }}
+          title="Open profile settings"
+          style={{ cursor: 'pointer' }}
+        >
           <div className={styles.avatarContainer}>
-            <img 
-              src={getProfileImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Super Admin')}&background=8B4513&color=fff&bold=true`}
-              alt="Super Admin" 
+            <img
+              src={getProfileImageUrl(user?.profile_picture) || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || user?.username || 'Super Admin')}&background=8B4513&color=fff&bold=true`}
+              alt="Super Admin"
               className={styles.avatar}
             />
             <div className={styles.statusIndicator}></div>
           </div>
-          <div className={styles.userInfoSidebar}>
-            <h4>{user?.name || 'Super Admin'}</h4>
+          <div className={styles.userInfoSidebar} data-sv-sidebar-userinfo>
+            <h4>{user?.name || user?.username || 'Super Admin'}</h4>
             <p>System Administrator</p>
           </div>
         </div>
 
-        <nav className={styles.sidebarNav}>
-          <ul className={styles.sidebarMenu}>
+        <nav className={styles.sidebarNav} data-sv-sidebar-nav>
+          <ul className={styles.sidebarMenu} data-sv-sidebar-menu>
             <li className={styles.animateIn} style={{ transitionDelay: '0ms' }}>
               <a 
                 href="#dashboard"
@@ -445,9 +487,12 @@ const SuperAdminDashboard = () => {
       </div>
       
       {/* Main Content */}
-      <div className={`${styles.mainContent} ${sidebarCollapsed ? styles.mainContentExpanded : ''}`}>
+      <div
+        className={`${styles.mainContent} ${sidebarCollapsed ? styles.mainContentExpanded : ''}`}
+        data-sv-main
+      >
         {/* Top Navigation Bar */}
-        <header className={styles.topNavbar}>
+        <header className={styles.topNavbar} data-sv-navbar>
           <div className={styles.navLeft}>
             <div className={styles.breadcrumb}>
               <span className={styles.breadcrumbItem}>SuperAdmin</span>
@@ -482,15 +527,29 @@ const SuperAdminDashboard = () => {
               <button className={styles.quickActionBtn} title="Help">
                 <i className="fas fa-question-circle"></i>
               </button>
+              <button
+                className={styles.quickActionBtn}
+                title="Profile Settings"
+                onClick={() => setProfileOpen(true)}
+              >
+                <i className="fas fa-user-cog"></i>
+              </button>
             </div>
           </div>
         </header>
         
         {/* Dynamic Content Area */}
-        <main className={styles.contentArea}>
+        <main className={styles.contentArea} data-sv-content>
           {renderActiveSection()}
         </main>
       </div>
+
+      <AdminProfileSettings open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <AdminPasswordChangeReminder
+        open={pwReminderOpen}
+        onClose={() => setPwReminderOpen(false)}
+        onChanged={() => setPwReminderOpen(false)}
+      />
     </div>
   );
 };

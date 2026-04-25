@@ -861,23 +861,27 @@
   font-size: 1.1rem;
 }
 
-/* Floating Action Button */
+/* Floating Action Button — repurposed as top-left mobile sidebar trigger ≤992px */
 .floatingActionBtn {
   display: none;
   position: fixed;
-  bottom: 30px;
-  right: 30px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: var(--primary-gradient);
+  top: 14px;
+  left: 14px;
+  bottom: auto;
+  right: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1a3a5f, #0f1f3a);
   color: white;
-  border: none;
-  box-shadow: var(--shadow-glow);
-  z-index: 1100;
-  font-size: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 212, 255, 0.12);
+  z-index: 1300;
+  font-size: 1.05rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .floatingActionBtn:hover {
@@ -917,6 +921,30 @@
     display: none;
   }
 
+  /* When the mobile sidebar is open, restore ALL inner labels to their full size */
+  .sidebarMobileOpen .sidebarHeader h3,
+  .sidebarMobileOpen .userInfoSidebar,
+  .sidebarMobileOpen .sidebarMenu span,
+  .sidebarMobileOpen .newBadge,
+  .sidebarMobileOpen .adminBadge span {
+    opacity: 1 !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: revert !important;
+  }
+  .sidebarMobileOpen {
+    width: 280px !important;
+  }
+  .sidebarMobileOpen .sidebarHeader,
+  .sidebarMobileOpen .userProfileSidebar {
+    padding: 22px 18px !important;
+    justify-content: flex-start !important;
+  }
+  .sidebarMobileOpen .avatarContainer {
+    margin-right: 14px !important;
+  }
+
   .sidebarHeader {
     padding: 25px 15px;
     justify-content: center;
@@ -950,13 +978,24 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 992px) {
   .floatingActionBtn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex !important;
   }
 
+  .sidebar {
+    width: 0;
+    transform: translateX(-100%);
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    z-index: 1250;
+  }
+}
+
+@media (max-width: 768px) {
   .sidebar {
     width: 0;
     transform: translateX(-100%);
@@ -1043,10 +1082,10 @@
   }
 
   .floatingActionBtn {
-    width: 50px;
-    height: 50px;
-    bottom: 20px;
-    right: 20px;
+    width: 42px;
+    height: 42px;
+    top: 12px;
+    left: 12px;
   }
 }
 

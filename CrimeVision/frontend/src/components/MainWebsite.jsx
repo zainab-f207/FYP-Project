@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext_updated';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
-import Sidebar from './Sidebar';
 import Introduction from './Introduction';
 import Features from './Features';
 // import CrimeMapInterface from './CrimeMapInterface';
@@ -11,7 +10,6 @@ import Footer from './Footer';
 import LoginModal from './Modals/LoginModal_updated';
 import ForgotPasswordModal from './Modals/ForgotPasswordModal';
 import ReportModal from './Modals/ReportModal';
-import DarkModeToggle from './DarkModeToggle';
 import BackToTop from './BackToTop';
 import { TokenValidator } from '../contexts/TokenValidator';
 
@@ -152,7 +150,6 @@ const MainWebsite = () => {
     <div className="MainWebsite">
       <TokenValidator />
       <Header
-        toggleSidebar={toggleSidebar}
         showLoginModal={showLoginModal}
         showReportModal={showReportModal}
         onAreaSelect={setSelectedArea}
@@ -160,18 +157,7 @@ const MainWebsite = () => {
         isAuthenticated={isAuthenticated}
         onLogout={logout}
       />
-      
-      <Sidebar
-        isOpen={sidebarOpen}
-        closeSidebar={closeSidebar}
-        showLoginModal={showLoginModal}
-        showReportModal={showReportModal}
-        onAreaSelect={setSelectedArea}
-        onCrimeSelect={setSelectedCrimeType}
-        isAuthenticated={isAuthenticated}
-      />
-      
-      
+
       <Introduction />
       <Features />
       {/* <CrimeMapInterface /> */}
@@ -192,11 +178,6 @@ const MainWebsite = () => {
       <ReportModal
         isOpen={reportModalOpen}
         closeModal={closeReportModal}
-      />
-
-      <DarkModeToggle
-        darkMode={darkMode}
-        toggleDarkMode={toggleDarkMode}
       />
 
       <BackToTop />

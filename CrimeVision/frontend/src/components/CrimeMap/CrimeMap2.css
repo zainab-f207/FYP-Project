@@ -247,7 +247,7 @@
 /* Responsive design */
 @media (max-width: 768px) {
   .map-wrapper {
-    height: 300px;
+    height: 480px !important;
   }
 
   .prediction-popup,
@@ -267,13 +267,47 @@
     font-size: 12px;
   }
 
+  /* Controls panel: scroll vertically, narrower so it doesn't dominate the map */
   .map-controls {
-    max-width: 250px;
+    max-width: calc(100vw - 24px) !important;
+    width: 220px !important;
+    top: 8px !important;
+    left: 8px !important;
+    padding: 10px !important;
+    max-height: calc(100% - 16px);
+    overflow-y: auto;
+    font-size: 12px;
+  }
+  .map-controls .control-group {
+    margin-bottom: 10px;
+  }
+  .map-controls label {
+    font-size: 12px !important;
+  }
+  .map-controls select,
+  .limit-selector,
+  .crime-type-selector {
+    font-size: 12px !important;
+    padding: 6px !important;
   }
 
   .map-style-selector {
     top: 5px;
     right: 5px;
     padding: 6px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-wrapper {
+    height: 420px !important;
+  }
+  .map-controls {
+    width: 180px !important;
+    padding: 8px !important;
+    font-size: 11px;
+  }
+  .map-controls label {
+    font-size: 11px !important;
   }
 }

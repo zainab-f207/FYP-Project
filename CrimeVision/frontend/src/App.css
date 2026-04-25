@@ -128,29 +128,20 @@
 }
 
 body {
-  background: var(--light-bg);
-  color: var(--text-dark);
+  background: #0a0f1c;
+  color: #e2e8f0;
   overflow-x: hidden;
   transition: var(--transition);
   position: relative;
 }
 
-/* Light theme background texture */
-body:not(.dark-mode)::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: 
-      radial-gradient(circle at 15% 50%, rgba(200, 200, 200, 0.03) 0%, transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(200, 200, 200, 0.03) 0%, transparent 25%),
-      radial-gradient(circle at 50% 80%, rgba(200, 200, 200, 0.03) 0%, transparent 25%);
-  background-size: 50% 50%, 50% 50%, 50% 50%;
-  background-position: 0 0, 100% 0, 50% 100%;
-  pointer-events: none;
-  z-index: -1;
+/* Force dark surface tokens (overrides earlier light defaults) */
+:root {
+  --light-bg: #0a0f1c;
+  --light-card: #1e293b;
+  --text-dark: #e2e8f0;
+  --text-light: #cbd5e1;
+  --text-white: #f1f5f9;
 }
 
 body.dark-mode {

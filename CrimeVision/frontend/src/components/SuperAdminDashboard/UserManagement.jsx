@@ -61,9 +61,18 @@ const UserManagement = ({ token }) => {
 
   const fetchUsers = useCallback(
     async (params) => {
-      const response = await apiService.getUsers(token, params);
+      // Always restrict to non-admin users — Admins/SuperAdmins live in Admin Management
+      const safeParams = { ...params };
+      if (!safeParams.role || safeParams.role === 'admin' || safeParams.role === 'superadmin' || safeParams.role === 'super_admin') {
+        safeParams.role = 'user';
+      }
+      const response = await apiService.getUsers(token, safeParams);
+      // Defense in depth: filter client-side too in case backend ignores role param
+      const filtered = (response.users || []).filter(
+        (u) => u && u.role !== 'admin' && u.role !== 'superadmin' && u.role !== 'super_admin'
+      );
       return {
-        data: response.users,
+        data: filtered,
         total: response.total,
         limit: response.limit,
         offset: response.offset,
@@ -86,6 +95,7 @@ const UserManagement = ({ token }) => {
     initialFilters: {
       limit: 10,
       offset: 0,
+      role: 'user',
     },
     enabled: !!token,
   });
@@ -305,15 +315,18 @@ const UserManagement = ({ token }) => {
           <Form.Item name="role" style={{ marginBottom: 0 }}>
             <Select
               allowClear
-              placeholder="Filter by role"
+              placeholder="Filter status"
               style={{ width: 160 }}
               classNames={{ popup: { root: 'dark-select-dropdown' } }}
             >
-              {USER_ROLES.map((role) => (
-                <Select.Option key={role.value} value={role.value}>
-                  {role.label}
-                </Select.Option>
-              ))}
+              {/* Hide Admin / Super Admin filter options — they belong to Admin Management */}
+              {USER_ROLES
+                .filter((role) => role.value !== 'admin' && role.value !== 'super_admin' && role.value !== 'superadmin')
+                .map((role) => (
+                  <Select.Option key={role.value} value={role.value}>
+                    {role.label}
+                  </Select.Option>
+                ))}
             </Select>
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
@@ -454,7 +467,7 @@ const UserManagement = ({ token }) => {
         open={editModal.visible}
         onCancel={() => setEditModal({ visible: false, user: null })}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           content: { background: 'rgba(13,20,30,0.98)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 },
           header: { background: 'transparent', borderBottom: '1px solid rgba(255,255,255,0.08)' },
@@ -559,7 +572,7 @@ const UserManagement = ({ token }) => {
         open={permissionsModal.visible}
         onCancel={() => setPermissionsModal({ visible: false, user: null })}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           content: { background: 'rgba(13,20,30,0.98)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 },
           header: { background: 'transparent', borderBottom: '1px solid rgba(255,255,255,0.08)' },

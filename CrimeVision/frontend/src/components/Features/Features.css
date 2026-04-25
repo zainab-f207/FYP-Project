@@ -419,18 +419,143 @@
 
   .features-title,
   .tech-title {
-    font-size: 2.2rem;
+    font-size: clamp(1.4rem, 5.5vw, 2rem) !important;
+    line-height: 1.2 !important;
+  }
+  .features-subtitle,
+  .tech-subtitle {
+    font-size: 0.92rem !important;
+    line-height: 1.5 !important;
   }
 
-  .features-grid {
-    grid-template-columns: 1fr;
+  /* AI cards: 3 columns on mobile (user wants 3 in one row) */
+  .ai-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
   }
-
-  .tech-grid-display {
-    grid-template-columns: 1fr;
-  }
-
+  /* Other card grids: 2 columns on mobile */
+  .features-grid,
+  .tech-grid-display,
   .tech-features {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Tighter padding on phone-sized cards */
+  .ai-card,
+  .tech-card-item,
+  .feature-card {
+    padding: 1rem !important;
+    border-radius: 14px !important;
+  }
+  .ai-card h4,
+  .tech-card-item h4,
+  .feature-card h3,
+  .feature-title {
+    font-size: 0.92rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 0.4rem !important;
+  }
+  .ai-card p,
+  .tech-card-item p,
+  .feature-card p,
+  .feature-description {
+    font-size: 0.78rem !important;
+    line-height: 1.45 !important;
+  }
+  .ai-icon,
+  .tech-icon-wrapper {
+    font-size: 1.4rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Section paddings on phones */
+  .technology-showcase,
+  .features-section {
+    padding: 56px 1rem !important;
+  }
+  .features-container,
+  .tech-container {
+    padding: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+  .features-grid,
+  .tech-grid-display,
+  .tech-features {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .ai-card,
+  .tech-card-item,
+  .feature-card {
+    padding: 0.75rem !important;
+  }
+  .ai-card h4,
+  .tech-card-item h4,
+  .feature-card h3,
+  .feature-title {
+    font-size: 0.82rem !important;
+  }
+  .ai-card p,
+  .tech-card-item p,
+  .feature-card p,
+  .feature-description {
+    font-size: 0.7rem !important;
+    line-height: 1.4 !important;
+  }
+  .ai-icon,
+  .tech-icon-wrapper {
+    font-size: 1.15rem !important;
+    margin-bottom: 0.4rem !important;
+  }
+  .features-title,
+  .tech-title {
+    font-size: clamp(1.2rem, 6vw, 1.5rem) !important;
+  }
+  .ai-capabilities-title {
+    font-size: 1.1rem !important;
+  }
+  .ai-capabilities-subtitle {
+    font-size: 0.8rem !important;
+  }
+  .technology-showcase,
+  .features-section {
+    padding: 44px 14px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .ai-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 5px !important;
+  }
+  .features-grid,
+  .tech-grid-display,
+  .tech-features {
+    gap: 8px !important;
+  }
+  .ai-card {
+    padding: 0.5rem !important;
+  }
+  .ai-card h4 {
+    font-size: 0.72rem !important;
+    line-height: 1.15 !important;
+  }
+  .ai-card p {
+    font-size: 0.62rem !important;
+    line-height: 1.3 !important;
+  }
+  .ai-icon {
+    font-size: 0.95rem !important;
+  }
+  .tech-card-item,
+  .feature-card {
+    padding: 0.6rem !important;
   }
 }

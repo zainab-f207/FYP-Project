@@ -16,6 +16,7 @@ import AIRouteAnalysis from "./AIRouteAnalysis";
 import CrimeMap from '../CrimeMapInterface/CrimeMapInterface_real_insights';
 import CrimeMapInterface from '../CrimeMapInterface/CrimeMapInterface_real_insights';
 import ProfileModal from './ProfileModal';
+import SafeVisionLogo from '../common/SafeVisionLogo';
 import BrowserNotifications from './BrowserNotifications';
 import SafetyScoreExplainer from './SafetyScoreExplainer';
 import apiService from '../../services/apiService_updated';
@@ -26,9 +27,10 @@ const getProfileImageUrl = (profilePicture) => {
     return profilePicture;
   }
   // Point to backend server where profile photos are served
-  const backendUrl = process.env.NODE_ENV === 'production'
-    ? window.location.origin.replace(':5173', ':8000')
-    : 'http://localhost:8000';
+  const backendUrl =
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    'http://localhost:8000';
   return `${backendUrl}/${profilePicture}`;
 };
 
@@ -972,15 +974,29 @@ useEffect(() => {
   return (
     <div className={styles.appContainer}>
       {/* Mobile Toggle */}
-      <button className={styles.mobileToggle} onClick={toggleMobileSidebar}>
-        <i className="fas fa-bars"></i>
+      <button
+        className={styles.mobileToggle}
+        onClick={toggleMobileSidebar}
+        aria-label="Toggle menu"
+        aria-expanded={mobileSidebarOpen}
+      >
+        <i className={`fas fa-${mobileSidebarOpen ? 'times' : 'bars'}`}></i>
       </button>
+
+      {/* Mobile sidebar overlay */}
+      {mobileSidebarOpen && (
+        <div
+          className="user-dashboard-mobile-overlay"
+          onClick={closeMobileSidebar}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Sidebar */}
       <div className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''} ${mobileSidebarOpen ? styles.sidebarMobileOpen : ''}`}>
         <div className={styles.sidebarHeaderCompact}>
           <div className={styles.logoCompact}>
-            <i className="fas fa-shield-alt"></i>
+            <SafeVisionLogo size={32} />
           </div>
         </div>
 

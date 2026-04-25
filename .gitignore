@@ -17,11 +17,23 @@ __pycache__/
 *.pyc
 
 # ===== Ignore Virtual Environments =====
-CrimeVision/backend/.env
-CrimeVision/backend/app/.env
-CrimeVision/frontend/.env
 CrimeVision/backend/venv/
 CrimeVision/OCRModel/.venv/
+
+# ===== Ignore env files (catch every variant, anywhere) =====
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.development
+**/.env.production
+# But DO track the example templates (committed for teammates)
+!.env.example
+!**/.env.example
 
 
 

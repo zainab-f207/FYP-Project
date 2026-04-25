@@ -1,0 +1,2174 @@
+/* ============================================================
+ * SafeVision — Global Mobile Responsive Layer
+ * ============================================================
+ * Single import that makes the entire application mobile-perfect.
+ * Imported AFTER all other stylesheets in App.jsx so its rules win.
+ *
+ * Strategy:
+ *   - Universal foundation (no class-specific) for overflow, fluid type,
+ *     touch targets, safe-area, image/table containment.
+ *   - Component-targeted overrides for known surfaces: Header, Hero,
+ *     Features, Statistics, Footer, modals, UserDashboard, CrimeMap,
+ *     AdminDashboard, SuperAdminDashboard.
+ *   - Breakpoints: 1280, 1024, 900, 768, 600, 480, 360.
+ *
+ * Goal: works perfectly on all widths down to 320px.
+ * ============================================================ */
+
+/* ========== 1. Universal mobile foundation ========== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  /* Global 80% scaling — user requested entire UI scaled down so mobile fits well */
+  font-size: 80%;
+}
+
+/* Login/Signup modal: scales at 80% like the rest of the site (no zoom override).
+   Constrained to viewport so it never overflows on desktop or mobile. */
+.login-page,
+.modal-overlay {
+  width: 100vw;
+  max-width: 100vw;
+  overflow: auto;
+}
+
+html,
+body,
+#root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  /* Safe-area for iPhone notches and Android cutouts */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+img,
+video,
+canvas,
+svg,
+iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Tables that don't have responsive treatment scroll horizontally */
+table {
+  max-width: 100%;
+}
+
+/* Pre/code blocks scroll instead of breaking layout */
+pre,
+code {
+  max-width: 100%;
+  overflow-x: auto;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Form controls don't trigger zoom on iOS */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Touch target minimum (44x44 per Apple HIG) */
+@media (max-width: 768px) and (pointer: coarse) {
+  button,
+  a.btn,
+  .btn,
+  input[type="button"],
+  input[type="submit"],
+  .nav-link,
+  [role="button"] {
+    min-height: 40px;
+  }
+}
+
+/* ========== 2. Tablet breakpoint (≤1024px) ========== */
+@media (max-width: 1024px) {
+  /* Generic section padding tighter */
+  .section-padding {
+    padding: 60px 4% !important;
+  }
+
+  /* Bootstrap container fluid on tablet */
+  .container,
+  .container-lg,
+  .container-md {
+    max-width: 100% !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* ========== 3. Mobile-portrait breakpoint (≤768px) ========== */
+@media (max-width: 768px) {
+  /* Section sizing */
+  .section-padding {
+    padding: 48px 4% !important;
+  }
+  .section-title {
+    margin-bottom: 36px !important;
+  }
+  .section-title h2 {
+    font-size: clamp(1.4rem, 5vw, 1.9rem) !important;
+    line-height: 1.25 !important;
+  }
+  .section-title p {
+    font-size: 0.95rem !important;
+    padding: 0 8px;
+  }
+
+  /* Generic grid utilities collapse */
+  .row {
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+  }
+  .row > [class*="col-"] {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  /* Generic auto-fit grids gracefully degrade */
+  [class*="grid"] {
+    gap: 12px;
+  }
+}
+
+/* ========== 4. Mobile (≤600px) ========== */
+@media (max-width: 600px) {
+  .section-padding {
+    padding: 40px 16px !important;
+  }
+  .section-title {
+    margin-bottom: 28px !important;
+  }
+  .section-title h2 {
+    font-size: clamp(1.25rem, 5.5vw, 1.7rem) !important;
+  }
+  .section-title p {
+    font-size: 0.9rem !important;
+  }
+}
+
+/* ========== 5. Small mobile (≤480px) ========== */
+@media (max-width: 480px) {
+  .section-padding {
+    padding: 32px 14px !important;
+  }
+  .section-title h2 {
+    font-size: clamp(1.15rem, 6vw, 1.5rem) !important;
+  }
+}
+
+/* ========== 6. Very small mobile (≤360px) ========== */
+@media (max-width: 360px) {
+  .section-padding {
+    padding: 28px 12px !important;
+  }
+}
+
+/* ============================================================
+ * COMPONENT-TARGETED RULES
+ * ============================================================ */
+
+/* ---------- Header / Top Navbar ---------- */
+@media (max-width: 992px) {
+  .header .navbar {
+    padding: 0 16px !important;
+  }
+  /* Mobile menu opens as full-width drawer below header */
+  .header .desktop-nav.open,
+  .header .nav-actions.open {
+    display: flex !important;
+    position: fixed !important;
+    top: 64px !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    background: rgba(13, 20, 30, 0.98) !important;
+    backdrop-filter: blur(14px);
+    padding: 16px !important;
+    gap: 4px !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+  }
+  .header .desktop-nav.open .nav-link,
+  .header .desktop-nav.open .btn-dropdown {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    padding: 12px 14px !important;
+    border-radius: 10px !important;
+  }
+  .header .desktop-nav.open .dropdown-menu {
+    position: static !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    box-shadow: none !important;
+    margin-top: 4px !important;
+    width: 100% !important;
+  }
+  .header .nav-actions.open {
+    top: auto !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .header .nav-actions.open .btn-report,
+  .header .nav-actions.open .btn-login {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 8px 0 !important;
+  }
+  .header .logo {
+    font-size: 1.1rem !important;
+    gap: 8px !important;
+  }
+  .header .logo-icon {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  .header .logo-img {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  .header .logo span {
+    font-size: 1rem !important;
+  }
+}
+
+/* ---------- Hero (landing) — 2-column kept on mobile, visual on right ---------- */
+@media (max-width: 768px) {
+  .hero {
+    padding: 32px 12px !important;
+    min-height: auto !important;
+    text-align: left;
+  }
+  .hero h1,
+  .hero-title {
+    font-size: clamp(1.2rem, 5.5vw, 1.9rem) !important;
+    line-height: 1.15 !important;
+  }
+  .hero .urdu-text,
+  .hero-urdu {
+    font-size: clamp(0.85rem, 3.5vw, 1.1rem) !important;
+  }
+  .hero p,
+  .hero-description {
+    font-size: 0.85rem !important;
+  }
+  .hero-ctas,
+  .hero-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100%;
+  }
+  .hero-ctas .cta-primary,
+  .hero-ctas .cta-secondary,
+  .hero-ctas .btn,
+  .hero-actions .btn {
+    width: 100% !important;
+    max-width: 360px !important;
+    margin: 0 !important;
+    font-size: 0.85rem !important;
+    padding: 8px 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding: 24px 10px !important;
+  }
+  .hero h1,
+  .hero-title {
+    font-size: clamp(1rem, 5.5vw, 1.5rem) !important;
+  }
+  .hero-stats .stat-number {
+    font-size: 1rem !important;
+  }
+  .hero-stats .stat-label {
+    font-size: 0.6rem !important;
+  }
+  .hero-actions .cta-primary,
+  .hero-actions .cta-secondary {
+    font-size: 0.78rem !important;
+    padding: 7px 10px !important;
+  }
+  .hero-actions .cta-primary span,
+  .hero-actions .cta-secondary span {
+    font-size: 0.78rem !important;
+  }
+}
+
+/* ---------- Features / Statistics / Testimonials / Infographics grids ---------- */
+/* User explicitly wants 2-per-row on ALL widths on mobile */
+@media (max-width: 1024px) {
+  .features-grid,
+  .stats-grid,
+  .testimonials-grid,
+  .infographics-grid,
+  .ultra-features-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+    gap: 18px !important;
+  }
+}
+@media (max-width: 768px) {
+  .features-grid,
+  .stats-grid,
+  .testimonials-grid,
+  .infographics-grid,
+  .ultra-features-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+  .feature-card,
+  .stat-card,
+  .testimonial-card,
+  .infographic-item,
+  .ultra-feature-card {
+    padding: 18px !important;
+  }
+}
+/* Stay 2-per-row even at 480px and 360px */
+@media (max-width: 480px) {
+  .features-grid,
+  .stats-grid,
+  .testimonials-grid,
+  .infographics-grid,
+  .ultra-features-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .feature-card,
+  .stat-card,
+  .testimonial-card,
+  .infographic-item,
+  .ultra-feature-card {
+    padding: 14px !important;
+  }
+  .feature-card h3,
+  .stat-card h3,
+  .testimonial-card h3,
+  .infographic-item h4,
+  .infographic-content h4 {
+    font-size: 0.95rem !important;
+    line-height: 1.25 !important;
+  }
+  .stat-icon,
+  .feature-icon,
+  .infographic-icon {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 1.1rem !important;
+    border-radius: 12px !important;
+    margin-bottom: 0.6rem !important;
+  }
+  .stat-number {
+    font-size: 1.6rem !important;
+  }
+  .stat-label,
+  .infographic-content p,
+  .feature-card p {
+    font-size: 0.75rem !important;
+  }
+}
+@media (max-width: 360px) {
+  .features-grid,
+  .stats-grid,
+  .testimonials-grid,
+  .infographics-grid,
+  .ultra-features-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .feature-card,
+  .stat-card,
+  .testimonial-card,
+  .infographic-item,
+  .ultra-feature-card {
+    padding: 12px !important;
+  }
+}
+
+/* Generic dashboard/admin auto-fit grids: also 2-per-row on phones */
+@media (max-width: 480px) {
+  [class*="dashboard-cards"],
+  [class*="dashboardCards"],
+  [class*="card-grid"],
+  [class*="cardGrid"] {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+}
+
+/* ---------- Footer ---------- */
+@media (max-width: 768px) {
+  .footer-grid,
+  .footer-content,
+  .footer-cols,
+  .footer .footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 24px !important;
+  }
+  .footer-bottom,
+  .footer-bottom-content {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 10px !important;
+  }
+}
+@media (max-width: 480px) {
+  .footer-grid,
+  .footer-content,
+  .footer-cols {
+    grid-template-columns: 1fr !important;
+    text-align: center;
+  }
+  .social-icons,
+  .footer-social {
+    justify-content: center !important;
+  }
+}
+
+/* ---------- Modals (LoginModal, ReportModal, ForgotPassword, etc) ---------- */
+@media (max-width: 600px) {
+  .modal-overlay,
+  .modal-backdrop {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+  .modal,
+  .modal-content,
+  .modal-container,
+  .login-modal,
+  .report-modal,
+  .forgot-password-modal,
+  .reset-password-modal,
+  .test-model-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    border-radius: 18px 18px 0 0 !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+  }
+  .modal-body,
+  .modal-content-body {
+    padding: 18px !important;
+  }
+  .modal-header {
+    padding: 16px 18px !important;
+  }
+  .modal-footer {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+    padding: 14px 18px !important;
+  }
+  .modal-footer .btn,
+  .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Forms inside modals */
+  .modal .form-row,
+  .modal .form-group-row {
+    flex-direction: column !important;
+  }
+  .modal .form-control,
+  .modal input,
+  .modal select,
+  .modal textarea {
+    width: 100% !important;
+  }
+
+  /* Bootstrap modal */
+  .modal-dialog {
+    max-width: 100vw !important;
+    margin: 0 !important;
+  }
+  .modal-content {
+    border-radius: 18px 18px 0 0 !important;
+  }
+}
+
+/* ---------- User Dashboard (top-level layout) ---------- */
+@media (max-width: 992px) {
+  /* Sidebar becomes off-canvas drawer */
+  .user-dashboard .sidebar,
+  .user-dashboard .app-container > .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    max-width: 86vw !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1250 !important;
+  }
+  .user-dashboard .sidebar.mobile-open,
+  .user-dashboard .sidebar.open {
+    transform: translateX(0) !important;
+  }
+  .user-dashboard .main-content,
+  .user-dashboard .app-container > .main-content {
+    margin-left: 0 !important;
+    padding: 70px 14px 20px !important;
+    width: 100% !important;
+  }
+  .user-dashboard .navbar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .user-dashboard .search-bar {
+    width: 100% !important;
+    order: 3;
+  }
+  .user-dashboard .dashboard-cards {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .user-dashboard .dashboard-cards {
+    grid-template-columns: 1fr !important;
+  }
+  .user-dashboard .navbar {
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+  }
+  .user-dashboard .user-profile .user-info,
+  .user-dashboard .user-profile .role {
+    display: none;
+  }
+  .user-dashboard .navbar-actions {
+    gap: 10px !important;
+  }
+  .user-dashboard .notification-btn {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .user-dashboard .user-profile img {
+    width: 38px !important;
+    height: 38px !important;
+    margin-right: 0 !important;
+  }
+  .user-dashboard h1,
+  .user-dashboard h2 {
+    font-size: 1.3rem !important;
+  }
+  .user-dashboard .card {
+    padding: 16px !important;
+  }
+}
+
+/* User Dashboard mobile sidebar overlay (rendered conditionally in JSX) */
+.user-dashboard-mobile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 1200;
+  animation: udmoFadeIn 0.18s ease;
+}
+@keyframes udmoFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (min-width: 1025px) {
+  .user-dashboard-mobile-overlay {
+    display: none !important;
+  }
+}
+
+/* User dashboard mobile toggle button (always rendered, only visible on mobile) */
+.user-dashboard-mobile-toggle {
+  display: none;
+}
+@media (max-width: 992px) {
+  .user-dashboard-mobile-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1a4f72, #0d2b4b);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    z-index: 1300;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+}
+
+/* ---------- Crime Map Interface ---------- */
+@media (max-width: 992px) {
+  .crime-map-interface,
+  .map-interface {
+    padding-top: 64px !important;
+  }
+  .crime-map-interface .map-container,
+  .crime-map-interface .leaflet-container,
+  .map-interface .leaflet-container {
+    height: 50vh !important;
+    min-height: 320px;
+  }
+  .crime-map-interface .sidebar,
+  .crime-map-interface .controls-panel,
+  .crime-map-interface .insights-panel {
+    width: 100% !important;
+    position: relative !important;
+    max-height: none !important;
+  }
+  .crime-map-interface .layout,
+  .crime-map-interface .grid {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+@media (max-width: 600px) {
+  .crime-map-interface .map-container,
+  .crime-map-interface .leaflet-container,
+  .map-interface .leaflet-container {
+    height: 45vh !important;
+  }
+  .crime-map-interface .quick-actions,
+  .crime-map-interface .emergency-contacts {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .crime-map-interface .stat-card,
+  .crime-map-interface .metric-card {
+    padding: 14px !important;
+  }
+  .leaflet-control-zoom {
+    margin-right: 8px !important;
+    margin-top: 8px !important;
+  }
+  .leaflet-popup-content {
+    margin: 10px 14px !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* ---------- Admin / SuperAdmin: extra mobile patches ---------- */
+@media (max-width: 992px) {
+  /* Welcome / hero strips wrap and reduce padding */
+  [data-sv-welcome] {
+    padding: 16px !important;
+    gap: 8px !important;
+  }
+  [data-sv-welcome-title] {
+    font-size: clamp(1.05rem, 4.5vw, 1.4rem) !important;
+  }
+  /* Top navbar hides search input on tight screens */
+  [data-sv-searchbar] {
+    width: 100% !important;
+    flex: 1;
+  }
+  /* User chip tightens */
+  [data-sv-userchip] [class*="userInfo"] {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Tables → card layout on phones for admin/superadmin */
+@media (max-width: 600px) {
+  [data-sv-panel="admin"] .ant-table-wrapper,
+  [data-sv-panel="superadmin"] .ant-table-wrapper {
+    /* keep horizontal scroll as fallback */
+  }
+  /* Plain HTML tables transform to stacked cards */
+  [data-sv-panel="admin"] table.responsive-cards,
+  [data-sv-panel="superadmin"] table.responsive-cards {
+    display: block;
+  }
+  [data-sv-panel="admin"] table.responsive-cards thead,
+  [data-sv-panel="superadmin"] table.responsive-cards thead {
+    display: none;
+  }
+  [data-sv-panel="admin"] table.responsive-cards tbody,
+  [data-sv-panel="superadmin"] table.responsive-cards tbody,
+  [data-sv-panel="admin"] table.responsive-cards tr,
+  [data-sv-panel="superadmin"] table.responsive-cards tr,
+  [data-sv-panel="admin"] table.responsive-cards td,
+  [data-sv-panel="superadmin"] table.responsive-cards td {
+    display: block;
+    width: 100% !important;
+  }
+  [data-sv-panel="admin"] table.responsive-cards tr,
+  [data-sv-panel="superadmin"] table.responsive-cards tr {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+  }
+  [data-sv-panel="admin"] table.responsive-cards td::before,
+  [data-sv-panel="superadmin"] table.responsive-cards td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sv-brand-teal, #00d4ff);
+    margin-bottom: 2px;
+  }
+  [data-sv-panel="admin"] table.responsive-cards td,
+  [data-sv-panel="superadmin"] table.responsive-cards td {
+    border: none !important;
+    padding: 6px 0 !important;
+  }
+}
+
+/* Fix admin/superadmin overflowing horizontally on mobile */
+@media (max-width: 992px) {
+  [data-sv-panel="admin"] [data-sv-content] > *,
+  [data-sv-panel="superadmin"] [data-sv-content] > * {
+    max-width: 100% !important;
+  }
+  [data-sv-panel="admin"] [data-sv-content] .ant-row,
+  [data-sv-panel="superadmin"] [data-sv-content] .ant-row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* ---------- Reusable: stack on mobile, hide on mobile, show on mobile ---------- */
+@media (max-width: 768px) {
+  .stack-on-mobile {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px;
+  }
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+@media (min-width: 769px) {
+  .show-on-mobile {
+    display: none !important;
+  }
+}
+
+/* ---------- Leaflet map mobile niceties ---------- */
+@media (max-width: 768px) {
+  .leaflet-control-attribution {
+    font-size: 9px !important;
+    max-width: 70vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .leaflet-control-zoom a {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
+  }
+}
+
+/* ---------- Forms — universal mobile sizing ---------- */
+@media (max-width: 600px) {
+  .form-row,
+  .form-group-row,
+  .input-row {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  .form-actions,
+  .button-row {
+    flex-direction: column-reverse !important;
+    gap: 10px !important;
+  }
+  .form-actions > button,
+  .form-actions > .btn,
+  .button-row > button,
+  .button-row > .btn {
+    width: 100% !important;
+  }
+}
+
+/* ---------- DPI / hover refinements ---------- */
+@media (hover: none) {
+  /* Disable transform-on-hover effects that feel sticky on touch */
+  .card:hover,
+  .stats-card:hover,
+  .feature-card:hover,
+  .nav-link:hover,
+  .btn:hover {
+    transform: none !important;
+  }
+}
+
+/* ---------- Print & landscape phone tweaks ---------- */
+@media (max-width: 920px) and (orientation: landscape) and (max-height: 500px) {
+  .hero {
+    min-height: 100vh !important;
+    padding: 32px 16px !important;
+  }
+  .modal,
+  .modal-content {
+    max-height: 96vh !important;
+  }
+}
+
+/* ---------- Bootstrap container width fixes ---------- */
+@media (max-width: 1200px) {
+  .container {
+    max-width: 100% !important;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* ---------- Notifications / toast on mobile ---------- */
+@media (max-width: 600px) {
+  .notification-container,
+  .notifications-container,
+  .toast-container {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    top: auto !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  .notification-card,
+  .toast {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+}
+
+/* ---------- Sidebar / Drawer (general) ---------- */
+@media (max-width: 992px) {
+  /* Generic sidebar that doesn't have its own mobile rules */
+  aside.sidebar:not([data-sv-sidebar]):not(.user-dashboard .sidebar) {
+    width: 100% !important;
+    position: relative !important;
+    height: auto !important;
+  }
+}
+
+/* ---------- Charts (Chart.js / Recharts) — clamp height on mobile ---------- */
+@media (max-width: 600px) {
+  .chart-container,
+  .recharts-responsive-container,
+  canvas.chart {
+    max-height: 280px !important;
+  }
+}
+
+/* ---------- Dropdowns / popovers — keep within viewport ---------- */
+@media (max-width: 600px) {
+  .dropdown-menu,
+  .search-dropdown,
+  [class*="Dropdown"][role="menu"] {
+    max-width: calc(100vw - 24px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+}
+
+/* ---------- Welcome / Hero text wrapping ---------- */
+@media (max-width: 600px) {
+  h1 {
+    font-size: clamp(1.4rem, 6vw, 2rem) !important;
+    line-height: 1.2 !important;
+  }
+  h2 {
+    font-size: clamp(1.2rem, 5vw, 1.6rem) !important;
+    line-height: 1.25 !important;
+  }
+  h3 {
+    font-size: clamp(1.05rem, 4.5vw, 1.4rem) !important;
+  }
+}
+
+/* ---------- HomePage page containers (CrimeMap, Emergency, RiskPrediction, ProjectVideo) ---------- */
+/* Module-hashed classes — match by class-name pattern from build */
+@media (max-width: 768px) {
+  [class*="pageContainer"] {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    padding-top: 70px !important;
+  }
+  [class*="pageHeader"] {
+    margin-bottom: 32px !important;
+    text-align: center;
+  }
+  [class*="pageTitle"] {
+    font-size: clamp(1.4rem, 5.5vw, 2.1rem) !important;
+    line-height: 1.2 !important;
+  }
+  [class*="pageSubtitle"] {
+    font-size: 0.95rem !important;
+  }
+  [class*="headerIcon"] {
+    width: 64px !important;
+    height: 64px !important;
+  }
+  [class*="iconContainer"] {
+    margin-bottom: 14px !important;
+  }
+  [class*="mapWrapper"] {
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+  [class*="infoSection"] {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  [class*="pageContainer"] {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-top: 64px !important;
+    padding-bottom: 24px !important;
+  }
+  [class*="pageTitle"] {
+    font-size: clamp(1.2rem, 6.5vw, 1.6rem) !important;
+  }
+  [class*="headerIcon"] {
+    width: 56px !important;
+    height: 56px !important;
+  }
+}
+
+/* ---------- Catch-all max-width safety for any element with fixed pixel widths ---------- */
+@media (max-width: 480px) {
+  /* Lock any element claiming a fixed pixel width via inline style fallback */
+  [style*="width: 320px"],
+  [style*="width: 380px"],
+  [style*="width: 420px"],
+  [style*="width: 480px"],
+  [style*="width: 500px"],
+  [style*="width: 600px"] {
+    max-width: 100% !important;
+  }
+}
+
+/* ---------- ProfileModal & dashboards' inner modals ---------- */
+@media (max-width: 600px) {
+  [class*="profileModal"],
+  [class*="ProfileModal"] {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+/* ---------- AntD specific mobile fixes (anywhere in app) ---------- */
+@media (max-width: 600px) {
+  .ant-modal {
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px auto !important;
+    top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .ant-modal-body {
+    padding: 16px !important;
+    max-height: calc(100vh - 120px) !important;
+    overflow-y: auto !important;
+  }
+  .ant-drawer-content-wrapper {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+  .ant-tabs-tab {
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+  }
+  .ant-form-item-label > label {
+    font-size: 0.85rem !important;
+  }
+  .ant-pagination {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  .ant-card-body {
+    padding: 14px !important;
+  }
+  .ant-message-notice-content {
+    max-width: calc(100vw - 32px) !important;
+  }
+  .ant-notification {
+    max-width: calc(100vw - 16px) !important;
+  }
+}
+
+/* ---------- Bootstrap modal global mobile ---------- */
+@media (max-width: 600px) {
+  .modal.show .modal-dialog {
+    margin: 0 !important;
+    max-width: 100vw !important;
+  }
+  .modal-dialog-centered {
+    min-height: 100vh !important;
+  }
+}
+
+/* ---------- Generic full-bleed map containers ---------- */
+@media (max-width: 768px) {
+  .leaflet-container {
+    border-radius: 12px !important;
+  }
+  /* Map wrappers in dashboards should never overflow */
+  [class*="mapContainer"],
+  [class*="map-container"],
+  [class*="MapView"] {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* ---------- Mobile nav drawer body lock helper ---------- */
+body.no-scroll {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+}
+
+/* ---------- AdminDashboard & SuperAdmin: extra phone padding ---------- */
+@media (max-width: 480px) {
+  [data-sv-panel="admin"] [data-sv-content],
+  [data-sv-panel="superadmin"] [data-sv-content] {
+    padding: 10px 8px !important;
+  }
+  [data-sv-stat-card] [data-sv-card-title] {
+    font-size: 0.75rem !important;
+  }
+  [data-sv-pill] {
+    font-size: 0.65rem !important;
+    padding: 3px 8px !important;
+  }
+}
+
+/* ---------- Misc safety: anything stuck off-screen left/right ---------- */
+@media (max-width: 768px) {
+  .container-fluid,
+  .container,
+  main,
+  section {
+    max-width: 100vw !important;
+    overflow-x: clip;
+  }
+}
+
+/* ============================================================
+ * Generic public-page scaling (homepage style routes)
+ * Applies the same 80% scaling to other public pages so they're
+ * consistent (CrimeMapPage, EmergencyPage, RiskPredictionPage, ProjectVideoPage)
+ * ============================================================ */
+@media (max-width: 768px) {
+  [class*="pageContainer"] h1 {
+    font-size: clamp(1.4rem, 5vw, 1.9rem) !important;
+  }
+  [class*="pageContainer"] h2 {
+    font-size: clamp(1.2rem, 4.6vw, 1.6rem) !important;
+  }
+  [class*="pageContainer"] p {
+    font-size: 0.92rem !important;
+  }
+}
+
+/* Additional mobile-only scale-down on top of the global 80% */
+@media (max-width: 480px) {
+  html { font-size: 74%; }
+}
+@media (max-width: 360px) {
+  html { font-size: 70%; }
+}
+
+/* ============================================================
+ * MAP MODULE FIXES (CrimeMapInterface_real_insights / CrimeMapPage)
+ * ============================================================ */
+
+/* Visualization Mode cards: 2-per-row at all sizes (was 1-per-row) */
+.mode-grid {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.6rem !important;
+}
+
+/* Map page: stats overview & insights stay 2-per-row on phones */
+@media (max-width: 768px) {
+  .stats-overview.compact {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .insights-grid.compact,
+  .charts-grid.compact,
+  .info-grid.compact {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .time-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  .mode-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  .mode-card {
+    padding: 0.65rem !important;
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 6px !important;
+  }
+  .mode-card .mode-label {
+    font-size: 0.72rem !important;
+  }
+}
+
+/* Map area: bleeds aggressively to the RIGHT edge of the viewport.
+   The Option B tray sits ABOVE the map (top-right) but is in a separate
+   stacking context, so its width is not affected by the map width. */
+@media (max-width: 768px) {
+  .map-container,
+  .map-wrapper,
+  .leaflet-container {
+    height: 520px !important;
+    min-height: 460px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 12px 0 0 12px !important;
+  }
+  .visualization-section,
+  [class*="mapSection"],
+  [class*="mapWrapper"] {
+    padding: 6px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+  /* Page containers around the map: trim BOTH side paddings so the
+     map card grows wider while staying fully inside the viewport. */
+  [class*="pageContainer"] {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    overflow-x: hidden !important;
+  }
+  /* Make leaflet map fill its container exactly */
+  [class*="mapWrapper"] .leaflet-container,
+  [class*="mapSection"] .leaflet-container,
+  .visualization-section .leaflet-container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+@media (max-width: 480px) {
+  .map-container,
+  .map-wrapper,
+  .leaflet-container {
+    height: 460px !important;
+    min-height: 400px !important;
+  }
+  .visualization-section,
+  [class*="mapSection"],
+  [class*="mapWrapper"] {
+    padding: 4px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  [class*="pageContainer"] {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+}
+
+/* Leaflet cluster markers: smaller on mobile so they don't dominate the map */
+@media (max-width: 768px) {
+  .leaflet-marker-icon.marker-cluster,
+  .marker-cluster,
+  .marker-cluster div {
+    width: 32px !important;
+    height: 32px !important;
+    line-height: 32px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+  }
+  .marker-cluster-small,
+  .marker-cluster-small div {
+    width: 28px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+    font-size: 10px !important;
+  }
+  .marker-cluster-medium,
+  .marker-cluster-medium div {
+    width: 32px !important;
+    height: 32px !important;
+    line-height: 32px !important;
+    font-size: 11px !important;
+  }
+  .marker-cluster-large,
+  .marker-cluster-large div {
+    width: 38px !important;
+    height: 38px !important;
+    line-height: 38px !important;
+    font-size: 12px !important;
+  }
+  /* Standard pin markers */
+  .leaflet-marker-icon:not(.marker-cluster) {
+    transform: scale(0.7);
+    transform-origin: center bottom;
+  }
+}
+@media (max-width: 480px) {
+  .leaflet-marker-icon.marker-cluster,
+  .marker-cluster,
+  .marker-cluster div {
+    width: 28px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+    font-size: 10px !important;
+  }
+  .marker-cluster-small,
+  .marker-cluster-small div {
+    width: 24px !important;
+    height: 24px !important;
+    line-height: 24px !important;
+    font-size: 9px !important;
+  }
+  .marker-cluster-large,
+  .marker-cluster-large div {
+    width: 34px !important;
+    height: 34px !important;
+    line-height: 34px !important;
+    font-size: 11px !important;
+  }
+  .leaflet-marker-icon:not(.marker-cluster) {
+    transform: scale(0.6);
+  }
+}
+
+/* Leaflet popups + custom incident popups: compact on mobile so they don't
+   dominate the map view. */
+@media (max-width: 768px) {
+  .leaflet-popup-content-wrapper {
+    border-radius: 10px !important;
+    padding: 4px !important;
+  }
+  .leaflet-popup-content {
+    margin: 8px 12px !important;
+    font-size: 0.78rem !important;
+    line-height: 1.3 !important;
+    min-width: 0 !important;
+    max-width: 220px !important;
+  }
+  .leaflet-popup-content h3,
+  .leaflet-popup-content h4,
+  .leaflet-popup-content .popup-title {
+    font-size: 0.85rem !important;
+    margin: 0 0 4px !important;
+  }
+  .leaflet-popup-content p,
+  .leaflet-popup-content li,
+  .leaflet-popup-content span {
+    font-size: 0.75rem !important;
+  }
+  .leaflet-popup-content button,
+  .leaflet-popup-content .btn {
+    font-size: 0.72rem !important;
+    padding: 5px 10px !important;
+  }
+  /* Custom popup classes used in the codebase */
+  .prediction-popup,
+  .crime-popup,
+  .incident-popup,
+  .map-popup {
+    min-width: 0 !important;
+    max-width: 220px !important;
+    font-size: 0.75rem !important;
+  }
+  .prediction-popup *,
+  .crime-popup *,
+  .incident-popup *,
+  .map-popup * {
+    font-size: 0.75rem !important;
+  }
+  /* Close button on popups */
+  .leaflet-popup-close-button {
+    font-size: 16px !important;
+    padding: 2px 5px 0 0 !important;
+    width: 22px !important;
+    height: 22px !important;
+  }
+  /* Tooltip sizing */
+  .leaflet-tooltip {
+    font-size: 0.7rem !important;
+    padding: 4px 8px !important;
+  }
+}
+@media (max-width: 480px) {
+  .leaflet-popup-content {
+    max-width: 180px !important;
+    font-size: 0.72rem !important;
+    margin: 6px 10px !important;
+  }
+  .leaflet-popup-content h3,
+  .leaflet-popup-content h4 {
+    font-size: 0.78rem !important;
+  }
+}
+
+/* Map controls on mobile — clean FULL-SCREEN slide-in from RIGHT.
+   When closed: panel is fully off-screen (no peeking). The .panel-toggle
+   becomes a floating "Filters" pill at top-right.
+   When open: panel takes the full viewport from the right side, with
+   a clean header bar and close button. No backdrop bleed, no drag handles. */
+
+/* OPTION B — Compact floating tray for map controls (mobile).
+   Map stays fully visible. The tray sits at top-right of the map area,
+   collapsed into an icon stack. Tap the icon to expand into a 240px
+   popover with all controls. Tap again or anywhere else to collapse. */
+
+/* Hide the duplicate FAB button at the end of the map module — we use only
+   the tray's panel-toggle as the entry point now. */
+@media (max-width: 768px) {
+  .fab-mobile {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .control-panel {
+    position: fixed !important;
+    top: 76px !important;
+    right: 12px !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 240px !important;
+    max-width: calc(100vw - 24px) !important;
+    height: auto !important;
+    max-height: calc(100vh - 96px) !important;
+    /* Slimmer visible handle strip when collapsed (was 56px → now 44px) */
+    transform: translateX(calc(100% - 44px)) !important;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-radius: 16px !important;
+    background:
+      radial-gradient(circle at 0% 0%, rgba(0, 212, 255, 0.10), transparent 55%),
+      linear-gradient(180deg, rgba(15, 31, 58, 0.96) 0%, rgba(10, 20, 40, 0.96) 100%) !important;
+    border: 1px solid rgba(0, 212, 255, 0.28) !important;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 212, 255, 0.10) !important;
+    z-index: 1100 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+  /* When collapsed, shrink the panel height down to just hold the handle so
+     the visible strip is a compact pill, not a tall column. */
+  .control-panel:not(.active) {
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    width: 80px !important;
+    border-radius: 12px !important;
+  }
+  .control-panel.active {
+    transform: translateX(0) !important;
+    overflow-y: auto !important;
+  }
+
+  /* CRITICAL FIX: kill the legacy backdrop ::after overlay.
+     Original CrimeMapInterface_updated.css adds a pseudo-element with
+     pointer-events:auto at z-index 1001 covering the full panel — this
+     was intercepting clicks on the top half of the items. Neutralize it. */
+  .control-panel::after,
+  .control-panel.active::after {
+    display: none !important;
+    content: none !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    background: transparent !important;
+    z-index: -1 !important;
+  }
+  .control-panel::before,
+  .control-panel.active::before {
+    pointer-events: none !important;
+  }
+  /* Bump panel-content above any leftover overlay */
+  .control-panel.active .panel-content {
+    position: relative !important;
+    z-index: 20 !important;
+  }
+  .control-panel.active .control-section {
+    position: relative !important;
+    z-index: 21 !important;
+  }
+
+  /* Toggle button = compact pill, perfectly centered in the visible handle */
+  .control-panel .panel-toggle {
+    position: absolute !important;
+    top: 50% !important;
+    left: 6px !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6) !important;
+    border: none !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.40) !important;
+    z-index: 5 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.85rem !important;
+    cursor: pointer !important;
+  }
+  .control-panel:not(.active) .panel-toggle i::before {
+    content: "\f1de" !important; /* fa-sliders-h */
+  }
+  .control-panel.active .panel-toggle i::before {
+    content: "\f00d" !important; /* fa-times */
+  }
+
+  /* Header — sticky at top of the scrolling tray so the close button (toggle)
+     is ALWAYS visible. Without this, the toggle scrolls away and intercepts
+     clicks on items it overlaps. */
+  .control-panel .panel-header {
+    position: sticky !important;
+    top: 0 !important;
+    padding: 6px 10px 6px 44px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.14) !important;
+    display: flex !important;
+    align-items: center !important;
+    min-height: 44px !important;
+    background: linear-gradient(180deg, rgba(15, 31, 58, 0.98) 0%, rgba(15, 31, 58, 0.92) 100%) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    z-index: 10 !important;
+  }
+  .control-panel .panel-header .panel-title h3 {
+    font-size: 0.92rem !important;
+    margin: 0 !important;
+  }
+  .control-panel:not(.active) .panel-header .panel-title {
+    display: none !important;
+  }
+  .control-panel:not(.active) .panel-content {
+    display: none !important;
+  }
+
+  .control-panel.active .panel-content {
+    padding: 12px 14px 16px !important;
+    pointer-events: auto !important;
+  }
+  .control-panel.active .control-section {
+    margin-bottom: 14px !important;
+    pointer-events: auto !important;
+  }
+  .control-panel.active .control-section .section-title {
+    font-size: 0.78rem !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* Force pointer-events on every interactive child so taps register.
+     High z-index to escape any leftover ::after overlay from base CSS. */
+  .control-panel.active .mode-card,
+  .control-panel.active .time-card,
+  .control-panel.active .filter-chip,
+  .control-panel.active .filter-checkbox,
+  .control-panel.active .filter-option,
+  .control-panel.active button:not(.panel-toggle),
+  .control-panel.active select,
+  .control-panel.active input,
+  .control-panel.active a {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative !important;
+    z-index: 1200 !important;
+    touch-action: manipulation !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: rgba(0, 212, 255, 0.18) !important;
+  }
+
+  /* Compact mode cards — 2 per row inside the tray */
+  .control-panel.active .mode-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  .control-panel.active .mode-card {
+    padding: 10px 6px !important;
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 4px !important;
+    min-height: 56px !important;
+  }
+  .control-panel.active .mode-card .mode-label {
+    font-size: 0.7rem !important;
+  }
+  .control-panel.active .time-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  .control-panel.active .time-card {
+    padding: 10px 6px !important;
+    min-height: 48px !important;
+  }
+  .control-panel.active .filter-scroll {
+    max-height: 180px !important;
+    overflow-y: auto !important;
+    pointer-events: auto !important;
+  }
+  .control-panel.active .filter-chip {
+    padding: 8px 10px !important;
+    min-height: 36px !important;
+  }
+}
+
+/* Light theme for map control panel modal */
+body[data-theme="light"] .control-panel.active {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(8, 145, 178, 0.06), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+}
+body[data-theme="light"] .control-panel.active .panel-header {
+  background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.95) 100%) !important;
+  border-bottom-color: rgba(15, 23, 42, 0.10) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .control-panel.active .panel-title h3,
+body[data-theme="light"] .control-panel.active .section-title {
+  color: #0f172a !important;
+}
+
+/* Incident Statistics Overview & How to Use the Incident Map (CrimeMapPage) */
+@media (max-width: 768px) {
+  /* statsGrid is module-hashed, but consistent module class names */
+  [class*="statsGrid"],
+  [class*="instructionsGrid"],
+  [class*="numbersGrid"],
+  [class*="tipsGrid"],
+  [class*="scenariosGrid"],
+  [class*="featuresGrid"] {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  [class*="featureCard"] {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+  }
+  [class*="featureCard"] h3 {
+    font-size: 0.92rem !important;
+    line-height: 1.2 !important;
+    margin-bottom: 6px !important;
+  }
+  [class*="featureCard"] p {
+    font-size: 0.78rem !important;
+    line-height: 1.4 !important;
+  }
+  [class*="featureIcon"] {
+    font-size: 1.4rem !important;
+    margin-bottom: 8px !important;
+  }
+  [class*="statCard"],
+  [class*="instructionCard"] {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+  }
+  [class*="statValue"] {
+    font-size: 1.5rem !important;
+  }
+  [class*="statLabel"] {
+    font-size: 0.75rem !important;
+  }
+  [class*="statTrend"] {
+    font-size: 0.7rem !important;
+  }
+  [class*="instructionCard"] h3 {
+    font-size: 0.92rem !important;
+    line-height: 1.2 !important;
+  }
+  [class*="instructionCard"] p {
+    font-size: 0.78rem !important;
+    line-height: 1.4 !important;
+  }
+  [class*="instructionIcon"] {
+    font-size: 1.4rem !important;
+  }
+  [class*="instructionNumber"] {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* Emergency Preparedness Guide tip cards — 2 per row */
+@media (max-width: 768px) {
+  .preparedness-tips,
+  .footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .tip-card {
+    padding: 12px !important;
+    border-radius: 14px !important;
+  }
+  .tip-icon {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.85rem !important;
+  }
+  .tip-content h5 {
+    font-size: 0.82rem !important;
+    margin: 0 0 2px 0 !important;
+  }
+  .tip-content p {
+    font-size: 0.7rem !important;
+    line-height: 1.3 !important;
+  }
+  .info-card {
+    padding: 12px !important;
+  }
+  .info-card h5 {
+    font-size: 0.85rem !important;
+  }
+  .info-card p {
+    font-size: 0.72rem !important;
+  }
+}
+@media (max-width: 480px) {
+  .preparedness-tips,
+  .footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+/* ============================================================
+ * LIGHT THEME OVERRIDES
+ * Applied when body has [data-theme="light"]. Dark is default.
+ * ============================================================ */
+body[data-theme="light"] .header {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+body[data-theme="light"] .logo-main {
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+body[data-theme="light"] .logo-sub {
+  color: #475569 !important;
+}
+body[data-theme="light"] .nav-item {
+  color: #475569 !important;
+}
+body[data-theme="light"] .nav-item:hover,
+body[data-theme="light"] .nav-item.active {
+  color: #0891b2 !important;
+}
+body[data-theme="light"] .nav-rail {
+  background: rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+body[data-theme="light"] .theme-toggle,
+body[data-theme="light"] .login-btn,
+body[data-theme="light"] .mobile-trigger {
+  background: rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  color: #475569 !important;
+}
+body[data-theme="light"] .mobile-trigger i,
+body[data-theme="light"] .theme-toggle i {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .login-btn:hover,
+body[data-theme="light"] .theme-toggle:hover,
+body[data-theme="light"] .mobile-trigger:hover {
+  background: rgba(8, 145, 178, 0.08) !important;
+  color: #0891b2 !important;
+  border-color: #0891b2 !important;
+}
+
+/* Hero in light theme */
+body[data-theme="light"] .hero {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+}
+body[data-theme="light"] .hero-title,
+body[data-theme="light"] .hero-subtitle {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .hero-description,
+body[data-theme="light"] .hero-urdu {
+  color: #475569 !important;
+}
+body[data-theme="light"] .hero-badge {
+  background: rgba(8, 145, 178, 0.10) !important;
+  border: 1px solid rgba(8, 145, 178, 0.30) !important;
+  color: #0891b2 !important;
+}
+body[data-theme="light"] .hero-stats .stat-number {
+  color: #0891b2 !important;
+  -webkit-text-fill-color: initial !important;
+  background: none !important;
+}
+body[data-theme="light"] .hero-stats .stat-label {
+  color: #64748b !important;
+}
+body[data-theme="light"] .floating-card {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+}
+body[data-theme="light"] .floating-card .card-content h3 {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .floating-card .card-content p {
+  color: #475569 !important;
+}
+
+/* Sections in light theme */
+body[data-theme="light"] .introduction-section,
+body[data-theme="light"] .features-section,
+body[data-theme="light"] .technology-showcase {
+  background: #f8fafc !important;
+}
+body[data-theme="light"] .introduction-section .section-title,
+body[data-theme="light"] .features-title,
+body[data-theme="light"] .tech-title,
+body[data-theme="light"] .ai-capabilities-title {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .section-subtitle,
+body[data-theme="light"] .features-subtitle,
+body[data-theme="light"] .tech-subtitle,
+body[data-theme="light"] .ai-capabilities-subtitle {
+  color: #64748b !important;
+}
+body[data-theme="light"] .infographic-item,
+body[data-theme="light"] .stat-card,
+body[data-theme="light"] .feature-card,
+body[data-theme="light"] .ai-card,
+body[data-theme="light"] .tech-card-item {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+}
+body[data-theme="light"] .infographic-content h4,
+body[data-theme="light"] .stat-card h3,
+body[data-theme="light"] .feature-card h3,
+body[data-theme="light"] .feature-title,
+body[data-theme="light"] .ai-card h4,
+body[data-theme="light"] .tech-card-item h4,
+body[data-theme="light"] .stat-label {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .infographic-content p,
+body[data-theme="light"] .feature-description,
+body[data-theme="light"] .ai-card p,
+body[data-theme="light"] .tech-card-item p,
+body[data-theme="light"] .feature-card p {
+  color: #64748b !important;
+}
+body[data-theme="light"] .data-node {
+  background: #ffffff !important;
+  border-color: #0891b2 !important;
+  color: #0891b2 !important;
+}
+
+/* Mobile drawer in light theme */
+body[data-theme="light"] .mobile-drawer {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(8, 145, 178, 0.06), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(124, 58, 237, 0.04), transparent 50%),
+    linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+  border-left-color: rgba(15, 23, 42, 0.10) !important;
+}
+body[data-theme="light"] .mobile-drawer-title {
+  background: linear-gradient(120deg, #0f172a, #0891b2) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+body[data-theme="light"] .mobile-drawer-subtitle {
+  color: #64748b !important;
+}
+body[data-theme="light"] .mobile-drawer-header {
+  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+}
+body[data-theme="light"] .mobile-drawer-close {
+  background: rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .mobile-drawer-item {
+  color: #334155 !important;
+}
+body[data-theme="light"] .mobile-drawer-item:hover {
+  background: rgba(8, 145, 178, 0.06) !important;
+}
+body[data-theme="light"] .mobile-drawer-item.active {
+  background: linear-gradient(90deg, rgba(8, 145, 178, 0.10), rgba(124, 58, 237, 0.06)) !important;
+  border-color: rgba(8, 145, 178, 0.30) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .mobile-drawer-icon {
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.14), rgba(124, 58, 237, 0.10)) !important;
+  border-color: rgba(8, 145, 178, 0.20) !important;
+  color: #0891b2 !important;
+}
+body[data-theme="light"] .mobile-drawer-chevron {
+  color: #94a3b8 !important;
+}
+body[data-theme="light"] .mobile-drawer-footer {
+  border-top-color: rgba(15, 23, 42, 0.08) !important;
+}
+body[data-theme="light"] .mobile-drawer-action--secondary {
+  background: rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(8, 145, 178, 0.30) !important;
+  color: #0f172a !important;
+}
+
+/* Footer in light theme — clean white surface */
+body[data-theme="light"] .footer {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%) !important;
+  color: #0f172a !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+body[data-theme="light"] .footer * {
+  color: inherit;
+}
+body[data-theme="light"] .footer .footer-logo h3,
+body[data-theme="light"] .footer .footer-logo i,
+body[data-theme="light"] .footer .stat-value {
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+body[data-theme="light"] .footer .footer-description,
+body[data-theme="light"] .footer .footer-col li,
+body[data-theme="light"] .footer .footer-col a,
+body[data-theme="light"] .footer .copyright,
+body[data-theme="light"] .footer .footer-links a {
+  color: #475569 !important;
+}
+body[data-theme="light"] .footer .footer-col h3,
+body[data-theme="light"] .footer .footer-col h4 {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .footer .footer-col a:hover,
+body[data-theme="light"] .footer .footer-links a:hover {
+  color: #0891b2 !important;
+}
+body[data-theme="light"] .footer .stat-label {
+  color: #64748b !important;
+}
+body[data-theme="light"] .footer .footer-stats,
+body[data-theme="light"] .footer .footer-bottom {
+  border-color: rgba(15, 23, 42, 0.10) !important;
+}
+body[data-theme="light"] .footer .social-links a {
+  background: rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid rgba(15, 23, 42, 0.10) !important;
+  color: #475569 !important;
+}
+body[data-theme="light"] .footer .social-links a:hover {
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+body[data-theme="light"] .footer .footer-badge {
+  background: rgba(34, 197, 94, 0.10) !important;
+  border: 1px solid rgba(34, 197, 94, 0.30) !important;
+  color: #15803d !important;
+}
+body[data-theme="light"] .footer .footer-links a {
+  background: rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ============================================================
+ * Light theme for HomePage routes (CrimeMapPage, EmergencyPage, ProjectVideoPage,
+ * RiskPredictionPage). These use module-hashed classes, so target via [class*=].
+ *
+ * IMPORTANT: many of these components hardcode `color: white` etc., so we
+ * cascade from the page container with `*` for max specificity.
+ * ============================================================ */
+body[data-theme="light"] [class*="pageContainer"] *:not(i):not(svg):not(.fa) {
+  color: inherit;
+}
+body[data-theme="light"] [class*="pageContainer"] {
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="pageContainer"] h1,
+body[data-theme="light"] [class*="pageContainer"] h2,
+body[data-theme="light"] [class*="pageContainer"] h3,
+body[data-theme="light"] [class*="pageContainer"] h4,
+body[data-theme="light"] [class*="pageContainer"] h5 {
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="pageContainer"] p,
+body[data-theme="light"] [class*="pageContainer"] span:not([class*="badge"]):not([class*="Badge"]),
+body[data-theme="light"] [class*="pageContainer"] li,
+body[data-theme="light"] [class*="pageContainer"] label {
+  color: #475569 !important;
+}
+body[data-theme="light"] [class*="pageContainer"] [class*="featureCard"],
+body[data-theme="light"] [class*="pageContainer"] [class*="featureCard"] h3,
+body[data-theme="light"] [class*="pageContainer"] [class*="featureCard"] p {
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="pageContainer"] [class*="featureCard"] p {
+  color: #475569 !important;
+}
+/* Card surfaces in light theme — white background with subtle shadow */
+body[data-theme="light"] [class*="pageContainer"] [class*="featureCard"],
+body[data-theme="light"] [class*="pageContainer"] [class*="statCard"],
+body[data-theme="light"] [class*="pageContainer"] [class*="numberCard"],
+body[data-theme="light"] [class*="pageContainer"] [class*="instructionCard"],
+body[data-theme="light"] [class*="pageContainer"] [class*="infoCard"],
+body[data-theme="light"] [class*="pageContainer"] [class*="legendCard"],
+body[data-theme="light"] [class*="pageContainer"] [class*="contactsWrapper"],
+body[data-theme="light"] [class*="pageContainer"] [class*="emergencyBanner"] {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05) !important;
+}
+/* Inside the embedded CrimeMap (real_insights) on these pages */
+body[data-theme="light"] [class*="pageContainer"] .header-title,
+body[data-theme="light"] [class*="pageContainer"] .header-subtitle,
+body[data-theme="light"] [class*="pageContainer"] .stat-value,
+body[data-theme="light"] [class*="pageContainer"] .stat-label,
+body[data-theme="light"] [class*="pageContainer"] .stat-caption,
+body[data-theme="light"] [class*="pageContainer"] .insight-title,
+body[data-theme="light"] [class*="pageContainer"] .chart-title,
+body[data-theme="light"] [class*="pageContainer"] .panel-title,
+body[data-theme="light"] [class*="pageContainer"] .control-section .section-title,
+body[data-theme="light"] [class*="pageContainer"] .mode-card,
+body[data-theme="light"] [class*="pageContainer"] .time-card,
+body[data-theme="light"] [class*="pageContainer"] .filter-chip,
+body[data-theme="light"] [class*="pageContainer"] .visualization-section,
+body[data-theme="light"] [class*="pageContainer"] .tab-button {
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="pageContainer"] .header-subtitle,
+body[data-theme="light"] [class*="pageContainer"] .stat-label,
+body[data-theme="light"] [class*="pageContainer"] .stat-caption {
+  color: #475569 !important;
+}
+/* Emergency contacts in light */
+body[data-theme="light"] .emergency-container,
+body[data-theme="light"] .emergency-container * {
+  color: inherit;
+}
+body[data-theme="light"] .emergency-container {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .emergency-container h2,
+body[data-theme="light"] .emergency-container h3,
+body[data-theme="light"] .emergency-container h4,
+body[data-theme="light"] .emergency-container h5 {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .emergency-container p,
+body[data-theme="light"] .emergency-container span:not([class*="badge"]),
+body[data-theme="light"] .emergency-container small,
+body[data-theme="light"] .emergency-container label {
+  color: #475569 !important;
+}
+
+/* ============================================================
+ * Light theme for HomePage routes (CrimeMapPage, EmergencyPage, ProjectVideoPage,
+ * RiskPredictionPage). These use module-hashed classes, so target via [class*=].
+ * ============================================================ */
+body[data-theme="light"] [class*="pageContainer"] {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f8fafc 100%) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="pageTitle"],
+body[data-theme="light"] [class*="pageSubtitle"],
+body[data-theme="light"] [class*="sectionHeader"] h2,
+body[data-theme="light"] [class*="statsSection"] h2,
+body[data-theme="light"] [class*="howToUseSection"] h2,
+body[data-theme="light"] [class*="importantNumbersSection"] h2,
+body[data-theme="light"] [class*="safetyTipsSection"] h2,
+body[data-theme="light"] [class*="contactsSection"] h2 {
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="pageSubtitle"],
+body[data-theme="light"] [class*="sectionHeader"] p {
+  color: #475569 !important;
+}
+body[data-theme="light"] [class*="statCard"],
+body[data-theme="light"] [class*="numberCard"],
+body[data-theme="light"] [class*="instructionCard"],
+body[data-theme="light"] [class*="infoCard"],
+body[data-theme="light"] [class*="legendCard"],
+body[data-theme="light"] [class*="contactsWrapper"],
+body[data-theme="light"] [class*="mapWrapper"] {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="statValue"],
+body[data-theme="light"] [class*="statCard"] h3,
+body[data-theme="light"] [class*="numberCard"] h3,
+body[data-theme="light"] [class*="instructionCard"] h3,
+body[data-theme="light"] [class*="infoContent"] h3,
+body[data-theme="light"] [class*="legendCard"] h3 {
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="statLabel"],
+body[data-theme="light"] [class*="numberCard"] p,
+body[data-theme="light"] [class*="instructionCard"] p,
+body[data-theme="light"] [class*="infoContent"] p,
+body[data-theme="light"] [class*="legendItem"],
+body[data-theme="light"] [class*="statTrend"] {
+  color: #475569 !important;
+}
+body[data-theme="light"] [class*="emergencyBanner"] {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.30) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] [class*="bannerContent"] strong {
+  color: #dc2626 !important;
+}
+
+/* CrimeMapInterface_real_insights component (the embedded map dashboard) */
+body[data-theme="light"] .control-panel {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+}
+body[data-theme="light"] .panel-header,
+body[data-theme="light"] .panel-content,
+body[data-theme="light"] .control-section {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .panel-title h3,
+body[data-theme="light"] .section-title {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .mode-card,
+body[data-theme="light"] .time-card,
+body[data-theme="light"] .filter-chip {
+  background: rgba(248, 250, 252, 0.9) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  color: #475569 !important;
+}
+body[data-theme="light"] .mode-card.active,
+body[data-theme="light"] .time-card.active,
+body[data-theme="light"] .filter-chip.active {
+  background: rgba(8, 145, 178, 0.10) !important;
+  border-color: #0891b2 !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .stats-overview .stat-card,
+body[data-theme="light"] .insights-grid .insight-card,
+body[data-theme="light"] .charts-grid .chart-container,
+body[data-theme="light"] .visualization-section {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .header-title,
+body[data-theme="light"] .header-subtitle {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .header-subtitle {
+  color: #475569 !important;
+}
+
+/* Emergency contacts component */
+body[data-theme="light"] .emergency-container,
+body[data-theme="light"] .emergency-alert-header,
+body[data-theme="light"] .contact-card,
+body[data-theme="light"] .footer-card,
+body[data-theme="light"] .info-card,
+body[data-theme="light"] .tip-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+body[data-theme="light"] .contact-card h3,
+body[data-theme="light"] .contact-card h4,
+body[data-theme="light"] .info-card h5,
+body[data-theme="light"] .footer-card h4,
+body[data-theme="light"] .tip-content h5 {
+  color: #0f172a !important;
+}
+body[data-theme="light"] .contact-card p,
+body[data-theme="light"] .info-card p,
+body[data-theme="light"] .tip-content p,
+body[data-theme="light"] .preparedness-header h4 {
+  color: #475569 !important;
+}
+
+/* Project Video page */
+body[data-theme="light"] [class*="ProjectVideoPage"],
+body[data-theme="light"] [class*="videoSection"],
+body[data-theme="light"] [class*="videoCard"] {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ============================================================
+ * END OF GLOBAL RESPONSIVE LAYER
+ * ============================================================ */

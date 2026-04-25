@@ -455,16 +455,67 @@
         font-size: 1rem;
     }
 
+    /* Full-width map on mobile, larger area */
     .mapWrapper {
-        padding: 15px;
-        min-height: 400px;
+        padding: 8px !important;
+        min-height: 500px !important;
+        border-radius: 14px !important;
+    }
+    .mapSection {
+        max-width: 100% !important;
+        padding: 0 8px !important;
+    }
+    .infoSection {
+        max-width: 100% !important;
+        padding: 0 12px !important;
+    }
+    .infoCard,
+    .legendCard {
+        padding: 18px !important;
+        border-radius: 16px !important;
+    }
+    .infoIcon {
+        font-size: 2rem !important;
     }
 
     .howToUseSection {
-        padding: 40px 25px;
+        padding: 32px 16px !important;
     }
 
+    /* All instruction/info grids 2-per-row */
     .instructionsGrid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+    .legendItem {
+        font-size: 0.82rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .mapWrapper {
+        padding: 6px !important;
+        min-height: 440px !important;
+    }
+    .pageTitle {
+        font-size: clamp(1.2rem, 5.5vw, 1.6rem) !important;
+    }
+    .pageSubtitle {
+        font-size: 0.85rem !important;
+    }
+    .infoCard {
+        flex-direction: column !important;
+        gap: 12px !important;
+        text-align: center !important;
+    }
+    .infoIcon {
+        font-size: 1.8rem !important;
+    }
+    .legendCard h3 {
+        font-size: 1rem !important;
+    }
+    .instructionsGrid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
     }
 }

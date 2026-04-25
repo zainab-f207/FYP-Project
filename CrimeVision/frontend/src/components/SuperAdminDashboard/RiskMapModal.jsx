@@ -111,7 +111,7 @@ const RiskMapModal = ({ visible, onClose, incidents = [] }) => {
       width={1000}
       footer={null}
       style={{ top: 20 }}
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Radio.Group value={viewMode} onChange={e => setViewMode(e.target.value)} buttonStyle="solid">

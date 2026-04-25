@@ -1120,6 +1120,8 @@
 /* Mobile Sidebar */
 .sidebarMobileOpen {
   transform: translateX(0) !important;
+  z-index: 1250 !important;
+  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.5);
 }
 
 /* Responsive Design */
@@ -1128,23 +1130,34 @@
     position: fixed;
     left: 0;
     top: 0;
+    bottom: 0;
     height: 100vh;
-    z-index: 1000;
+    width: var(--sidebar-width, 280px) !important;
+    max-width: 86vw !important;
+    z-index: 1100;
     transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
   .sidebarMobileOpen {
-    transform: translateX(0);
+    transform: translateX(0) !important;
+    z-index: 1250 !important;
   }
 
   .mobileToggle {
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
+    position: fixed !important;
+    top: 14px;
+    left: 14px;
+    z-index: 1300 !important;
   }
 
   .mainContent {
     margin-left: 0 !important;
+    padding-top: 70px !important;
+    width: 100% !important;
   }
 
   .welcomeSection {
