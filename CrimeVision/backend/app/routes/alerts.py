@@ -2685,6 +2685,29 @@ async def dispatch_weekly_safety_reports():
                 from app.utils.area_normalization import area_like_pattern as _alp
                 area_pat = _alp(area_name)
 
+                # Dedupe: skip if a successful weekly report for this area was already
+                # sent to this user in the last 24 hours (covers cron + manual triggers
+                # + restarts within the same window). Cron only fires once a week,
+                # so 24h cannot suppress a legitimate scheduled run.
+                log_alert_type = f"weekly_report_{area_label.lower()}"
+                _cur.execute(
+                    """
+                    SELECT 1 FROM notification_logs
+                    WHERE user_id = %s
+                      AND alert_type = %s
+                      AND success = 1
+                      AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                    LIMIT 1
+                    """,
+                    (user_id, log_alert_type),
+                )
+                if _cur.fetchone():
+                    logger.info(
+                        f"⏭️ Skipping duplicate weekly {area_label} report for user {user_id} "
+                        f"({user_email}) — already sent within last 24h"
+                    )
+                    return
+
                 # Current 7-day stats — area-name ONLY (no radius to avoid cross-area pollution)
                 _cur.execute("""
                     SELECT
@@ -2793,15 +2816,16 @@ async def dispatch_weekly_safety_reports():
 
         for user in (users or []):
             try:
-                home_area = user.get('home_area')
-                work_area = user.get('work_area')
+                home_area = (user.get('home_area') or '').strip()
+                work_area = (user.get('work_area') or '').strip()
 
                 # Send home report
                 if home_area:
                     await _send_area_report(user, home_area, 'Home')
 
-                # Send work report (only if different area from home)
-                if work_area and work_area != home_area:
+                # Send work report (only if different area from home — compare normalized).
+                # Case- and whitespace-insensitive so "Gulshan " vs "gulshan" doesn't skip.
+                if work_area and work_area.lower() != home_area.lower():
                     await _send_area_report(user, work_area, 'Work')
 
             except Exception as ue:

@@ -1400,8 +1400,21 @@ async def trigger_monitoring_test():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/test/trigger-weekly-reports")
-async def trigger_weekly_reports_test():
-    """Test endpoint to manually trigger weekly safety reports"""
+async def trigger_weekly_reports_test(current_user: str = Depends(get_username_from_token)):
+    """Admin-only test endpoint to manually trigger weekly safety reports."""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT role FROM users_info WHERE username = %s", (current_user,))
+        row = cursor.fetchone()
+        if not row or row.get("role") not in ("superadmin", "admin"):
+            raise HTTPException(status_code=403, detail="Admin access required")
+    finally:
+        if cursor: cursor.close()
+        if conn and conn.is_connected(): conn.close()
+
     try:
         await dispatch_weekly_safety_reports()
         return {"message": "✅ Weekly safety reports triggered successfully"}

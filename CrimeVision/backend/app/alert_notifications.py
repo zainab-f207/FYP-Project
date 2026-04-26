@@ -1105,13 +1105,16 @@ class AlertNotificationSystem:
                 server.login(self.email_config['smtp_username'], self.email_config['smtp_password'])
                 server.send_message(msg)
             
-            # Use data field for consistency if needed, but report_data is already a dict
-            await self.log_notification_sent(report_data['user_id'], 'email', 'weekly_report', True)
+            area_label = str(report_data.get('area_label', '')).strip().lower()
+            log_alert_type = f"weekly_report_{area_label}" if area_label else "weekly_report"
+            await self.log_notification_sent(report_data['user_id'], 'email', log_alert_type, True)
             return True
         except Exception as e:
             logger.error(f"Failed to send weekly report to {user_email}: {e}")
             if 'user_id' in report_data:
-                await self.log_notification_sent(report_data['user_id'], 'email', 'weekly_report', False, str(e))
+                area_label = str(report_data.get('area_label', '')).strip().lower()
+                log_alert_type = f"weekly_report_{area_label}" if area_label else "weekly_report"
+                await self.log_notification_sent(report_data['user_id'], 'email', log_alert_type, False, str(e))
             return False
 
     async def log_notification_sent(self, user_id: int, notification_type: str, alert_type: str, success: bool, error_message: Optional[str] = None):
