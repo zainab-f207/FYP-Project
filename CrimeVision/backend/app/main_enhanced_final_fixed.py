@@ -5,9 +5,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import os
 import sys
-from alert_notifications import AlertNotificationSystem
+from app.alert_notifications import AlertNotificationSystem
 from app.routes import test_alerts
-from alert_tester import AlertTester
+from app.alert_tester import AlertTester
 # Ensure parent (backend) directory is on sys.path so absolute imports like
 # `from app.core...` work even when running uvicorn from inside the `app` folder.
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
