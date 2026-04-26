@@ -2,16 +2,20 @@ import mysql.connector
 from mysql.connector import Error
 import sys
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 from auth_updated import get_password_hash
 
 # Database config
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "hafsa555",
-    "database": "crimevision_db",
-    "port": 3306,
+    "host": os.getenv("DB_HOST", "localhost"),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "database": os.getenv("DB_NAME", "crimevision_db"),
+    "port": int(os.getenv("DB_PORT", "3306")),
 }
 
 def setup_roles():

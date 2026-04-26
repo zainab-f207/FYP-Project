@@ -51,7 +51,7 @@ def test_email_direct():
         smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
         smtp_port = int(os.getenv('SMTP_PORT', 587))
         smtp_username = os.getenv('SMTP_USERNAME', 'safevision.alerts@gmail.com')
-        smtp_password = os.getenv('SMTP_PASSWORD', 'pwvc mypu lihm upfr')
+        smtp_password = os.getenv('SMTP_PASSWORD', '')
 
         print(f"📧 SMTP Config:")
         print(f"   Server: {smtp_server}:{smtp_port}")

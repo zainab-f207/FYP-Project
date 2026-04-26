@@ -90,6 +90,35 @@ def ensure_users_table(conn) -> None:
             "ALTER TABLE users_info ADD COLUMN otp_code VARCHAR(10) NULL",
             "ALTER TABLE users_info ADD COLUMN otp_expires_at TIMESTAMP NULL",
             "ALTER TABLE users_info ADD COLUMN password_must_change BOOLEAN DEFAULT FALSE",
+            # Active flag — referenced by alert queries (alerts.py:601, 2499, 2515)
+            # and auth.py:1602. Default TRUE so existing users keep working.
+            "ALTER TABLE users_info ADD COLUMN is_active BOOLEAN DEFAULT TRUE",
+            # Login/session tracking — referenced by alert monitoring queries
+            # and auth flows (auth.py:330, 412, 696, 773; alerts.py:603, 1919, 1948).
+            "ALTER TABLE users_info ADD COLUMN is_logged_in BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users_info ADD COLUMN last_login TIMESTAMP NULL",
+            "ALTER TABLE users_info ADD COLUMN last_activity_at DATETIME NULL",
+            # Verification + email verification — used by auth_updated.py and
+            # cleanup_unverified_accounts.py.
+            "ALTER TABLE users_info ADD COLUMN is_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users_info ADD COLUMN email_verified BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users_info ADD COLUMN email_verification_token VARCHAR(255) DEFAULT NULL",
+            "ALTER TABLE users_info ADD COLUMN token_expires_at TIMESTAMP NULL",
+            # Password reset flow — used by password_reset.py / password_reset_fixed.py.
+            "ALTER TABLE users_info ADD COLUMN password_reset_token VARCHAR(255) DEFAULT NULL",
+            "ALTER TABLE users_info ADD COLUMN reset_token_expires_at TIMESTAMP NULL",
+            # 2FA (TOTP) — used by two_factor.py and auth flows.
+            "ALTER TABLE users_info ADD COLUMN two_factor_secret VARCHAR(32) DEFAULT NULL",
+            "ALTER TABLE users_info ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE",
+            # Brute-force protection counter (auth_updated.py).
+            "ALTER TABLE users_info ADD COLUMN failed_attempts INT DEFAULT 0",
+            # Google OAuth integration (auth_updated.py:442/452/474/509/528).
+            "ALTER TABLE users_info ADD COLUMN google_id VARCHAR(255) DEFAULT NULL",
+            # Notification + alert preference JSON blobs.
+            "ALTER TABLE users_info ADD COLUMN alert_preferences JSON DEFAULT NULL",
+            "ALTER TABLE users_info ADD COLUMN notification_preferences JSON DEFAULT NULL",
+            # Location tracking source label (gps / network / manual).
+            "ALTER TABLE users_info ADD COLUMN location_source VARCHAR(20) DEFAULT 'gps'",
         )
         for statement in updates:
             try:

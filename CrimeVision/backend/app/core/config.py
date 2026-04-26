@@ -5,7 +5,7 @@ import logging
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 
@@ -60,13 +60,47 @@ def get_allowed_origins() -> List[str]:
 ALLOWED_ORIGINS = get_allowed_origins()
 
 
+def _find_default_ca_bundle() -> Optional[str]:
+    """Locate the system CA certificate bundle on common Linux distributions."""
+    for path in (
+        "/etc/ssl/certs/ca-certificates.crt",  # Debian/Ubuntu (Render)
+        "/etc/pki/tls/certs/ca-bundle.crt",    # RHEL/CentOS/Fedora
+        "/etc/ssl/ca-bundle.pem",              # SUSE
+        "/etc/ssl/cert.pem",                   # Alpine, macOS
+    ):
+        if os.path.exists(path):
+            return path
+    return None
+
+
 @lru_cache(maxsize=None)
-def get_db_config() -> Dict[str, object]:
-    """Collect database credentials in a reusable structure."""
-    return {
+def get_db_ssl_kwargs() -> Dict[str, Any]:
+    """Return MySQL SSL kwargs based on env vars, or {} for plain connections.
+
+    Set DB_SSL_DISABLED=false to enable TLS — required by hosts like TiDB
+    Cloud Serverless, Aiven, PlanetScale-compatible providers, etc.
+    The CA bundle is auto-detected on Linux; set DB_SSL_CA to override.
+    """
+    if os.getenv("DB_SSL_DISABLED", "true").strip().lower() not in {"false", "0", "no"}:
+        return {}
+    kwargs: Dict[str, Any] = {"ssl_disabled": False}
+    ca_path = os.getenv("DB_SSL_CA") or _find_default_ca_bundle()
+    if ca_path:
+        kwargs["ssl_ca"] = ca_path
+        kwargs["ssl_verify_cert"] = True
+        kwargs["ssl_verify_identity"] = True
+    return kwargs
+
+
+@lru_cache(maxsize=None)
+def get_db_config() -> Dict[str, Any]:
+    """Collect database credentials (and SSL kwargs if configured)."""
+    config: Dict[str, Any] = {
         "host": os.getenv("DB_HOST", "localhost"),
         "user": os.getenv("DB_USER", "root"),
-        "password": os.getenv("DB_PASSWORD", "hafsa555"),
+        "password": os.getenv("DB_PASSWORD", ""),
         "database": os.getenv("DB_NAME", "crimevision_db"),
         "port": int(os.getenv("DB_PORT", "3306")),
     }
+    config.update(get_db_ssl_kwargs())
+    return config

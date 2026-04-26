@@ -2,9 +2,13 @@
 """
 Comprehensive Diagnostic - Find Root Cause of Both Issues
 """
+import os
 import requests
 import json
 import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def test_backend_with_auth():
     """Test the backend with proper authentication like the frontend does"""
@@ -69,10 +73,10 @@ def check_database_directly():
         import mysql.connector
 
         conn = mysql.connector.connect(
-            host='localhost',
-            database='crimevision_db',
-            user='root',
-            password='hafsa555'
+            host=os.getenv('DB_HOST', 'localhost'),
+            database=os.getenv('DB_NAME', 'crimevision_db'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', '')
         )
         cursor = conn.cursor(dictionary=True)
 
@@ -133,10 +137,10 @@ def check_browser_subscription_flow():
         import mysql.connector
 
         conn = mysql.connector.connect(
-            host='localhost',
-            database='crimevision_db',
-            user='root',
-            password='hafsa555'
+            host=os.getenv('DB_HOST', 'localhost'),
+            database=os.getenv('DB_NAME', 'crimevision_db'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', '')
         )
         cursor = conn.cursor(dictionary=True)
 

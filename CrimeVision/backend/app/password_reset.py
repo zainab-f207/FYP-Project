@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USERNAME = os.getenv('AUTH_EMAIL_USERNAME', 'safevision.noreply@gmail.com')
-SMTP_PASSWORD = os.getenv('AUTH_EMAIL_PASSWORD', 'nyuk dxgu klqx otpz')  # Set this in your environment variables
+SMTP_PASSWORD = os.getenv('AUTH_EMAIL_PASSWORD', '')  # Set this in your environment variables
 
 # Password reset models
 class ForgotPasswordRequest(BaseModel):

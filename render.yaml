@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: crimevision-backend
+    name: safevision-backend
     runtime: python
     plan: free
     region: oregon
@@ -16,17 +16,22 @@ services:
       - key: LOG_LEVEL
         value: INFO
 
-      # ── Database (db4free.net) — fill in via Render dashboard ──
+      # ── Database (TiDB Cloud Serverless) — fill in via Render dashboard ──
+      # TiDB connection details come from tidbcloud.com → Connect → Standard.
+      # Note: DB_PORT is 4000 (not 3306) and DB_USER is "<cluster_id>.root".
       - key: DB_HOST
         sync: false
       - key: DB_PORT
-        value: 3306
+        value: "4000"
       - key: DB_USER
         sync: false
       - key: DB_PASSWORD
         sync: false
       - key: DB_NAME
         sync: false
+      # TiDB Cloud requires TLS. The CA bundle is auto-detected on Render.
+      - key: DB_SSL_DISABLED
+        value: "false"
 
       # ── CORS (set to your Vercel URL) ──
       - key: ALLOWED_ORIGINS
@@ -46,11 +51,11 @@ services:
       - key: JWT_SECRET
         generateValue: true
 
-      # ── SMTP (Gmail app password) ──
+      # ── SMTP (Gmail app passwords) ──
       - key: SMTP_SERVER
         value: smtp.gmail.com
       - key: SMTP_PORT
-        value: 587
+        value: "587"
       - key: AUTH_EMAIL_USERNAME
         sync: false
       - key: AUTH_EMAIL_PASSWORD
@@ -58,6 +63,10 @@ services:
       - key: SMTP_USERNAME
         sync: false
       - key: SMTP_PASSWORD
+        sync: false
+      - key: ALERTS_EMAIL_USERNAME
+        sync: false
+      - key: ALERTS_EMAIL_PASSWORD
         sync: false
       - key: SUPER_ADMIN_EMAIL
         sync: false
@@ -71,6 +80,14 @@ services:
         sync: false
       - key: VAPID_PRIVATE_KEY
         sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+
+      # ── Law section verification (Groq → OpenRouter chain) ──
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
 
       # ── OCR vision APIs (at least one is required for FIR OCR) ──
       - key: GEMINI_API_KEY
@@ -79,5 +96,17 @@ services:
         value: gemini-2.5-flash
       - key: MISTRAL_API_KEY
         sync: false
+      - key: MISTRAL_MODEL
+        value: pixtral-12b-2409
       - key: OPENROUTER_API_KEY_For_Extraction
         sync: false
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.0-flash-exp:free
+
+      # ── Alert tuning (defaults match local dev) ──
+      - key: SAFE_AREA_MIN_SCORE
+        value: "70"
+      - key: SEND_SAFE_ALERTS
+        value: "True"
+      - key: SAFE_ALERT_COOLDOWN
+        value: "60"

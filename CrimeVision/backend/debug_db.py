@@ -1,13 +1,18 @@
-import mysql.connector
+import os
 import json
+import mysql.connector
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def debug_db():
     try:
         conn = mysql.connector.connect(
-            host='localhost', 
-            user='root', 
-            password='hafsa555', 
-            database='crimevision_db'
+            host=os.getenv('DB_HOST', 'localhost'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', ''),
+            database=os.getenv('DB_NAME', 'crimevision_db')
         )
         cursor = conn.cursor(dictionary=True)
         

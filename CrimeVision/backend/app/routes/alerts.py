@@ -34,7 +34,7 @@ ALERT_EMAIL_CONFIG = {
     ),
     'smtp_password': os.getenv(
         'SMTP_PASSWORD',
-        os.getenv('ALERTS_EMAIL_PASSWORD', os.getenv('AUTH_EMAIL_PASSWORD', 'pwvc mypu lihm upfr')),
+        os.getenv('ALERTS_EMAIL_PASSWORD', os.getenv('AUTH_EMAIL_PASSWORD', '')),
     )
 }
 
@@ -668,15 +668,20 @@ async def monitor_saved_locations():
                             "precautions": safety_data.get('precautions', 'General safety precautions advised.'),
                         }
 
-                        # Check for NEW incidents strictly within the last 1 hour to prevent redundant reports
+                        # Check for NEW incidents strictly within the last 1 hour to prevent redundant reports.
+                        # Haversine in meters (TiDB Serverless does not support ST_Distance_Sphere/POINT).
                         cursor.execute("""
-                            SELECT COUNT(*) as recent_count 
-                            FROM crimes 
-                            WHERE (ST_Distance_Sphere(point(longitude, latitude), point(%s, %s)) <= %s
-                               OR (LOWER(area) LIKE %s))
+                            SELECT COUNT(*) as recent_count
+                            FROM crimes
+                            WHERE ((6371000 * 2 * ASIN(SQRT(
+                                       POWER(SIN(RADIANS((latitude - %s) / 2)), 2) +
+                                       COS(RADIANS(%s)) * COS(RADIANS(latitude)) *
+                                       POWER(SIN(RADIANS((longitude - %s) / 2)), 2)
+                                   ))) <= %s
+                                OR (LOWER(area) LIKE %s))
                               AND crime_date >= (NOW() - INTERVAL 1 HOUR)
                               AND (risk_level = 'High' OR risk_level = 'Medium')
-                        """, (home_lng, home_lat, global_radius_km * 1000, f"%{(home_area or '').lower()}%"))
+                        """, (home_lat, home_lat, home_lng, global_radius_km * 1000, f"%{(home_area or '').lower()}%"))
                         
                         recent_check = cursor.fetchone()
                         has_fresh_incident = int(recent_check['recent_count'] or 0) > 0
@@ -761,14 +766,19 @@ async def monitor_saved_locations():
                         }
 
                         # Check for NEW incidents strictly within the last 1 hour
+                        # (Haversine in meters; TiDB has no ST_Distance_Sphere.)
                         cursor.execute("""
-                            SELECT COUNT(*) as recent_count 
-                            FROM crimes 
-                            WHERE (ST_Distance_Sphere(point(longitude, latitude), point(%s, %s)) <= %s
-                               OR (LOWER(area) LIKE %s))
+                            SELECT COUNT(*) as recent_count
+                            FROM crimes
+                            WHERE ((6371000 * 2 * ASIN(SQRT(
+                                       POWER(SIN(RADIANS((latitude - %s) / 2)), 2) +
+                                       COS(RADIANS(%s)) * COS(RADIANS(latitude)) *
+                                       POWER(SIN(RADIANS((longitude - %s) / 2)), 2)
+                                   ))) <= %s
+                                OR (LOWER(area) LIKE %s))
                               AND crime_date >= (NOW() - INTERVAL 1 HOUR)
                               AND (risk_level = 'High' OR risk_level = 'Medium')
-                        """, (work_lng, work_lat, global_radius_km * 1000, f"%{(work_area or '').lower()}%"))
+                        """, (work_lat, work_lat, work_lng, global_radius_km * 1000, f"%{(work_area or '').lower()}%"))
                         
                         recent_check_work = cursor.fetchone()
                         has_fresh_incident_work = int(recent_check_work['recent_count'] or 0) > 0
@@ -914,8 +924,15 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
         # 1. Spatial Search Params (honor global configured radius)
         effective_radius_km = get_global_notification_radius_km()
         spatial_radius_m = max(100, int(round(float(effective_radius_km) * 1000.0)))
-        spatial_filter = "ST_Distance_Sphere(point(longitude, latitude), point(%s, %s)) <= %s"
-        spatial_params = (float(lng), float(lat), spatial_radius_m)
+        # Haversine in meters (TiDB Serverless doesn't support ST_Distance_Sphere/POINT).
+        spatial_filter = (
+            "(6371000 * 2 * ASIN(SQRT("
+            "POWER(SIN(RADIANS((latitude - %s) / 2)), 2) + "
+            "COS(RADIANS(%s)) * COS(RADIANS(latitude)) * "
+            "POWER(SIN(RADIANS((longitude - %s) / 2)), 2)"
+            "))) <= %s"
+        )
+        spatial_params = (float(lat), float(lat), float(lng), spatial_radius_m)
         
         # 2. Name Search Params (Specific + Phase Fallback)
         name_filters = ["LOWER(area) LIKE %s"]

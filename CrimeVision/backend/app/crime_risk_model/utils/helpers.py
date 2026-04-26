@@ -430,12 +430,17 @@ def load_model(filepath=None):
 # ── Database helpers ──────────────────────────────────────────────────────────
 
 DB_CONFIG = {
-    "host":     os.getenv("DB_HOST", "localhost"),
-    "user":     os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", "hafsa555"),
+    "host": os.getenv("DB_HOST", "localhost"),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", ""),
     "database": os.getenv("DB_NAME", "crimevision_db"),
-    "port":     int(os.getenv("DB_PORT", 3306)),
+    "port": int(os.getenv("DB_PORT", "3306")),
 }
+try:
+    from app.core.config import get_db_ssl_kwargs
+    DB_CONFIG.update(get_db_ssl_kwargs())
+except Exception:
+    pass  # Standalone script execution outside the app package
 
 
 def get_db_connection():

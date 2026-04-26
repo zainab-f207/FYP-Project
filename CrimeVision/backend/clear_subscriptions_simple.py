@@ -1,12 +1,17 @@
+import os
 import mysql.connector
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def clear_subscriptions():
     try:
         conn = mysql.connector.connect(
-            host='localhost',
-            database='crimevision_db',
-            user='root',
-            password='hafsa555'
+            host=os.getenv('DB_HOST', 'localhost'),
+            database=os.getenv('DB_NAME', 'crimevision_db'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', '')
         )
         cursor = conn.cursor()
 

@@ -101,7 +101,7 @@ async def test_high_risk_area_alerts():
             'smtp_server': os.getenv('SMTP_SERVER', 'smtp.gmail.com'),
             'smtp_port': int(os.getenv('SMTP_PORT', 587)),
             'smtp_username': os.getenv('SMTP_USERNAME', 'safevision.noreply@gmail.com'),
-            'smtp_password': os.getenv('SMTP_PASSWORD', 'dzik alfk tgxy banc')
+            'smtp_password': os.getenv('SMTP_PASSWORD', '')
         }
         
         notification_system = AlertNotificationSystem(email_config)

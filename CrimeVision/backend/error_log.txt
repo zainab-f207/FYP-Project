@@ -937,3 +937,23 @@ Traceback (most recent call last):
   File "D:\FYP\Project\CrimeVision\backend\venv\Lib\site-packages\mysql\connector\connection_cext.py", line 641, in cmd_query
     raise get_mysql_exception(
 mysql.connector.errors.DatabaseError: 1041 (HY000): Out of memory; check if mysqld or some other process uses all available memory; if not, you may have to use 'ulimit' to allow mysqld to use more memory or you can add more swap space
+Error in stats: 1305 (42000): FUNCTION crimevision_db.point does not exist
+Traceback (most recent call last):
+  File "D:\FYP\Project\CrimeVision\backend\venv\Lib\site-packages\mysql\connector\connection_cext.py", line 633, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: FUNCTION crimevision_db.point does not exist
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\FYP\Project\CrimeVision\backend\main.py", line 416, in api_me_stats_alias
+    cursor.execute(f"""
+  File "D:\FYP\Project\CrimeVision\backend\venv\Lib\site-packages\mysql\connector\cursor_cext.py", line 330, in execute
+    result = self._cnx.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^
+  File "D:\FYP\Project\CrimeVision\backend\venv\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 77, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\FYP\Project\CrimeVision\backend\venv\Lib\site-packages\mysql\connector\connection_cext.py", line 641, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1305 (42000): FUNCTION crimevision_db.point does not exist

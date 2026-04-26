@@ -335,12 +335,17 @@ class ModelWatcher:
             load_dotenv()
 
             db_cfg = {
-                'host':     os.getenv('DB_HOST', 'localhost'),
-                'user':     os.getenv('DB_USER', 'root'),
-                'password': os.getenv('DB_PASSWORD', 'hafsa555'),
-                'database': os.getenv('DB_NAME', 'crimevision_db'),
-                'port':     int(os.getenv('DB_PORT', 3306)),
+                "host": os.getenv("DB_HOST", "localhost"),
+                "user": os.getenv("DB_USER", "root"),
+                "password": os.getenv("DB_PASSWORD", ""),
+                "database": os.getenv("DB_NAME", "crimevision_db"),
+                "port": int(os.getenv("DB_PORT", "3306")),
             }
+            try:
+                from app.core.config import get_db_ssl_kwargs
+                db_cfg.update(get_db_ssl_kwargs())
+            except Exception:
+                pass
             conn   = mysql.connector.connect(**db_cfg)
             cursor = conn.cursor(dictionary=True)
             cursor.execute("SELECT COUNT(*) AS cnt FROM crimes")

@@ -989,7 +989,7 @@ ALERT_EMAIL_CONFIG = {
     'smtp_server': 'smtp.gmail.com',
     'smtp_port': 587,
     'smtp_username': os.getenv('ALERTS_EMAIL_USERNAME', 'safevision.alerts@gmail.com'),
-    'smtp_password': os.getenv('ALERTS_EMAIL_PASSWORD', 'pwvc mypu lihm upfr')
+    'smtp_password': os.getenv('ALERTS_EMAIL_PASSWORD', '')
 }
 
 SAFE_AREA_ALERT_CONFIG = {

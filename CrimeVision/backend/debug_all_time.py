@@ -6,6 +6,9 @@ import os
 import sys
 import mysql.connector
 from mysql.connector import Error
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def test_all_time_queries():
     """Test the All Time queries directly"""
@@ -16,10 +19,10 @@ def test_all_time_queries():
     try:
         # Database connection
         conn = mysql.connector.connect(
-            host='localhost',
-            database='crimevision_db',
-            user='root',
-            password='hafsa555'
+            host=os.getenv('DB_HOST', 'localhost'),
+            database=os.getenv('DB_NAME', 'crimevision_db'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', '')
         )
         cursor = conn.cursor(dictionary=True)
 
