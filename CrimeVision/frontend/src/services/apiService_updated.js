@@ -4,6 +4,8 @@ let API_BASE_URL_FALLBACKS = [];
 
 // Priority order for API base URL detection
 const envApi = import.meta?.env?.VITE_API_BASE_URL;
+const PRODUCTION_API_URL = 'https://safevision-backend-ye2i.onrender.com';
+
 if (envApi) {
   API_BASE_URL = envApi;
   console.log('Using environment variable API_BASE_URL:', API_BASE_URL);
@@ -12,33 +14,40 @@ if (envApi) {
   const protocol = window.location.protocol;
   const isLocalhost = host === 'localhost' || host === '127.0.0.1';
   const isLocalNetwork = host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.');
+  // Public hosting providers — appending :8000 to these never works.
+  const isProductionHost =
+    host.endsWith('.vercel.app') ||
+    host.endsWith('.netlify.app') ||
+    host.endsWith('.pages.dev') ||
+    host.endsWith('.onrender.com');
   const hasDevPort = !!window.location.port;
 
-  // Build fallback URLs in priority order
-  API_BASE_URL_FALLBACKS = [
-    // 1. Current hostname (for mobile access via IP)
-    `${protocol}//${host}:8000`,
-    // 2. localhost (for local development)
-    `${protocol}//localhost:8000`,
-    // 3. 127.0.0.1 (alternative localhost)
-    `${protocol}//127.0.0.1:8000`,
-    // 4. Common local network IPs (try a few)
-    `${protocol}//192.168.0.101:8000`,
-    `${protocol}//192.168.1.101:8000`,
-    `${protocol}//10.0.0.101:8000`,
-  ];
+  if (isProductionHost) {
+    // Env var didn't reach this build. Use the deployed backend URL so the
+    // app still works even without VITE_API_BASE_URL configured.
+    API_BASE_URL = PRODUCTION_API_URL;
+    API_BASE_URL_FALLBACKS = [PRODUCTION_API_URL];
+    console.log('Production host detected, using:', API_BASE_URL);
+  } else {
+    API_BASE_URL_FALLBACKS = [
+      `${protocol}//${host}:8000`,
+      `${protocol}//localhost:8000`,
+      `${protocol}//127.0.0.1:8000`,
+      `${protocol}//192.168.0.101:8000`,
+      `${protocol}//192.168.1.101:8000`,
+      `${protocol}//10.0.0.101:8000`,
+    ];
+    API_BASE_URL = API_BASE_URL_FALLBACKS[0];
 
-  // Set primary URL (current hostname for mobile compatibility)
-  API_BASE_URL = API_BASE_URL_FALLBACKS[0];
-
-  console.log('Dynamic API_BASE_URL detection:', {
-    primary: API_BASE_URL,
-    fallbacks: API_BASE_URL_FALLBACKS.slice(1),
-    hostname: host,
-    isLocalhost,
-    isLocalNetwork,
-    hasDevPort
-  });
+    console.log('Dynamic API_BASE_URL detection:', {
+      primary: API_BASE_URL,
+      fallbacks: API_BASE_URL_FALLBACKS.slice(1),
+      hostname: host,
+      isLocalhost,
+      isLocalNetwork,
+      hasDevPort
+    });
+  }
 }
 
 // Test connectivity and switch to working URL
