@@ -94,15 +94,9 @@ security = HTTPBearer()
 app = FastAPI(title="SafeVision API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173", 
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        # Add any other origins you need
-    ],
+    # Read from ALLOWED_ORIGINS env var (comma-separated). Defaults to local
+    # dev origins. Production: set ALLOWED_ORIGINS to your Vercel URL.
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
