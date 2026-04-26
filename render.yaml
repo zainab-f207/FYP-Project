@@ -6,7 +6,7 @@ services:
     region: oregon
     rootDir: CrimeVision/backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main_enhanced_final_fixed:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
