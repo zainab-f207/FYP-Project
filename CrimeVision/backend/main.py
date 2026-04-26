@@ -124,17 +124,12 @@ from app.dependencies import security, get_username_from_token, get_current_user
 alert_cooldown_cache: Dict[str, datetime] = {}
 
 security = HTTPBearer()
-app = FastAPI(title="SafeVision API")
+app = FastAPI(title=get_api_title())
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://192.168.0.104:5173",
-        "http://192.168.56.1:5173",
-    ],
+    # Read from ALLOWED_ORIGINS env var (comma-separated). Defaults to local
+    # dev origins. Production: set ALLOWED_ORIGINS to your Vercel URL.
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
