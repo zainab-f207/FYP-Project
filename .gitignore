@@ -42,6 +42,10 @@ CrimeVision\data
 CrimeVision\backend\app\crime_risk_model\data
 CrimeVision\OCRModel\app\data
 
+# ===== Ignore runtime user uploads (profile photos) =====
+CrimeVision/backend/app/profile_photos/*
+!CrimeVision/backend/app/profile_photos/.gitkeep
+
 # ===== Ignore VS/IDE junk =====
 .vs/
 bin/

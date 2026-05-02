@@ -103,7 +103,7 @@ def ensure_users_table(conn) -> None:
             "ALTER TABLE users_info ADD COLUMN email_verified BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users_info ADD COLUMN email_verification_token VARCHAR(255) DEFAULT NULL",
             "ALTER TABLE users_info ADD COLUMN token_expires_at TIMESTAMP NULL",
-            # Password reset flow — used by password_reset.py / password_reset_fixed.py.
+            # Password reset flow — used by password_reset_fixed.py.
             "ALTER TABLE users_info ADD COLUMN password_reset_token VARCHAR(255) DEFAULT NULL",
             "ALTER TABLE users_info ADD COLUMN reset_token_expires_at TIMESTAMP NULL",
             # 2FA (TOTP) — used by two_factor.py and auth flows.
