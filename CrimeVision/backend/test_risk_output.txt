@@ -1,1 +1,0 @@
-{'is_high_risk': True, 'safety_score': 46.4, 'high_risk_crimes': 910, 'total_crimes': 2490, 'risk_level': 'Medium'}
