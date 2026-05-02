@@ -1,4 +1,4 @@
-fastapi==0.104.1
+fastapi==0.115.6
 pydantic==2.5.0
 uvicorn[standard]==0.24.0
 mysql-connector-python==8.1.0
@@ -27,4 +27,4 @@ cryptography==42.0.8
 google-genai==1.16.1
 # HTTP clients used by routes/location.py and services/gemini_law_verifier.py
 aiohttp==3.9.5
-httpx==0.27.2
+httpx==0.28.1
