@@ -134,7 +134,7 @@ def main() -> None:
     print(f"{'=' * 70}\n")
 
     print("Next: restart your backend.")
-    print("  uvicorn app.main_enhanced_final_fixed:app --reload")
+    print("  uvicorn main:app --reload")
 
 
 if __name__ == "__main__":

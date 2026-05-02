@@ -98,8 +98,7 @@ def ensure_users_table(conn) -> None:
             "ALTER TABLE users_info ADD COLUMN is_logged_in BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users_info ADD COLUMN last_login TIMESTAMP NULL",
             "ALTER TABLE users_info ADD COLUMN last_activity_at DATETIME NULL",
-            # Verification + email verification — used by auth_updated.py and
-            # cleanup_unverified_accounts.py.
+            # Verification + email verification — used by auth_updated.py.
             "ALTER TABLE users_info ADD COLUMN is_verified BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users_info ADD COLUMN email_verified BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users_info ADD COLUMN email_verification_token VARCHAR(255) DEFAULT NULL",

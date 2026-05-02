@@ -19,12 +19,10 @@ pywebpush==1.14.0
 google-auth==2.23.4
 google-auth-oauthlib==1.1.0
 requests==2.31.0
-schedule==1.2.0
 
 # Added for deployment (used by OCR + alerts modules)
 opencv-python-headless==4.10.0.84
 Pillow==10.4.0
-geopy==2.4.1
 cryptography==42.0.8
 google-genai==1.16.1
 # HTTP clients used by routes/location.py and services/gemini_law_verifier.py
