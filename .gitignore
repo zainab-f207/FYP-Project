@@ -46,6 +46,10 @@ CrimeVision\OCRModel\app\data
 CrimeVision/backend/app/profile_photos/*
 !CrimeVision/backend/app/profile_photos/.gitkeep
 
+# ===== Ignore generated reports (PDFs, charts, exports) =====
+CrimeVision/backend/reports/*
+!CrimeVision/backend/reports/.gitkeep
+
 # ===== Ignore VS/IDE junk =====
 .vs/
 bin/
