@@ -3349,12 +3349,28 @@ const apiService = {
         activeReports: response.active_reports || response.activeReports || 0,
         active_reports: response.active_reports || response.activeReports || 0,
         systemHealth: response.system_health || response.systemHealth || 98,
+        system_health: response.system_health || response.systemHealth || 98,
         predictionsToday: response.predictions_today || response.predictionsToday || 0,
+        predictions_today: response.predictions_today || response.predictionsToday || 0,
+        pending_approvals: response.pending_approvals || response.pendingApprovals || 0,
+        pendingApprovals: response.pending_approvals || response.pendingApprovals || 0,
         preventedCrimes: response.prevented_crimes || response.preventedCrimes || 0
       };
     } catch (error) {
       console.error('Error fetching admin stats:', error);
       throw error;
+    }
+  },
+
+  async getAdminRecentEvents(token) {
+    try {
+      const response = await this.get('/admin/recent-events', token);
+      if (response && Array.isArray(response.events)) return response.events;
+      if (Array.isArray(response)) return response;
+      return [];
+    } catch (error) {
+      console.error('Error fetching admin recent events:', error);
+      return [];
     }
   },
 

@@ -1,6 +1,7 @@
 // src/components/AdminDashboard/AdminDashboard.js
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext_updated';
 import { useSystemSettings } from '../../contexts/SystemSettingsContext';
 import apiService from '../../services/apiService_updated';
@@ -68,6 +69,11 @@ const AdminDashboard = () => {
   // Dynamic data state
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [recentEvents, setRecentEvents] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+  const notifPopupRef = useRef(null);
 
   // Profile + first-login password reminder
   const [profileOpen, setProfileOpen] = useState(false);
@@ -144,6 +150,72 @@ const AdminDashboard = () => {
     };
     fetchStats();
   }, [token]);
+
+  // Fetch real recent events for the LIVE OPS FEED (refresh every 60s).
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const events = await apiService.getAdminRecentEvents(token);
+        if (!cancelled) setRecentEvents(events);
+      } catch (e) {
+        if (!cancelled) setRecentEvents([]);
+      }
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [token]);
+
+  // Fetch real notifications for the bell dropdown (refresh every 60s).
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await apiService.getAdminNotifications(token);
+        if (!cancelled) setNotifications(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!cancelled) setNotifications([]);
+      }
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [token]);
+
+  // Close notification dropdown on outside click / Esc. Note: the popup is
+  // portalled to document.body so it's NOT inside notifRef — we need a
+  // second ref on the popup itself and check both before closing.
+  useEffect(() => {
+    if (!notifOpen) return;
+    const onDoc = (e) => {
+      const inBell = notifRef.current && notifRef.current.contains(e.target);
+      const inPopup = notifPopupRef.current && notifPopupRef.current.contains(e.target);
+      if (!inBell && !inPopup) setNotifOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setNotifOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [notifOpen]);
+
+  // Convert an ISO timestamp into a relative "5m / 2h / 3d ago" label.
+  const relTime = (iso) => {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    if (isNaN(t)) return '';
+    const diff = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (diff < 30) return 'just now';
+    if (diff < 60) return `${diff}s`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+    return `${Math.floor(diff / 86400)}d`;
+  };
 
   const handleExtendSession = () => {
     resetActivity();
@@ -293,19 +365,91 @@ const AdminDashboard = () => {
         {/* Top Navbar */}
         <div className={styles.navbar} data-sv-navbar>
           <div className={styles.navbarLeft}>
-            <div className={styles.searchBar} data-sv-searchbar>
-              <i className="fas fa-search"></i>
-              <input type="text" placeholder="Search locations, crimes, users..." />
+            {/* Replaced the dead search bar with a live status strip:
+                shows local time, pending approvals and the system health
+                heuristic from /admin/stats. Real signals only. */}
+            <div data-sv-statusstrip className={styles.statusStrip}>
+              <span data-sv-status-pill>
+                <i className="far fa-clock"></i>
+                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <span data-sv-status-pill data-sv-status-tone={(stats?.pending_approvals ?? 0) > 0 ? 'warn' : 'ok'}>
+                <i className="fas fa-clipboard-check"></i>
+                {stats?.pending_approvals ?? 0} pending
+              </span>
+              <span data-sv-status-pill data-sv-status-tone="ok">
+                <i className="fas fa-heartbeat"></i>
+                {stats?.system_health ?? 100}% healthy
+              </span>
             </div>
           </div>
           <div className={styles.navbarRight}>
             <button className={styles.themeToggle} onClick={toggleTheme} title={isDarkTheme ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
               <i className={isDarkTheme ? 'fas fa-sun' : 'fas fa-moon'}></i>
             </button>
-            <div className={styles.notificationBtn} onClick={() => { if (hasPermission(user, 'manage_alerts')) setActiveItem('alerts'); }}>
+            <div
+              ref={notifRef}
+              className={styles.notificationBtn}
+              style={{ position: 'relative' }}
+              onClick={() => setNotifOpen((v) => !v)}
+              role="button"
+              tabIndex={0}
+              title="Notifications"
+            >
               <i className="fas fa-bell"></i>
-              <span className={styles.notificationBadge}>•</span>
+              {notifications.length > 0 && (
+                <span className={styles.notificationBadge}>{notifications.length}</span>
+              )}
             </div>
+            {/* Notification popup is portalled into document.body so the
+                navbar's backdrop-filter (which makes the navbar a containing
+                block for position:fixed descendants) cannot trap it. */}
+            {notifOpen && createPortal(
+              <div
+                ref={notifPopupRef}
+                data-sv-notif-popup
+                className={styles.notifPopup}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div data-sv-notif-head>
+                  <strong>Notifications</strong>
+                  <span data-sv-notif-count>{notifications.length}</span>
+                </div>
+                <div data-sv-notif-list>
+                  {notifications.length === 0 ? (
+                    <div data-sv-notif-empty>
+                      <i className="fas fa-check-circle"></i>
+                      <span>You're all caught up</span>
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} data-sv-notif-row data-sv-notif-tone={n.type || 'info'}>
+                        <i className={
+                          n.type === 'warning' ? 'fas fa-exclamation-triangle'
+                            : n.type === 'success' ? 'fas fa-check-circle'
+                            : n.type === 'error' ? 'fas fa-times-circle'
+                            : 'fas fa-info-circle'
+                        }></i>
+                        <div data-sv-notif-body>
+                          <div data-sv-notif-title>{n.title}</div>
+                          <div data-sv-notif-msg>{n.message}</div>
+                        </div>
+                        <span data-sv-notif-time>{relTime(n.timestamp)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {hasPermission(user, 'manage_alerts') && (
+                  <button
+                    data-sv-notif-foot
+                    onClick={() => { setNotifOpen(false); setActiveItem('alerts'); }}
+                  >
+                    Open Alerts Center →
+                  </button>
+                )}
+              </div>,
+              document.body
+            )}
             <div
               className={styles.userProfile}
               data-sv-userchip
@@ -550,22 +694,23 @@ const AdminDashboard = () => {
                   <span data-sv-pill data-sv-pill-pulse>● live</span>
                 </div>
                 <div data-sv-feed>
-                  {[
-                    { icon: 'fas fa-shield-alt', sev: 'high', title: 'New high-risk area detected', body: `${(Object.entries(stats?.crimes_by_area || {}).sort((a, b) => b[1] - a[1])[0] || ['—'])[0]}`, time: 'just now' },
-                    { icon: 'fas fa-user-check', sev: 'low', title: 'User accounts active', body: `${(stats?.total_users ?? 0).toLocaleString()} verified members`, time: '5m' },
-                    { icon: 'fas fa-file-alt', sev: 'medium', title: 'FIR ingestion ongoing', body: `${(stats?.recent_crimes ?? 0).toLocaleString()} reports in 30 days`, time: '24m' },
-                    { icon: 'fas fa-brain', sev: 'low', title: 'AI prediction model healthy', body: 'Poisson + Random Forest ensemble', time: '1h' },
-                    { icon: 'fas fa-database', sev: 'medium', title: 'Records archive growing', body: `${(stats?.total_crimes ?? 0).toLocaleString()} records stored`, time: '3h' },
-                  ].map((evt, i) => (
-                    <div key={i} data-sv-feed-row data-sv-sev={evt.sev}>
-                      <div data-sv-feed-icon><i className={evt.icon}></i></div>
-                      <div data-sv-feed-body>
-                        <div data-sv-feed-title>{evt.title}</div>
-                        <div data-sv-feed-sub>{evt.body}</div>
-                      </div>
-                      <span data-sv-feed-time>{evt.time}</span>
+                  {recentEvents.length === 0 ? (
+                    <div data-sv-empty style={{ padding: '18px 14px' }}>
+                      <i className="fas fa-satellite-dish"></i>
+                      <span>No activity yet — admin actions, FIRs and approvals will surface here in real time.</span>
                     </div>
-                  ))}
+                  ) : (
+                    recentEvents.map((evt, i) => (
+                      <div key={i} data-sv-feed-row data-sv-sev={evt.sev || 'low'}>
+                        <div data-sv-feed-icon><i className={evt.icon || 'fas fa-shield-alt'}></i></div>
+                        <div data-sv-feed-body>
+                          <div data-sv-feed-title>{evt.title}</div>
+                          <div data-sv-feed-sub>{evt.body}</div>
+                        </div>
+                        <span data-sv-feed-time>{relTime(evt.timestamp)}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

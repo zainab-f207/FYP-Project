@@ -67,13 +67,38 @@ const AIRouteAnalysis = ({ userLocation, initialDestination = null }) => {
   };
 
   const geocodeLocation = async (location) => {
+    // Bias Nominatim to the Lahore bounding box. Without this, ambiguous names
+    // like "Askari 4" or "DHA Phase 4" resolve to Karachi first, which yields
+    // 1000+ km routes that exhaust the public OSRM 25-second timeout.
+    // viewbox = lon_min, lat_max, lon_max, lat_min  (left, top, right, bottom)
+    const LAHORE_VIEWBOX = "74.05,31.80,74.70,31.30";
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          location
-        )}&countrycodes=pk&limit=1&accept-language=en`
-      );
-      const data = await res.json();
+      const params = new URLSearchParams({
+        format: "json",
+        q: location,
+        countrycodes: "pk",
+        viewbox: LAHORE_VIEWBOX,
+        bounded: "1",
+        limit: "1",
+        "accept-language": "en",
+      });
+      let res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`);
+      let data = await res.json();
+      if (!data?.length) {
+        // Fallback: relax the bounding box but still prefer Lahore via viewbox
+        // (without `bounded=1`) so we get a Lahore hit if available, otherwise
+        // any Pakistan match — better than failing outright.
+        const relaxed = new URLSearchParams({
+          format: "json",
+          q: location,
+          countrycodes: "pk",
+          viewbox: LAHORE_VIEWBOX,
+          limit: "1",
+          "accept-language": "en",
+        });
+        res = await fetch(`https://nominatim.openstreetmap.org/search?${relaxed}`);
+        data = await res.json();
+      }
       return data?.[0]
         ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
         : null;

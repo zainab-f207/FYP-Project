@@ -254,10 +254,10 @@ SYSTEM_SETTINGS_DEFAULTS = {
     "maptiler_enabled": {"value": "true", "category": "map"},
     "maptiler_api_key": {"value": "JKSv1djb3YWDL4sjZtTB", "category": "map"},
     "map_default_style": {"value": "streets", "category": "map"},
-    "heatmap_radius": {"value": "20", "category": "map"},
+    "heatmap_radius": {"value": "35", "category": "map"},
     "heatmap_intensity": {"value": "0.5", "category": "map"},
     "heatmap_blur_multiplier": {"value": "25", "category": "map"},
-    "heatmap_layer_max_zoom": {"value": "17", "category": "map"},
+    "heatmap_layer_max_zoom": {"value": "12", "category": "map"},
     "map_default_record_limit": {"value": "1000", "category": "map"},
     "map_hotspot_min_incidents": {"value": "2", "category": "map"},
     "map_alert_visibility_threshold": {"value": "low", "category": "map"},
@@ -282,7 +282,7 @@ SYSTEM_SETTINGS_DEFAULTS = {
     "location_accuracy_threshold_meters": {"value": "50000", "category": "system"},
     "low_accuracy_location_policy": {"value": "accept_warn", "category": "system"},
     "ocr_transliteration_timeout_seconds": {"value": "8", "category": "system"},
-    "data_retention_days": {"value": "90", "category": "system"},
+    "data_retention_days": {"value": "180", "category": "system"},
     "log_level": {"value": "info", "category": "system"},
     "maintenance_mode": {"value": "false", "category": "system"},
 }
@@ -757,6 +757,46 @@ def get_admin_stats(current_user: str = Depends(get_username_from_token)):
         area_stats = cursor.fetchall()
         stats["crimes_by_area"] = {cast(Dict[str, Any], row)["area"]: cast(Dict[str, Any], row)["count"] for row in area_stats}
 
+        # Predictions today: count today's audit-logged actions whose name implies
+        # a prediction / risk-inference path. The pipeline runs Poisson + RF every
+        # time a FIR is OCR'd, predicted, approved, or its risk is requested.
+        try:
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS n FROM audit_logs
+                WHERE DATE(created_at) = CURDATE()
+                  AND (
+                    action LIKE '%predict%'
+                    OR action LIKE '%ocr%'
+                    OR action LIKE '%fir%'
+                    OR action LIKE '%approval%'
+                  )
+                """
+            )
+            preds = cast(Dict[str, Any], cursor.fetchone()) or {}
+            stats["predictions_today"] = int(preds.get("n") or 0)
+        except Exception:
+            stats["predictions_today"] = 0
+
+        # Pending approvals: open approval_requests rows awaiting superadmin review.
+        try:
+            cursor.execute(
+                "SELECT COUNT(*) AS n FROM approval_requests WHERE status = 'pending'"
+            )
+            pend = cast(Dict[str, Any], cursor.fetchone()) or {}
+            stats["pending_approvals"] = int(pend.get("n") or 0)
+        except Exception:
+            stats["pending_approvals"] = 0
+
+        # System health: simple heuristic — 100 minus a small penalty for each
+        # unresolved pending approval (capped at 30) and 5 if recent activity is
+        # zero. This is a real (cheap) signal, not a hardcoded "98%".
+        health = 100
+        health -= min(30, stats.get("pending_approvals", 0) * 2)
+        if stats.get("recent_crimes", 0) == 0:
+            health -= 5
+        stats["system_health"] = max(60, health)
+
         return stats
 
     except Exception as e:
@@ -816,20 +856,279 @@ def get_admin_notifications(current_user: str = Depends(get_username_from_token)
                 "timestamp": datetime.now().isoformat()
             })
 
-        # System status
-        notifications.append({
-            "id": 3,
-            "type": "success",
-            "title": "System Status",
-            "message": "All systems operational",
-            "timestamp": datetime.now().isoformat()
-        })
+        # SuperAdmin notifications: surface recent admin actions from audit_logs
+        # so the bell shows real activity (logins, approvals, FIR ingests, etc.)
+        # and a heads-up when admins have approval requests waiting for review.
+        if user.get("role") == "superadmin":
+            try:
+                # Recent admin actions (last 24h, top 6)
+                cursor.execute(
+                    """
+                    SELECT id, admin_username, action, target_type, target_id, ip_address, created_at
+                    FROM audit_logs
+                    WHERE created_at >= (NOW() - INTERVAL 1 DAY)
+                    ORDER BY created_at DESC
+                    LIMIT 6
+                    """
+                )
+                for row in cursor.fetchall():
+                    r = cast(Dict[str, Any], row)
+                    act_raw = r.get("action") or "action"
+                    act_lower = act_raw.lower()
+                    if "reject" in act_lower or "delete" in act_lower:
+                        ntype = "warning"
+                    elif "approve" in act_lower or "create" in act_lower or "login" in act_lower:
+                        ntype = "success"
+                    else:
+                        ntype = "info"
+                    pretty = act_raw.replace("_", " ").title()
+                    target_lbl = r.get("target_type") or "system"
+                    if r.get("target_id") is not None:
+                        target_lbl = f"{target_lbl} #{r.get('target_id')}"
+                    notifications.append({
+                        "id": f"audit-{r.get('id')}",
+                        "type": ntype,
+                        "title": pretty,
+                        "message": f"{r.get('admin_username')} · {target_lbl} · {r.get('ip_address') or 'unknown ip'}",
+                        "timestamp": r["created_at"].isoformat() if r.get("created_at") else None,
+                    })
+            except Exception as _e:
+                logger.warning(f"superadmin audit-log notifications skipped: {_e}")
+
+            # Pending approvals waiting for superadmin review
+            try:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS n FROM approval_requests WHERE status = 'pending'
+                    """
+                )
+                pend_row = cast(Dict[str, Any], cursor.fetchone()) or {}
+                pend_n = int(pend_row.get("n") or 0)
+                if pend_n > 0:
+                    notifications.append({
+                        "id": "pending-approvals",
+                        "type": "warning",
+                        "title": "Approvals waiting for review",
+                        "message": f"{pend_n} admin request{'s' if pend_n != 1 else ''} pending your decision",
+                        "timestamp": datetime.now().isoformat(),
+                    })
+            except Exception as _e:
+                logger.warning(f"superadmin pending-approvals notifications skipped: {_e}")
+
+        # Approval-decision notifications for admins: surface every recent
+        # superadmin decision on this admin's own approval requests so the
+        # admin sees approve/reject outcomes (and any review notes) in their
+        # bell dropdown.
+        if user.get("role") == "admin":
+            try:
+                cursor.execute(
+                    """
+                    SELECT id, action_type, target_type, status, reviewed_by,
+                           reviewed_at, review_notes
+                    FROM approval_requests
+                    WHERE admin_username = %s
+                      AND status IN ('approved', 'rejected')
+                      AND reviewed_at IS NOT NULL
+                      AND reviewed_at >= (NOW() - INTERVAL 7 DAY)
+                    ORDER BY reviewed_at DESC
+                    LIMIT 10
+                    """,
+                    (current_user,),
+                )
+                for row in cursor.fetchall():
+                    r = cast(Dict[str, Any], row)
+                    decided = r.get("status") or "reviewed"
+                    is_approved = decided == "approved"
+                    base_msg = (
+                        f"Your {r.get('action_type') or 'request'} on "
+                        f"{r.get('target_type') or 'a record'} was "
+                        f"{'approved' if is_approved else 'rejected'}"
+                    )
+                    if r.get("reviewed_by"):
+                        base_msg += f" by {r.get('reviewed_by')}"
+                    if r.get("review_notes"):
+                        base_msg += f" — {r.get('review_notes')}"
+                    notifications.append({
+                        "id": f"approval-{r.get('id')}",
+                        "type": "success" if is_approved else "warning",
+                        "title": "Approval approved" if is_approved else "Approval rejected",
+                        "message": base_msg,
+                        "timestamp": r["reviewed_at"].isoformat() if r.get("reviewed_at") else None,
+                    })
+            except Exception as _e:
+                logger.warning(f"approval-decision notifications skipped: {_e}")
+
+        # System status (only when nothing else surfaced — avoids cluttering
+        # the bell when there's real news to read).
+        if not notifications:
+            notifications.append({
+                "id": 3,
+                "type": "success",
+                "title": "System Status",
+                "message": "All systems operational",
+                "timestamp": datetime.now().isoformat()
+            })
 
         return {"notifications": notifications}
 
     except Exception as e:
         logger.error(f"Database error getting notifications: {e}")
         raise HTTPException(status_code=500, detail="Database error")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@router.get("/recent-events")
+def get_recent_events(current_user: str = Depends(get_username_from_token)):
+    """Real, live operational events for the admin dashboard's LIVE OPS FEED.
+
+    Returns the most recent activity across the system with real titles,
+    bodies, severities and timestamps — no hardcoded labels. Sources merged:
+        - audit_logs   (admin actions: login, approve, reject, ocr, etc.)
+        - users_info   (new user registrations)
+        - approval_requests (pending superadmin reviews)
+        - crimes       (latest high-risk crimes by crime_date)
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT role FROM users_info WHERE username = %s", (current_user,))
+        user = cast(Optional[Dict[str, Any]], cursor.fetchone())
+        if not user or user.get("role") not in ("superadmin", "admin"):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        events = []
+
+        # 1) Latest admin actions from audit_logs (last 24h, top 8)
+        try:
+            cursor.execute(
+                """
+                SELECT admin_username, action, target_type, target_id, ip_address, created_at
+                FROM audit_logs
+                WHERE created_at >= (NOW() - INTERVAL 1 DAY)
+                ORDER BY created_at DESC
+                LIMIT 8
+                """
+            )
+            for row in cursor.fetchall():
+                r = cast(Dict[str, Any], row)
+                act = (r.get("action") or "").lower()
+                # Map action → icon + severity for the UI
+                if "approval_approved" in act or "approve" in act:
+                    icon, sev = "fas fa-check-circle", "low"
+                elif "rejected" in act or "reject" in act:
+                    icon, sev = "fas fa-times-circle", "high"
+                elif "login" in act:
+                    icon, sev = "fas fa-sign-in-alt", "low"
+                elif "ocr" in act:
+                    icon, sev = "fas fa-file-image", "medium"
+                elif "predict" in act:
+                    icon, sev = "fas fa-brain", "low"
+                elif "delete" in act or "remove" in act:
+                    icon, sev = "fas fa-trash", "high"
+                elif "update" in act or "edit" in act:
+                    icon, sev = "fas fa-edit", "medium"
+                else:
+                    icon, sev = "fas fa-shield-alt", "low"
+                pretty = (r.get("action") or "Action").replace("_", " ").title()
+                events.append({
+                    "icon": icon,
+                    "sev": sev,
+                    "title": pretty,
+                    "body": f"{r.get('admin_username')} · {r.get('target_type') or 'system'}",
+                    "timestamp": r.get("created_at").isoformat() if r.get("created_at") else None,
+                })
+        except Exception as e:
+            logger.warning(f"recent-events: audit_logs read failed: {e}")
+
+        # 2) Pending approvals waiting for superadmin
+        try:
+            cursor.execute(
+                """
+                SELECT id, admin_username, action_type, target_type, requested_at
+                FROM approval_requests
+                WHERE status = 'pending'
+                ORDER BY requested_at DESC
+                LIMIT 3
+                """
+            )
+            for row in cursor.fetchall():
+                r = cast(Dict[str, Any], row)
+                events.append({
+                    "icon": "fas fa-hourglass-half",
+                    "sev": "medium",
+                    "title": "Approval pending",
+                    "body": f"{r.get('admin_username')} requested {r.get('action_type')} on {r.get('target_type')}",
+                    "timestamp": r.get("requested_at").isoformat() if r.get("requested_at") else None,
+                })
+        except Exception as e:
+            logger.warning(f"recent-events: approval_requests read failed: {e}")
+
+        # 3) New user registrations in the last 24h
+        try:
+            cursor.execute(
+                """
+                SELECT username, first_name, last_name, created_at
+                FROM users_info
+                WHERE role = 'user' AND created_at >= (NOW() - INTERVAL 1 DAY)
+                ORDER BY created_at DESC
+                LIMIT 3
+                """
+            )
+            for row in cursor.fetchall():
+                r = cast(Dict[str, Any], row)
+                full = (
+                    f"{r.get('first_name') or ''} {r.get('last_name') or ''}".strip()
+                    or r.get("username")
+                    or "Unknown user"
+                )
+                events.append({
+                    "icon": "fas fa-user-plus",
+                    "sev": "low",
+                    "title": "New user registered",
+                    "body": str(full),
+                    "timestamp": r.get("created_at").isoformat() if r.get("created_at") else None,
+                })
+        except Exception as e:
+            logger.warning(f"recent-events: users read failed: {e}")
+
+        # 4) Most recent high-risk crime
+        try:
+            cursor.execute(
+                """
+                SELECT id, area, crime_type, risk_level, crime_date
+                FROM crimes
+                WHERE risk_level IN ('High', 'Critical')
+                ORDER BY crime_date DESC
+                LIMIT 2
+                """
+            )
+            for row in cursor.fetchall():
+                r = cast(Dict[str, Any], row)
+                cd = r.get("crime_date")
+                events.append({
+                    "icon": "fas fa-exclamation-triangle",
+                    "sev": "high",
+                    "title": "High-risk incident logged",
+                    "body": f"{r.get('crime_type') or 'Incident'} in {r.get('area') or 'Unknown area'}",
+                    "timestamp": cd.isoformat() if hasattr(cd, "isoformat") else str(cd) if cd else None,
+                })
+        except Exception as e:
+            logger.warning(f"recent-events: high-risk crimes read failed: {e}")
+
+        # Sort by timestamp desc, keep top 10
+        def _ts_key(ev):
+            t = ev.get("timestamp") or ""
+            return t
+        events.sort(key=_ts_key, reverse=True)
+        return {"events": events[:10]}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"recent-events failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load recent events")
     finally:
         cursor.close()
         conn.close()

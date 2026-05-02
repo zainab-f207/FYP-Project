@@ -26,7 +26,7 @@ opencv-python-headless==4.10.0.84
 Pillow==10.4.0
 geopy==2.4.1
 cryptography==42.0.8
-google-generativeai==0.8.3
+google-genai==1.16.1
 # HTTP clients used by routes/location.py and services/gemini_law_verifier.py
 aiohttp==3.9.5
 httpx==0.27.2

@@ -103,7 +103,7 @@ const normalizeAreaName = (area) => (area || 'Unknown').toString().trim().toLowe
 
 const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = true, initialArea = null }) => {
   const { token, isAuthenticated } = useAuth();
-  const { settings: systemSettings } = useSystemSettings();
+  const { settings: systemSettings, loading: systemSettingsLoading } = useSystemSettings();
   const [activeMode, setActiveMode] = useState('markers');
   const [controlsVisible, setControlsVisible] = useState(true);
   const [activeTab, setActiveTab] = useState('trends');
@@ -118,6 +118,7 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
   const [showResetAlert, setShowResetAlert] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [lookbackFallback, setLookbackFallback] = useState(null); // { days } when fallback used
   const [trendsData, setTrendsData] = useState([]);
   const [predictionMultiplier, setPredictionMultiplier] = useState(0.8);
   const [dataLoading, setDataLoading] = useState(false);
@@ -414,6 +415,10 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
 
   // Fetch data with enhanced error handling
   useEffect(() => {
+    // Wait for system settings to load so the default record limit reflects
+    // the actual configured value (not the hard-coded JS fallback).
+    if (systemSettingsLoading) return;
+
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -430,29 +435,37 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
           queryParams.limit = recordLimit;
         }
 
-        const defaultRecordLimit = Number(systemSettings?.map_default_record_limit ?? SYSTEM_SETTINGS_DEFAULTS.map_default_record_limit);
-        const bypassAutoLookbackForManualLimit =
-          incidentLimitTouchedRef.current && Number(recordLimit) !== defaultRecordLimit;
-
-        // Data lookback: apply UNLESS user explicitly sets date range OR manually changes record limit.
-        // This only affects automatic lookback and preserves all other filters.
+        // Auto data-lookback: apply system_settings.data_retention_days as start_date
+        // unless the user has set a custom date range. If the lookback returns no
+        // crimes (typically because the DB is stale relative to today), retry once
+        // without the lookback so the map still shows real data.
         const retentionDays = Number(systemSettings?.data_retention_days ?? SYSTEM_SETTINGS_DEFAULTS.data_retention_days);
-        if (!customStartDate && !customEndDate && retentionDays > 0 && !bypassAutoLookbackForManualLimit) {
-          // Apply system default lookback when NO date range is explicitly set
+        const lookbackEligible = !customStartDate && !customEndDate && retentionDays > 0;
+        if (customStartDate) queryParams.start_date = customStartDate;
+        if (customEndDate) queryParams.end_date = customEndDate;
+        if (lookbackEligible) {
           const start = new Date();
           start.setDate(start.getDate() - retentionDays);
           queryParams.start_date = start.toISOString().slice(0, 10);
-        } else if (customStartDate || customEndDate) {
-          // Use explicit date range if provided
-          if (customStartDate) queryParams.start_date = customStartDate;
-          if (customEndDate) queryParams.end_date = customEndDate;
         }
 
-        const [crimeTypesData, crimesData, areasData] = await Promise.all([
+        const [crimeTypesData, crimesDataInitial, areasData] = await Promise.all([
           apiService.getCrimeTypes(),
           apiService.getCrimes(queryParams),
           apiService.getAreas()
         ]);
+
+        let crimesData = crimesDataInitial;
+        const initialList = Array.isArray(crimesData) ? crimesData : (crimesData?.crimes || []);
+        if (lookbackEligible && initialList.length === 0) {
+          // Stale-data fallback: re-fetch without the lookback window
+          const fallbackParams = { ...queryParams };
+          delete fallbackParams.start_date;
+          crimesData = await apiService.getCrimes(fallbackParams);
+          setLookbackFallback({ days: retentionDays });
+        } else {
+          setLookbackFallback(null);
+        }
 
         console.log('Fetched crime types:', crimeTypesData);
         console.log('Fetched crimes:', crimesData);
@@ -476,18 +489,45 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
     };
 
     fetchData();
-  }, [selectedTimePeriod, customStartDate, customEndDate, incidentLimit, systemSettings]);
+  }, [selectedTimePeriod, customStartDate, customEndDate, incidentLimit, systemSettings, systemSettingsLoading]);
 
-  // Handle initialArea selection from dashboard/email links
+  // Handle initialArea selection from dashboard/email links / alert cards.
+  // Match leniently — exact > prefix > substring — so a deep link from an
+  // alert card whose area string differs slightly in casing/punctuation from
+  // the canonical name in the `areas` table still narrows the map down.
   useEffect(() => {
     if (initialArea && areas.length > 0) {
-      const slugToName = initialArea.replace(/-/g, ' ').toLowerCase();
-      const areaObj = areas.find(a => a.name.toLowerCase() === slugToName);
-      
+      const wanted = String(initialArea)
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+      if (!wanted) return;
+
+      let areaObj = areas.find(a => (a.name || '').toLowerCase() === wanted);
+      if (!areaObj) {
+        areaObj = areas.find(a => {
+          const n = (a.name || '').toLowerCase();
+          return n.startsWith(wanted) || wanted.startsWith(n);
+        });
+      }
+      if (!areaObj) {
+        areaObj = areas.find(a => {
+          const n = (a.name || '').toLowerCase();
+          return n.includes(wanted) || wanted.includes(n);
+        });
+      }
+
       if (areaObj) {
-        // Clear other filters and select this one
+        // Clear other filters and select this one. Also drop any active
+        // time-period filter so the area's incidents are not hidden by a
+        // narrow date window that the user didn't ask for.
         setLocationFilters({ [areaObj.name]: true });
-        console.log(`✅ Pre-selected area from query param: ${areaObj.name}`);
+        setFilters({});
+        setSelectedTimePeriod('all');
+        console.log(`✅ Pre-selected area from deep link: ${areaObj.name}`);
+      } else {
+        console.warn(`⚠️ Could not match initialArea "${initialArea}" to any known area`);
       }
     }
   }, [initialArea, areas]);
@@ -1992,18 +2032,23 @@ const fetchTrendsData = useCallback(async () => {
                 const lat = Array.isArray(crime.coordinates) ? crime.coordinates[0] : crime.latitude;
                 const lng = Array.isArray(crime.coordinates) ? crime.coordinates[1] : crime.longitude;
                 if (typeof lat === 'number' && typeof lng === 'number' && isFinite(lat) && isFinite(lng)) {
-                  let intensity = 0.5;
+                  // Severity-weighted intensity. High/Critical pull the gradient
+                  // into the warm end; lower-risk incidents still contribute
+                  // mass so density shows through even in safer areas.
+                  let intensity = 0.4;
                   const riskLevel = (crime.risk_level || '').toLowerCase();
-                  if (riskLevel.includes('high')) intensity = 1;
-                  else if (riskLevel.includes('medium') || riskLevel.includes('med')) intensity = 0.7;
-                  else if (riskLevel.includes('low')) intensity = 0.3;
+                  if (riskLevel.includes('critical') || riskLevel.includes('avoid')) intensity = 1.5;
+                  else if (riskLevel.includes('high')) intensity = 1.2;
+                  else if (riskLevel.includes('medium') || riskLevel.includes('med') || riskLevel.includes('moderate')) intensity = 0.8;
+                  else if (riskLevel.includes('low')) intensity = 0.4;
                   return { lat, lng, intensity };
                 }
                 return null;
               }).filter(Boolean)}
-              radius={systemSettings.heatmap_radius || 25}
-              blur={15}
-              maxZoom={15}
+              radius={Number(systemSettings?.heatmap_radius) || SYSTEM_SETTINGS_DEFAULTS.heatmap_radius}
+              blur={Number(systemSettings?.heatmap_blur_multiplier) || SYSTEM_SETTINGS_DEFAULTS.heatmap_blur_multiplier}
+              minOpacity={Number(systemSettings?.heatmap_intensity) || SYSTEM_SETTINGS_DEFAULTS.heatmap_intensity}
+              maxZoom={Number(systemSettings?.heatmap_layer_max_zoom) || SYSTEM_SETTINGS_DEFAULTS.heatmap_layer_max_zoom}
             />
             {displayCrimes.map((crime, index) => {
               const lat = Array.isArray(crime.coordinates) ? crime.coordinates[0] : crime.latitude;
@@ -2016,9 +2061,9 @@ const fetchTrendsData = useCallback(async () => {
                     position={[lat, lng]}
                     icon={L.divIcon({
                       className: 'heatmap-marker',
-                      html: `<div style="width: 8px; height: 8px; border-radius: 50%; background: ${riskColor}; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.4);"></div>`,
-                      iconSize: [8, 8],
-                      iconAnchor: [4, 4]
+                      html: `<div style="width: 9px; height: 9px; border-radius: 50%; background: ${riskColor}; border: 1.5px solid #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.25);"></div>`,
+                      iconSize: [9, 9],
+                      iconAnchor: [4.5, 4.5]
                     })}
                   >
                     <Popup className="crime-popup-wrapper crime-popup-compact crime-popup-cluster">
@@ -2885,6 +2930,15 @@ const fetchTrendsData = useCallback(async () => {
         <div className="reset-alert">
           <span>Filters have been reset to show all incidents.</span>
           <button onClick={() => setShowResetAlert(false)}>Close</button>
+        </div>
+      )}
+      {lookbackFallback && (
+        <div className="reset-alert" style={{ background: '#fef3c7', color: '#78350f', borderLeft: '4px solid #f59e0b' }}>
+          <span>
+            <i className="fas fa-info-circle" style={{ marginRight: 8 }}></i>
+            No incidents in the last {lookbackFallback.days} days (system retention window). Showing all available data instead.
+          </span>
+          <button onClick={() => setLookbackFallback(null)}>Close</button>
         </div>
       )}
     </section>

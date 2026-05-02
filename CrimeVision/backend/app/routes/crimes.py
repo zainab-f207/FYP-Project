@@ -311,6 +311,13 @@ def get_area_safety_profile(
     if not area:
         raise HTTPException(status_code=400, detail="area is required")
 
+    logger.info(
+        "📊 /area-safety-profile called — area=%r months=%s days=%s crime_type=%r "
+        "anchor_date=%s visit_time=%s | engine=calculate_unified_risk_summary "
+        "(deterministic aggregation, NOT an ML prediction)",
+        area, months, days, crime_type, date or "now", visit_time,
+    )
+
     # Rely on loose matching (area_like_pattern) to handle DHA variants without hard-coding transformation
     area_pattern = area_like_pattern(area)
     if date and not validate_date_format(date):
@@ -695,6 +702,18 @@ def get_area_safety_profile(
         safety_grade = score_summary["safety_grade"]
         data_confidence = score_summary["data_confidence"]
 
+        logger.info(
+            "✅ AREA-SAFETY-PROFILE computed for %r (window=%dd) → "
+            "risk=%s safety_score=%.1f%% grade=%s confidence=%s | "
+            "inputs: total=%d high=%d medium=%d recency=%.1f trend=%.1f time=%.1f | "
+            "rank=%d/%d (safer than %d%%) density=%.1fx city avg",
+            area, lookback_days,
+            risk_level, safety_score, safety_grade, data_confidence,
+            total_crimes, high_risk_count, medium_risk_count,
+            recency_score, trend_score, time_risk_score,
+            rank_num, total_areas, safer_than_pct, density_ratio,
+        )
+
         cursor.execute(
             f"""
             SELECT COUNT(*) AS total,
@@ -1040,6 +1059,17 @@ def get_area_safety_profile(
             )
 
         return {
+            "engine": "unified_risk_aggregation",
+            "engine_label": "Unified Risk Aggregation (statistical, no ML)",
+            "engine_inputs": {
+                "total_crimes": total_crimes,
+                "high_risk_count": high_risk_count,
+                "medium_risk_count": medium_risk_count,
+                "recency_score": recency_score,
+                "trend_score": trend_score,
+                "time_risk_score": time_risk_score,
+                "observation_days": lookback_days,
+            },
             "area": area,
             "period_months": months,
             "lookback_days": lookback_days,
@@ -1468,8 +1498,18 @@ def predict_risk(request: PredictRiskRequest):
     if not validate_date_format(date_part):
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
+    logger.info(
+        "🎯 /predict-risk called — area=%r crime=%r date=%s hour=%s | "
+        "available models: poisson=%s rf_composite=%s legacy_rf=%s",
+        area, crime_type, date_part, req_hour,
+        bool(_poisson_artifacts),
+        bool(_crm_model and _crm_scaler and _crm_artifacts),
+        bool(model and le_area and le_crime and le_risk),
+    )
+
     # ── Primary path: Poisson probability model ───────────────────────────────
     if _poisson_artifacts:
+        logger.info("🟢 Trying PRIMARY model: Poisson probability estimator")
         try:
             kw_sev = _infer_sev(crime_type)
             result = _poisson_predict(
@@ -1481,11 +1521,14 @@ def predict_risk(request: PredictRiskRequest):
                 hour             = req_hour,
             )
             logger.info(
-                "Poisson prediction: area=%s crime=%s date=%s hour=%s → %s %d%% (λ=%.4f)",
+                "✅ POISSON prediction served: area=%s crime=%s date=%s hour=%s → %s %d%% (λ=%.4f, conf=%.2f)",
                 area, crime_type, date_part, req_hour,
                 result['risk_level'], result['risk_percentage'], result['lambda'],
+                result.get('confidence', 0.0),
             )
             resp = {
+                "model":                "poisson",
+                "model_label":          "Poisson Probability Estimator",
                 "risk_level":           result['risk_level'],
                 "risk_percentage":      result['risk_percentage'],
                 "confidence":           result['confidence'],
@@ -1759,8 +1802,23 @@ def predict_risk(request: PredictRiskRequest):
                     ampm = 'AM' if h < 12 else 'PM'
                     return f"{h % 12 or 12} {ampm}"
                 _rh_sr = result.get('riskiest_hours', [])
-                if _rh_sr:
-                    _rh_s = sorted(_rh_sr)
+                # `riskiest_hours` may be a list of int hours (RF path) or a
+                # list of {"hour": int, "label": ..., "relative_risk": ...}
+                # dicts (Poisson path). Normalize to ints before sorting,
+                # otherwise sorted() raises "'<' not supported between dicts".
+                _rh_hours = []
+                for _item in _rh_sr:
+                    if isinstance(_item, dict):
+                        _h = _item.get('hour')
+                        if _h is not None:
+                            _rh_hours.append(int(_h))
+                    else:
+                        try:
+                            _rh_hours.append(int(_item))
+                        except (TypeError, ValueError):
+                            continue
+                if _rh_hours:
+                    _rh_s = sorted(_rh_hours)
                     _sr.append(
                         f"Increase patrol coverage between {_fmt_h_sr(_rh_s[0])} \u2013 {_fmt_h_sr(_rh_s[-1])}"
                         f" \u2014 peak risk window for {crime_type} in {area}"
@@ -1797,11 +1855,14 @@ def predict_risk(request: PredictRiskRequest):
             return resp
 
         except Exception as exc:
-            logger.warning("Poisson prediction failed — %s: %s, falling back to RF",
+            logger.warning("⚠️  POISSON prediction failed — %s: %s — falling back to RF + composite",
                            type(exc).__name__, exc, exc_info=True)
+    else:
+        logger.info("⏭️  Poisson artifacts not loaded — skipping primary model")
 
     # ── Secondary path: RF + composite score ─────────────────────────────────
     if _crm_model and _crm_scaler and _crm_artifacts:
+        logger.info("🟡 Trying SECONDARY model: Random Forest + composite risk score")
         try:
             date_with_time = date_part + ' ' + datetime.now().strftime('%H:%M:%S')
             row = {
@@ -1823,8 +1884,13 @@ def predict_risk(request: PredictRiskRequest):
             raw_score  = _crm_raw_score(_df.iloc[0])
             risk_pct   = max(1, min(99, int(round(raw_score * 100))))
 
-            logger.info("RF prediction: %s %d%% conf=%.2f", risk_label, risk_pct, confidence)
+            logger.info(
+                "✅ RF+COMPOSITE prediction served: area=%s crime=%s → %s %d%% (conf=%.2f)",
+                area, crime_type, risk_label, risk_pct, confidence,
+            )
             return {
+                "model":           "rf_composite",
+                "model_label":     "Random Forest + Composite Risk Score",
                 "risk_level":      risk_label,
                 "risk_percentage": risk_pct,
                 "confidence":      confidence,
@@ -1832,12 +1898,16 @@ def predict_risk(request: PredictRiskRequest):
             }
 
         except Exception as exc:
-            logger.warning("RF prediction failed — %s: %s, falling back to legacy model",
+            logger.warning("⚠️  RF+COMPOSITE failed — %s: %s — falling back to legacy label-encoder RF",
                            type(exc).__name__, exc, exc_info=True)
+    else:
+        logger.info("⏭️  RF+composite artifacts not loaded — skipping secondary model")
 
     # ── Fallback: legacy label-encoder RF ────────────────────────────────────
     if not model or not le_area or not le_crime or not le_risk:
+        logger.error("❌ No prediction model available (Poisson, RF+composite, and legacy RF all unavailable)")
         raise HTTPException(status_code=500, detail="No prediction model available")
+    logger.info("🔵 Trying FALLBACK model: Legacy label-encoder Random Forest")
 
     try:
         date_str     = date.split(' ')[0]
@@ -1853,7 +1923,13 @@ def predict_risk(request: PredictRiskRequest):
         matched_crime = find_best_match(crime_type, le_crime)
 
         if not matched_area or not matched_crime:
-            return {"risk_level": "Medium", "risk_percentage": 50,
+            logger.warning(
+                "🟠 LEGACY-RF: no training match for area=%r / crime=%r — returning DEFAULT (Medium, 50%%)",
+                area, crime_type,
+            )
+            return {"model": "default_medium",
+                    "model_label": "Default Fallback (Medium, no training match)",
+                    "risk_level": "Medium", "risk_percentage": 50,
                     "confidence": 0.5, "is_estimated": True,
                     "message": "Could not match inputs to training data"}
 
@@ -1869,12 +1945,18 @@ def predict_risk(request: PredictRiskRequest):
         risk_level     = str(le_risk.inverse_transform([pred])[0]).capitalize()
         risk_percentage = calculate_risk_percentage(risk_level, pred_proba.tolist(), le_risk)
         confidence     = float(max(pred_proba))
-        return {"risk_level": risk_level, "risk_percentage": risk_percentage, "confidence": confidence}
+        logger.info(
+            "✅ LEGACY-RF prediction served: area=%s (matched=%s) crime=%s (matched=%s) → %s %d%% (conf=%.2f)",
+            area, matched_area, crime_type, matched_crime, risk_level, risk_percentage, confidence,
+        )
+        return {"model": "legacy_rf",
+                "model_label": "Legacy Random Forest (label-encoder)",
+                "risk_level": risk_level, "risk_percentage": risk_percentage, "confidence": confidence}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Legacy prediction error: {e}", exc_info=True)
+        logger.error("❌ LEGACY-RF prediction crashed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Prediction failed")
 
 @router.post("")
@@ -2533,6 +2615,11 @@ def compare_routes(
             'recommendation': by_safety[0] if by_safety else None
         }
         
+    except HTTPException:
+        # Preserve specific HTTP statuses (e.g. 503 for OSRM timeouts) raised
+        # earlier in this handler. Without this, the generic except below would
+        # swallow them and rebrand every routing failure as a 500.
+        raise
     except Exception as e:
         logger.error(f"❌ Error comparing routes: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Route comparison failed: {str(e)}")

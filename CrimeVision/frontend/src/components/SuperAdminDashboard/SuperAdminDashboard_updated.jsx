@@ -327,6 +327,7 @@
 
 // src/components/SuperAdminDashboard/SuperAdminDashboard.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext_updated';
 import AdminRegistrationForm from '../AdminDashboard/AdminRegistrationForm';
 import UserManagement from './UserManagement';
@@ -339,6 +340,7 @@ import PPCManagement from './PPCManagement';
 import SuperAdminPredictionPanel from './SuperAdminPredictionPanel';
 import SuperAdminMainDashboard from './SuperAdminMainDashboard';
 import CrimeHeatmapPanel from '../AdminDashboard/CrimeHeatmapPanel';
+import AuditLogs from './AuditLogs';
 import { 
   SystemMonitorSVG, 
   SecurityShieldSVG, 
@@ -368,10 +370,17 @@ const SuperAdminDashboard = () => {
   const { user, logout, token } = useAuth();
   const contentRef = useRef(null);
   const notifRef = useRef(null);
+  const notifPopupRef = useRef(null);
 
-  // Close notif panel when clicking outside
+  // Close notif panel when clicking outside. The dropdown is portalled to
+  // document.body so it's NOT inside notifRef — we must also check
+  // notifPopupRef before deciding the click was outside.
   useEffect(() => {
-    const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false); };
+    const handler = (e) => {
+      const inBell = notifRef.current && notifRef.current.contains(e.target);
+      const inPopup = notifPopupRef.current && notifPopupRef.current.contains(e.target);
+      if (!inBell && !inPopup) setNotifOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -470,6 +479,8 @@ const SuperAdminDashboard = () => {
         return <PPCManagement token={token} />;
       case 'predictions':
         return <SuperAdminPredictionPanel />;
+      case 'audit-logs':
+        return <AuditLogs token={token} />;
       default:
         return <SuperAdminMainDashboard token={token} onNavigate={handleSectionChange} />;
     }
@@ -485,7 +496,8 @@ const SuperAdminDashboard = () => {
       'system-settings': 'System Settings',
       'approvals': 'FIR Approvals',
       'law-sections': 'Law Sections (PPC/ATA/CNSA)',
-      'predictions': 'AI Predictions'
+      'predictions': 'AI Predictions',
+      'audit-logs': 'Audit Logs'
     };
     return titles[activeSection] || 'Dashboard';
   };
@@ -601,6 +613,12 @@ const SuperAdminDashboard = () => {
                 icon: 'fas fa-brain',
                 label: 'AI Predictions',
                 svgComponent: <CrimeAnalyticsSVG className={styles.menuSvg} color="#a855f7" />
+              },
+              {
+                key: 'audit-logs',
+                icon: 'fas fa-clipboard-list',
+                label: 'Audit Logs',
+                svgComponent: <SecurityShieldSVG className={styles.menuSvg} color="#f4a261" />
               }
             ].map((item) => (
               <li key={item.key}>
@@ -673,45 +691,79 @@ const SuperAdminDashboard = () => {
                 onClick={() => setNotifOpen(o => !o)}
               >
                 <i className="fas fa-bell" style={{ fontSize: '1.1rem', color: notifOpen ? '#a5b4fc' : '#94a3b8' }}></i>
-                {notifications.filter(n => n.urgent).length > 0 && (
+                {notifications.length > 0 && (
                   <span className={styles.notificationCount}>
-                    {notifications.filter(n => n.urgent).length}
+                    {notifications.length}
                   </span>
                 )}
                 <div className={styles.notificationPulse}></div>
               </button>
+            </div>
 
-              {notifOpen && (
-                <div className={styles.notifDropdown}>
-                  <div className={styles.notifHeader}>
-                    <span>Notifications</span>
-                    <span className={styles.notifHeaderCount}>{notifications.length}</span>
-                  </div>
-                  <div className={styles.notifList}>
-                    {notifications.length === 0 && (
-                      <div className={styles.notifEmpty}>No notifications</div>
-                    )}
-                    {notifications.slice(0, 8).map((n, i) => {
-                      const colorMap = { warning: '#f97316', error: '#dc2626', success: '#22c55e', info: '#06b6d4' };
-                      const col = colorMap[n.type] || '#94a3b8';
-                      return (
-                        <div key={n.id || i} className={styles.notifItem} style={{ '--nc': col }}>
-                          <div className={styles.notifDot} style={{ background: col }}></div>
-                          <div className={styles.notifBody}>
-                            <p className={styles.notifMsg}>{n.message}</p>
-                            {n.time && <span className={styles.notifTime}>{n.time}</span>}
-                          </div>
-                          {n.urgent && <span className={styles.notifUrgent}>!</span>}
+            {/* Notification dropdown is portalled into document.body so the
+                navbar's backdrop-filter (which makes the navbar a containing
+                block for fixed/absolute descendants) cannot trap it. */}
+            {notifOpen && createPortal(
+              <div
+                ref={notifPopupRef}
+                className={styles.notifDropdown}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: 'fixed',
+                  top: '78px',
+                  right: '28px',
+                  zIndex: 9999,
+                  width: '360px',
+                  maxWidth: 'calc(100vw - 24px)',
+                }}
+              >
+                <div className={styles.notifHeader}>
+                  <span>Notifications</span>
+                  <span className={styles.notifHeaderCount}>{notifications.length}</span>
+                </div>
+                <div className={styles.notifList}>
+                  {notifications.length === 0 && (
+                    <div className={styles.notifEmpty}>No notifications</div>
+                  )}
+                  {notifications.slice(0, 8).map((n, i) => {
+                    const colorMap = { warning: '#f97316', error: '#dc2626', success: '#22c55e', info: '#06b6d4' };
+                    const col = colorMap[n.type] || '#94a3b8';
+                    return (
+                      <div key={n.id || i} className={styles.notifItem} style={{ '--nc': col }}>
+                        <div className={styles.notifDot} style={{ background: col }}></div>
+                        <div className={styles.notifBody}>
+                          <p className={styles.notifMsg}>{n.message}</p>
+                          {n.time && <span className={styles.notifTime}>{n.time}</span>}
                         </div>
-                      );
-                    })}
-                  </div>
-                  <button className={styles.notifRefresh} onClick={() => { fetchDashboardData(); setNotifOpen(false); }}>
+                        {n.urgent && <span className={styles.notifUrgent}>!</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: 8, padding: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <button
+                    className={styles.notifRefresh}
+                    style={{ flex: 1 }}
+                    onClick={() => { fetchDashboardData(); }}
+                  >
                     <i className="fas fa-rotate"></i> Refresh
                   </button>
+                  <button
+                    className={styles.notifRefresh}
+                    style={{
+                      flex: 1,
+                      background: 'rgba(244, 162, 97, 0.14)',
+                      color: '#f4a261',
+                      borderColor: 'rgba(244, 162, 97, 0.3)',
+                    }}
+                    onClick={() => { setNotifOpen(false); handleSectionChange('audit-logs'); }}
+                  >
+                    <i className="fas fa-clipboard-list"></i> Audit Logs
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>,
+              document.body
+            )}
 
             <div className={styles.quickActions}>
               <button className={styles.quickActionBtn} onClick={fetchDashboardData} title="Refresh dashboard data">

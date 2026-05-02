@@ -526,7 +526,34 @@ html {
 .google-button-container {
   display: flex;
   justify-content: center;
-  min-height: 40px;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(239, 68, 68, 0.18));
+  box-shadow:
+    0 0 0 1px rgba(245, 158, 11, 0.20),
+    0 6px 18px rgba(245, 158, 11, 0.12);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  /* Let Google's personalized button (which can be wider than the regular
+     "Sign in with Google" pill) extend naturally without being clipped. */
+  overflow: visible;
+}
+
+.google-button-container:hover {
+  box-shadow:
+    0 0 0 1px rgba(245, 158, 11, 0.45),
+    0 8px 22px rgba(245, 158, 11, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Don't clip the Google iframe — it handles its own rounded shape and
+   horizontal layout. Clipping here cuts the G logo off when Google swaps
+   in the wider "Sign in as <name>" personalized button. */
+.google-button-container > div,
+.google-button-container iframe {
+  overflow: visible !important;
+  max-width: 100%;
 }
 
 /* Auth Toggle */
@@ -713,12 +740,27 @@ html {
     height: auto !important;
     max-height: calc(100vh - 24px) !important;
     border-radius: 18px !important;
-    overflow: hidden !important;
+    /* Allow vertical scroll on short phones (e.g. iPhone SE) so the
+       "Don't have an account? Create Account" footer stays reachable. */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
     margin: 0 auto !important;
   }
   /* Visible breathing room around modal on phones */
   .login-page {
     padding: 14px !important;
+  }
+
+  /* On short viewports, shrink the decorative top section so the form
+     and its "Create Account" footer stay visible without scrolling. */
+  .auth-character-section {
+    height: 180px;
+    padding: 0.75rem;
+  }
+  .auth-toggle {
+    margin-top: 1rem;
+    padding-top: 1rem;
   }
 
   .auth-character-section {

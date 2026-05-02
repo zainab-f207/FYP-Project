@@ -128,6 +128,110 @@
 }
 .errorMsg i { font-size: 1rem; }
 
+/* ===== Error popup modal (deliberate, professional dialog) ===== */
+.errorPopupOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 11, 19, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4000;
+  padding: 20px;
+  animation: errorPopupFade 0.16s ease-out;
+}
+@keyframes errorPopupFade { from { opacity: 0; } to { opacity: 1; } }
+.errorPopupCard {
+  width: 100%;
+  max-width: 440px;
+  background: linear-gradient(180deg, #1a2332 0%, #131b27 100%);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  border-radius: 18px;
+  padding: 28px 24px 22px;
+  text-align: center;
+  box-shadow: 0 30px 70px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  animation: errorPopupPop 0.2s cubic-bezier(.2,.9,.3,1.05);
+}
+@keyframes errorPopupPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.errorPopupIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 107, 107, 0.14);
+  color: #ff6b6b;
+  font-size: 1.7rem;
+}
+.errorPopupKind_warning {
+  border-color: rgba(249, 168, 38, 0.4);
+}
+.errorPopupKind_warning .errorPopupIcon {
+  background: rgba(249, 168, 38, 0.14);
+  color: #f9a826;
+}
+.errorPopupKind_network {
+  border-color: rgba(96, 165, 250, 0.4);
+}
+.errorPopupKind_network .errorPopupIcon {
+  background: rgba(96, 165, 250, 0.14);
+  color: #60a5fa;
+}
+.errorPopupKind_server {
+  border-color: rgba(168, 85, 247, 0.4);
+}
+.errorPopupKind_server .errorPopupIcon {
+  background: rgba(168, 85, 247, 0.14);
+  color: #a855f7;
+}
+.errorPopupKind_format {
+  border-color: rgba(244, 114, 182, 0.4);
+}
+.errorPopupKind_format .errorPopupIcon {
+  background: rgba(244, 114, 182, 0.14);
+  color: #f472b6;
+}
+.errorPopupTitle {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  letter-spacing: 0.2px;
+}
+.errorPopupMessage {
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+.errorPopupBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: 0;
+  background: linear-gradient(135deg, #f4a261 0%, #e76f51 100%);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.errorPopupBtn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 10px 24px -10px rgba(244, 162, 97, 0.55);
+}
+.errorPopupBtn:active { transform: translateY(0); }
+
 /* ===== Results Section ===== */
 .resultsSection {
   border-top: 1px solid var(--card-border);

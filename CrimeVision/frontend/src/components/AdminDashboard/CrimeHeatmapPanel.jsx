@@ -76,12 +76,13 @@ const createRiskIcon = (riskLevel) => {
 };
 
 const CrimeHeatmapPanel = ({ token }) => {
-  const { settings: systemSettings } = useSystemSettings();
+  const { settings: systemSettings, loading: systemSettingsLoading } = useSystemSettings();
   const [selectedArea, setSelectedArea] = useState('all');
   const [areas, setAreas] = useState([]);
   const [rawCrimes, setRawCrimes] = useState([]);
   const [clusters, setClusters] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [lookbackFallback, setLookbackFallback] = useState(null); // { days } when fallback used
   const [mapCenter, setMapCenter] = useState([
     Number(systemSettings?.map_default_center_lat ?? SYSTEM_SETTINGS_DEFAULTS.map_default_center_lat),
     Number(systemSettings?.map_default_center_lng ?? SYSTEM_SETTINGS_DEFAULTS.map_default_center_lng),
@@ -200,32 +201,43 @@ const CrimeHeatmapPanel = ({ token }) => {
     setLoading(true);
     // Build limit param: recordLimit === 0 means "All" -> omit param so backend returns all
     const limitParam = recordLimit === 0 ? {} : { limit: recordLimit };
-    const retentionDays = Number(systemSettings?.data_retention_days ?? SYSTEM_SETTINGS_DEFAULTS.data_retention_days);
-    const defaultRecordLimit = Number(systemSettings?.map_default_record_limit ?? SYSTEM_SETTINGS_DEFAULTS.map_default_record_limit);
-    const bypassAutoLookbackForManualLimit =
-      recordLimitTouchedRef.current && Number(recordLimit) !== defaultRecordLimit;
 
     const queryParams = {
       ...limitParam,
       // Don't filter by crime_type here - filter on frontend to preserve full list
     };
 
-    // Data lookback: apply UNLESS user explicitly sets date range OR manually changes record limit.
-    // This only affects the automatic lookback behavior and preserves all other filters.
-    if (!dateRange.start && !dateRange.end && retentionDays > 0 && !bypassAutoLookbackForManualLimit) {
-      // Apply system default lookback when NO date range is explicitly set
+    // Auto data-lookback: apply system_settings.data_retention_days as start_date
+    // unless the admin set a custom date range. If the lookback returns no rows,
+    // retry once without it so a stale DB still shows real data.
+    const retentionDays = Number(systemSettings?.data_retention_days ?? SYSTEM_SETTINGS_DEFAULTS.data_retention_days);
+    const lookbackEligible = !dateRange.start && !dateRange.end && retentionDays > 0;
+    if (dateRange.start) queryParams.start_date = dateRange.start;
+    if (dateRange.end) queryParams.end_date = dateRange.end;
+    if (lookbackEligible) {
       const start = new Date();
       start.setDate(start.getDate() - retentionDays);
       queryParams.start_date = start.toISOString().slice(0, 10);
-    } else {
-      // Use explicit date range if provided
-      if (dateRange.start) queryParams.start_date = dateRange.start;
-      if (dateRange.end) queryParams.end_date = dateRange.end;
     }
+
+    const fetchCrimesWithFallback = async (params) => {
+      const initial = await apiService.getCrimes(params);
+      const list = Array.isArray(initial) ? initial : (initial?.crimes || []);
+      if (lookbackEligible && list.length === 0) {
+        const fallbackParams = { ...params };
+        delete fallbackParams.start_date;
+        const fallback = await apiService.getCrimes(fallbackParams);
+        setLookbackFallback({ days: retentionDays });
+        return fallback;
+      }
+      setLookbackFallback(null);
+      return initial;
+    };
+
     try {
       if (selectedArea !== 'all') {
         // Fetch raw records first so marker/filter counts always reflect real incidents
-        const crimes = await apiService.getCrimes({ area: selectedArea, ...queryParams });
+        const crimes = await fetchCrimesWithFallback({ area: selectedArea, ...queryParams });
         const points = transformCrimesToPoints(crimes).filter(p =>
           (p.area || '').trim().toLowerCase() === selectedArea.trim().toLowerCase()
         );
@@ -242,7 +254,7 @@ const CrimeHeatmapPanel = ({ token }) => {
         }
       } else {
         // All areas: fetch crimes up to the chosen limit
-        const crimes = await apiService.getCrimes({ ...queryParams });
+        const crimes = await fetchCrimesWithFallback({ ...queryParams });
         const points = transformCrimesToPoints(crimes);
         setRawCrimes(points);
         setClusters([]);
@@ -267,7 +279,12 @@ const CrimeHeatmapPanel = ({ token }) => {
     }
   }, [loadAreas]);
 
-  useEffect(() => { fetchHeatmapData(); }, [fetchHeatmapData]);
+  useEffect(() => {
+    // Wait for system settings before the first fetch so the default record
+    // limit comes from the configured value (not the JS fallback).
+    if (systemSettingsLoading) return;
+    fetchHeatmapData();
+  }, [fetchHeatmapData, systemSettingsLoading]);
 
   const crimeTypes = useMemo(() => {
     const types = new Set(rawCrimes.map(c => c.crime_type));
@@ -699,6 +716,18 @@ const CrimeHeatmapPanel = ({ token }) => {
         </button>
       </div>
 
+      {lookbackFallback && (
+        <div style={{ padding: '10px 14px', margin: '8px 0', background: '#fef3c7', color: '#78350f', borderLeft: '4px solid #f59e0b', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>
+            <i className="fas fa-info-circle" style={{ marginRight: 8 }}></i>
+            No incidents in the last {lookbackFallback.days} days (system retention window). Showing all available data instead.
+          </span>
+          <button onClick={() => setLookbackFallback(null)} style={{ background: 'transparent', border: 'none', color: '#78350f', cursor: 'pointer', fontSize: 14 }}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+      )}
+
       <div className={styles.settingsSnapshotBar}>
         <span className={styles.settingsSnapshotLabel}>Applied from System Settings</span>
         <span className={styles.settingsSnapshotTime}>
@@ -791,9 +820,10 @@ const CrimeHeatmapPanel = ({ token }) => {
           {(viewMode === 'heatmap' || viewMode === 'both') && filteredHeatmapPoints.length > 0 && (
             <HeatmapLayer
               points={filteredHeatmapPoints}
-              radius={systemSettings?.heatmap_radius ?? SYSTEM_SETTINGS_DEFAULTS.heatmap_radius}
-              blur={15}
-              maxZoom={15}
+              radius={Number(systemSettings?.heatmap_radius) || SYSTEM_SETTINGS_DEFAULTS.heatmap_radius}
+              blur={Number(systemSettings?.heatmap_blur_multiplier) || SYSTEM_SETTINGS_DEFAULTS.heatmap_blur_multiplier}
+              minOpacity={Number(systemSettings?.heatmap_intensity) || SYSTEM_SETTINGS_DEFAULTS.heatmap_intensity}
+              maxZoom={Number(systemSettings?.heatmap_layer_max_zoom) || SYSTEM_SETTINGS_DEFAULTS.heatmap_layer_max_zoom}
             />
           )}
           {(viewMode === 'markers' || viewMode === 'both') && markerDisplayPoints.map((c, i) => (
@@ -879,8 +909,8 @@ const CrimeHeatmapPanel = ({ token }) => {
           ))}
           {showClusters && displayClusters.map((cl, i) => (
             <CircleMarker key={`cl-${i}`} center={[cl.displayLat, cl.displayLng]}
-              radius={Math.min(6 + cl.count * 0.5, 25)}
-              pathOptions={{ fillColor: cl.high_risk_ratio > 0.5 ? '#ef4444' : cl.high_risk_ratio > 0.25 ? '#f59e0b' : '#22c55e', fillOpacity: 0.45, color: '#fff', weight: 2 }}>
+              radius={Math.min(4 + cl.count * 0.25, 12)}
+              pathOptions={{ fillColor: cl.high_risk_ratio > 0.5 ? '#ef4444' : cl.high_risk_ratio > 0.25 ? '#f59e0b' : '#22c55e', fillOpacity: 0.55, color: 'rgba(255,255,255,0.7)', weight: 1 }}>
               <Popup className={styles.crimePopup} maxWidth={180}>
                 <div className={styles.popupCard}>
                   <div className={styles.popupHeader}>

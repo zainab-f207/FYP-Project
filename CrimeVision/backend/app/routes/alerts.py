@@ -122,6 +122,20 @@ def get_global_notification_radius_km() -> float:
     return max(1.0, min(50.0, radius))
 
 
+def get_global_alert_cooldown_minutes() -> int:
+    """Return the global alert cooldown in minutes from system_settings.
+
+    Drives per-(user, location, severity) deduplication so the per-minute
+    location-monitor scheduler doesn't re-fire the same alert every cycle.
+    """
+    raw = get_setting("alert_cooldown_minutes", "60")
+    try:
+        minutes = int(float(raw)) if raw is not None else 60
+    except (TypeError, ValueError):
+        minutes = 60
+    return max(1, min(1440, minutes))
+
+
 def meets_alert_threshold(risk_level: str, threshold: Optional[str] = None) -> bool:
     """Determine whether a risk label should produce an alert under the global policy."""
     policy = (threshold or get_alert_threshold_policy()).strip().lower()
@@ -1102,21 +1116,28 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
         else:
             time_risk_label = "Night (highest risk period)"
 
-        # Severity and alert_type logic
-        severity = "low"
-        alert_type = "safe_area"
+        # Severity and alert_type logic.
+        # Derive severity from the unified `risk_level` produced by
+        # `calculate_unified_risk_summary` so live-location alerts agree with
+        # the rest of the dashboard. The previous logic gated on raw counts
+        # (e.g. high_risk_365d >= 5) which fires Critical for any urban area
+        # with normal density — so a user in an "absolutely safe" location
+        # was getting High/Critical browser notifications anyway.
         _rp = risk_assessment.get('risk_score', 100.0 - safety_score)
+        _level_norm = str(unified_summary.get('risk_level', 'Low')).strip().lower()
 
-        if _rp > 20 or safety_score < 75:
-            if safety_score < 25 or high_risk_365d >= 10 or _rp > 75:
-                severity = "critical"
-                alert_type = "critical_risk_zone"
-            elif safety_score < 45 or high_risk_365d >= 5 or _rp > 50:
-                severity = "high"
-                alert_type = "high_risk_zone"
-            else:
-                severity = "medium"
-                alert_type = "medium_risk_zone"
+        if _level_norm == 'critical':
+            severity = "critical"
+            alert_type = "critical_risk_zone"
+        elif _level_norm == 'high':
+            severity = "high"
+            alert_type = "high_risk_zone"
+        elif _level_norm in ('medium', 'moderate'):
+            severity = "medium"
+            alert_type = "medium_risk_zone"
+        else:
+            severity = "low"
+            alert_type = "safe_area"
         
         # ── Human-readable alert trigger reason (Trigger Transparency) ─────────
         _trigger_method = f"Within {effective_radius_km:g} km radius" if _was_radius else "Area name match"
@@ -1196,15 +1217,23 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
                 f"({incidents_90d} routine incident(s) in 90 days)."
             )
         
-        cooldown_key = f"{user_data['id']}_{location_type}"
-        if severity == "low":
-            if cooldown_key in alert_cooldown_cache:
-                last_time = alert_cooldown_cache[cooldown_key]
-                if (datetime.now() - last_time).total_seconds() < SAFE_AREA_ALERT_CONFIG['cooldown_minutes'] * 60:
-                    return
-            alert_cooldown_cache[cooldown_key] = datetime.now()
-        else:
-            alert_cooldown_cache.pop(cooldown_key, None)
+        # Apply the global alert cooldown regardless of severity. Previously
+        # only "low" (safe-area) alerts were rate-limited and high/critical
+        # alerts re-fired every poll cycle, which spammed browser notifications
+        # roughly once per minute. Cooldown duration comes from system_settings
+        # (`alert_cooldown_minutes`, default 60). Severity is part of the key
+        # so escalating severity for the same location can still notify once.
+        cooldown_key = f"{user_data['id']}_{location_type}_{severity}"
+        cooldown_seconds = get_global_alert_cooldown_minutes() * 60
+        if cooldown_key in alert_cooldown_cache:
+            last_time = alert_cooldown_cache[cooldown_key]
+            if (datetime.now() - last_time).total_seconds() < cooldown_seconds:
+                logger.info(
+                    f"⏳ Cooldown active for user {user_data['id']} "
+                    f"{location_type}/{severity} — skipping alert"
+                )
+                return
+        alert_cooldown_cache[cooldown_key] = datetime.now()
         
         location_name = area_name
         address = f"{location_name} ({lat:.4f}, {lng:.4f})"

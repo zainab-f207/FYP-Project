@@ -427,9 +427,10 @@
   right: -3px;
   background: var(--accent);
   color: white;
-  width: 20px;
+  min-width: 20px;
   height: 20px;
-  border-radius: 50%;
+  padding: 0 5px;
+  border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -437,6 +438,154 @@
   font-weight: 700;
   border: 2px solid var(--light-secondary);
 }
+
+/* Status strip (replaced the dead search bar) */
+.statusStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.statusStrip [data-sv-status-pill] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--light);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+.statusStrip [data-sv-status-pill] i {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.statusStrip [data-sv-status-pill][data-sv-status-tone='warn'] {
+  background: rgba(249, 168, 38, 0.14);
+  color: #f9a826;
+  border-color: rgba(249, 168, 38, 0.3);
+}
+.statusStrip [data-sv-status-pill][data-sv-status-tone='warn'] i { color: #f9a826; }
+.statusStrip [data-sv-status-pill][data-sv-status-tone='ok'] {
+  background: rgba(29, 209, 161, 0.12);
+  color: #1dd1a1;
+  border-color: rgba(29, 209, 161, 0.3);
+}
+.statusStrip [data-sv-status-pill][data-sv-status-tone='ok'] i { color: #1dd1a1; }
+
+/* Notification dropdown popup.
+   Uses position: fixed so it escapes the navbar's stacking context
+   (the navbar has backdrop-filter: blur, which creates a new
+   stacking context that traps absolutely-positioned children). */
+.notifPopup {
+  position: fixed;
+  top: 80px;
+  right: 28px;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  max-height: 460px;
+  background: var(--card-bg, #1f2a3a);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.04);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: notifPopIn 0.18s cubic-bezier(.2,.9,.3,1);
+  cursor: default;
+}
+@keyframes notifPopIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.notifPopup [data-sv-notif-head] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.95rem;
+  color: var(--text-primary, #e5e7eb);
+}
+.notifPopup [data-sv-notif-count] {
+  background: rgba(244, 162, 97, 0.18);
+  color: #f4a261;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.notifPopup [data-sv-notif-list] {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+.notifPopup [data-sv-notif-row] {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 10px;
+  border-radius: 10px;
+  cursor: default;
+  transition: background 0.15s;
+}
+.notifPopup [data-sv-notif-row]:hover { background: rgba(255,255,255,0.04); }
+.notifPopup [data-sv-notif-row] > i {
+  font-size: 1rem;
+  margin-top: 2px;
+}
+.notifPopup [data-sv-notif-row][data-sv-notif-tone='warning'] > i { color: #f9a826; }
+.notifPopup [data-sv-notif-row][data-sv-notif-tone='success'] > i { color: #1dd1a1; }
+.notifPopup [data-sv-notif-row][data-sv-notif-tone='error'] > i   { color: #ef4444; }
+.notifPopup [data-sv-notif-row][data-sv-notif-tone='info'] > i    { color: #60a5fa; }
+.notifPopup [data-sv-notif-title] {
+  color: var(--text-primary, #e5e7eb);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.notifPopup [data-sv-notif-msg] {
+  color: var(--text-secondary, #9ca3af);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.notifPopup [data-sv-notif-time] {
+  color: var(--text-muted, #6b7280);
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.notifPopup [data-sv-notif-empty] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 14px;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.notifPopup [data-sv-notif-empty] i {
+  font-size: 1.6rem;
+  color: #1dd1a1;
+}
+.notifPopup [data-sv-notif-foot] {
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  background: transparent;
+  color: #f4a261;
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.notifPopup [data-sv-notif-foot]:hover { background: rgba(244, 162, 97, 0.08); }
 
 /* Theme Toggle Button */
 .themeToggle {

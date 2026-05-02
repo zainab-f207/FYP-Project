@@ -280,10 +280,12 @@ class EmailTemplates:
         BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
         slug = urllib.parse.quote_plus(area_name.lower().replace(' ', '-'))
 
-        # Deep-link destinations (frontend routes)
-        map_next   = f"/dashboard?tab=map&area={slug}"
-        route_next = f"/dashboard?tab=routes&to={slug}"
-        pred_next  = f"/dashboard?tab=prediction&area={slug}"
+        # Deep-link destinations (frontend routes). The dashboard router reads
+        # `active=` (page tab) and `area=` / `to=` (context). Using `tab=` here
+        # would land users on the default Dashboard instead of the intended page.
+        map_next   = f"/dashboard?active=crime-map&area={slug}"
+        route_next = f"/dashboard?active=navigation&to={slug}"
+        pred_next  = f"/dashboard?active=prediction&area={slug}"
 
         def _wrap(next_path: str) -> str:
             """Wrap a frontend path in an email magic-link so user is auto-logged in."""
@@ -1187,14 +1189,16 @@ Automated SafeVision alert.
         BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
         _area_slug  = urllib.parse.quote_plus(area_name.lower())
 
-        def _btn_url(tab: str) -> str:
-            next_path = f"/dashboard?tab={tab}&area={_area_slug}"
+        def _btn_url(active: str, param: str = 'area') -> str:
+            # Dashboard reads `?active=` for the page tab and `?area=` /
+            # `?to=` for context. Using `tab=` lands users on the default page.
+            next_path = f"/dashboard?active={active}&{param}={_area_slug}"
             if email_token:
                 return f"{BACKEND_URL}/api/auth/email-link?token={email_token}&next={urllib.parse.quote(next_path, safe='')}"
             return f"{APP_BASE_URL}{next_path}"
 
-        map_btn_url   = _btn_url('map')
-        route_btn_url = _btn_url('routes').replace('tab=routes', 'tab=routes&avoid=' + _area_slug)
+        map_btn_url   = _btn_url('crime-map')
+        route_btn_url = _btn_url('navigation', param='to')
         pred_btn_url  = _btn_url('prediction')
 
         
@@ -1551,7 +1555,7 @@ Safer Route: {APP_BASE_URL}/dashboard?active=navigation
 
       <div style="margin-top:30px;">
         <a href="{APP_BASE_URL}/dashboard?active=prediction&area={urllib.parse.quote(area_name)}" class="btn">Explore Detailed Trends</a>
-        <a href="{APP_BASE_URL}/dashboard?active=navigation&area={urllib.parse.quote(area_name)}" class="btn" style="background:#fff; color:#111827; border:1px solid #e2e8f0;">Check Safe Routes</a>
+        <a href="{APP_BASE_URL}/dashboard?active=navigation&to={urllib.parse.quote(area_name)}" class="btn" style="background:#fff; color:#111827; border:1px solid #e2e8f0;">Check Safe Routes</a>
       </div>
     </div>
     <div class="footer">

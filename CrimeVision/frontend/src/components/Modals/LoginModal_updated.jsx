@@ -421,7 +421,9 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
       }
       const data = await response.json();
       console.log('2FA status check result:', data);
-      setRequires2FA(data.enabled);
+      // Coerce to a real Boolean — backend may return tinyint/number 0/1 and
+      // raw numbers leak as literal "0" through `{requires2FA && ...}` JSX.
+      setRequires2FA(Boolean(data.enabled));
     } catch (error) {
       console.error('Error checking 2FA status:', error);
       setRequires2FA(false);
@@ -636,6 +638,9 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
           callback: handleGoogleLogin,
           auto_select: false,
           cancel_on_tap_outside: true,
+          // Drives the wording of Google's auto-personalized button so the
+          // register page says "Sign up as X" instead of "Sign in as X".
+          context: isLogin ? 'signin' : 'signup',
         });
         
         console.log('✅ GoogleSignIn: Initialized successfully');
@@ -647,12 +652,16 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
             buttonElement.innerHTML = '';
             
             window.google.accounts.id.renderButton(buttonElement, {
-              theme: 'outline',
+              theme: 'filled_black',
               size: 'large',
               text: isLogin ? 'signin_with' : 'signup_with',
-              shape: 'rectangular',
+              shape: 'pill',
               logo_alignment: 'left',
-              width: buttonElement.offsetWidth || 300,
+              // Google caps width at 400px and uses this same iframe for both
+              // the regular "Sign in with Google" button AND the wider
+              // personalized "Sign in as <name>" pill. Pick a value large
+              // enough that the personalized variant doesn't clip the G logo.
+              width: Math.min(400, Math.max(320, buttonElement.offsetWidth || 360)),
             });
             console.log('✅ GoogleSignIn: Button rendered successfully');
           } else {
@@ -1404,20 +1413,22 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
             </>
           )}
 
-          {/* Home Area Field */}
-          <div className="form-group">
-            <small className="optional-text">Optional field, helps with area-specific alerts</small>
-            <label htmlFor="homeArea">Home Area (Optional)</label>
-            <input
-              type="text"
-              id="homeArea"
-              name="homeArea"
-              value={formData.homeArea}
-              onChange={handleInputChange}
-              disabled={loading}
-              placeholder="Enter your home area (e.g., Gulberg, DHA)"
-            />
-          </div>
+          {/* Home Area Field — registration only */}
+          {!isLogin && (
+            <div className="form-group">
+              <small className="optional-text">Optional field, helps with area-specific alerts</small>
+              <label htmlFor="homeArea">Home Area (Optional)</label>
+              <input
+                type="text"
+                id="homeArea"
+                name="homeArea"
+                value={formData.homeArea}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="Enter your home area (e.g., Gulberg, DHA)"
+              />
+            </div>
+          )}
 
           {/* Phone Number Field */}
           {!isLogin && (

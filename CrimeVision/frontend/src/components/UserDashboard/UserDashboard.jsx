@@ -34,6 +34,82 @@ const getProfileImageUrl = (profilePicture) => {
   return `${backendUrl}/${profilePicture}`;
 };
 
+const getUserInitials = (user) => {
+  const source = (user?.name || user?.username || user?.email || '').trim();
+  if (!source) return '?';
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+  if (parts.length === 0) return source.charAt(0).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
+
+const getInitialsBackground = (seed) => {
+  const palette = [
+    'linear-gradient(135deg, #f59e0b, #ef4444)',
+    'linear-gradient(135deg, #3b82f6, #06b6d4)',
+    'linear-gradient(135deg, #8b5cf6, #ec4899)',
+    'linear-gradient(135deg, #10b981, #06b6d4)',
+    'linear-gradient(135deg, #f97316, #f59e0b)',
+  ];
+  const key = String(seed || '');
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return palette[hash % palette.length];
+};
+
+const ProfileAvatar = ({ user, className }) => {
+  const rawUrl = getProfileImageUrl(user?.profile_picture);
+  const [broken, setBroken] = useState(false);
+
+  // Reset the broken flag whenever the underlying URL changes — otherwise
+  // a one-time 404 from a stale path latches forever and a freshly uploaded
+  // photo never gets a chance to load.
+  useEffect(() => {
+    setBroken(false);
+    console.log(
+      '👤 ProfileAvatar: user.profile_picture =', user?.profile_picture,
+      '| resolved URL =', rawUrl,
+      '| will render =', rawUrl ? 'image' : 'initials'
+    );
+  }, [rawUrl, user?.profile_picture]);
+
+  if (rawUrl && !broken) {
+    return (
+      <img
+        key={rawUrl}
+        src={rawUrl}
+        alt={user?.name || user?.username || 'Profile'}
+        className={className}
+        onError={(e) => {
+          console.warn('👤 ProfileAvatar: image failed to load —', rawUrl, e);
+          setBroken(true);
+        }}
+      />
+    );
+  }
+  return (
+    <div
+      className={className}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: getInitialsBackground(user?.id || user?.username || user?.email),
+        color: '#fff',
+        fontWeight: 700,
+        fontSize: '0.75rem',
+        letterSpacing: '0.5px',
+        textTransform: 'uppercase',
+      }}
+      aria-label={user?.name || user?.username || 'Profile'}
+    >
+      {getUserInitials(user)}
+    </div>
+  );
+};
+
 const normalizeRiskBandLabel = (value) => {
   const normalized = String(value || '').toLowerCase();
   if (normalized.includes('critical') || normalized.includes('avoid')) return 'Avoid';
@@ -61,6 +137,25 @@ const isWithinLastDays = (timestamp, days) => {
 
 // Individual Alert Card Component (moved outside UserDashboard)
 const AlertCard = ({ alert, onMarkAsRead, markingRead, isRead = false }) => {
+  const navigate = useNavigate();
+
+  // Build a SPA-internal deep link to the right dashboard tab. Using
+  // `navigate(...)` keeps the user logged in (no full page reload, no auth
+  // re-check) and reuses the `?active=...` parser already in UserDashboard.
+  const goTo = (active, paramName, areaSlug) => {
+    if (!areaSlug) {
+      navigate(`/dashboard?active=${active}`);
+      return;
+    }
+    const slug = encodeURIComponent(
+      String(areaSlug).toLowerCase().replace(/\s+/g, '-')
+    );
+    navigate(`/dashboard?active=${active}&${paramName}=${slug}`);
+  };
+
+  const areaForLinks = alert?.area || alert?.location || alert?.area_name || '';
+  const showActionRow = Boolean(areaForLinks);
+
   const getSeverityIcon = (severity) => {
     switch (severity?.toLowerCase()) {
       case 'high':
@@ -134,7 +229,39 @@ const AlertCard = ({ alert, onMarkAsRead, markingRead, isRead = false }) => {
             {alert.area}
           </div>
         )}
-        
+
+        {showActionRow && (
+          <div className={styles.alertActions}>
+            <button
+              type="button"
+              className={`${styles.alertActionBtn} ${styles.alertActionPrimary}`}
+              onClick={() => goTo('crime-map', 'area', areaForLinks)}
+              title={`Open the incident map for ${areaForLinks}`}
+            >
+              <i className="fas fa-map-marked-alt"></i>
+              View Incident on Map
+            </button>
+            <button
+              type="button"
+              className={styles.alertActionBtn}
+              onClick={() => goTo('navigation', 'to', areaForLinks)}
+              title={`Find a safer route to ${areaForLinks}`}
+            >
+              <i className="fas fa-route"></i>
+              Find Safer Route
+            </button>
+            <button
+              type="button"
+              className={styles.alertActionBtn}
+              onClick={() => goTo('prediction', 'area', areaForLinks)}
+              title={`Check risk forecast for ${areaForLinks}`}
+            >
+              <i className="fas fa-crystal-ball"></i>
+              Check Nearby Risk
+            </button>
+          </div>
+        )}
+
         <div className={styles.alertMeta}>
           <span className={styles.alertType}>{alert.type || alert.alert_type || 'General'}</span>
           {alert.source && <span className={styles.alertSource}>{alert.source}</span>}
@@ -1126,11 +1253,7 @@ useEffect(() => {
                 onClick={toggleDropdown}
                 title="Profile Menu"
               >
-                <img 
-                  src={getProfileImageUrl(user?.profile_picture)} 
-                  alt={user?.name || user?.username}
-                  className={styles.userProfileImg}
-                />
+                <ProfileAvatar user={user} className={styles.userProfileImg} />
                 <i className={`fas fa-chevron-${dropdownOpen ? 'up' : 'down'}`}></i>
               </button>
               

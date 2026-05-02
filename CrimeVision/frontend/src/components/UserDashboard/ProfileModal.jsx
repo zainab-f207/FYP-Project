@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext_updated';
 import apiService, { API_BASE_URL } from '../../services/apiService_updated';
+import { useSystemSettings, SYSTEM_SETTINGS_DEFAULTS } from '../../contexts/SystemSettingsContext';
 import QRCode from 'qrcode';
 import styles from '../UserDashboard/ProfileModal.module.css';
 import './AlertsComingSoon.css';
@@ -46,6 +47,10 @@ const normalizeAlertChannelPreferences = (rawPreferences, fallbackEmail = true, 
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { user, token, updateUser } = useAuth();
+  const { settings: systemSettings } = useSystemSettings();
+  // Effective alert radius is sourced from system settings (admin-controlled).
+  // Per-user overrides have been removed in favour of a single global value.
+  const effectiveAlertRadius = Number(systemSettings?.notification_radius ?? SYSTEM_SETTINGS_DEFAULTS.notification_radius);
   const [activeTab, setActiveTab] = useState('profile');
   const [formData, setFormData] = useState({
     first_name: '',
@@ -514,7 +519,6 @@ useEffect(() => {
         email: formData.email,
         home_area: formData.home_area,
         work_area: formData.work_area,
-        alert_radius: formData.alert_radius,
         profile_picture: profile_picture_path,
         phone_number: formData.phone_number,
         browser_notifications_enabled: anyBrowser,
@@ -617,7 +621,7 @@ useEffect(() => {
         const subscriptionData = {
           alert_types: alertTypes,
           areas: monitoredAreas.length > 0 ? monitoredAreas : ['General'],
-          radius: formData.alert_radius,
+          radius: effectiveAlertRadius,
           notification_types: notificationTypes,
           is_active: true
         };
@@ -761,17 +765,24 @@ useEffect(() => {
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label htmlFor="alert_radius">Alert Radius (km)</label>
-                  <input 
-                    id="alert_radius"
-                    name="alert_radius" 
-                    type="number" 
-                    min="1" 
-                    max="50" 
-                    value={formData.alert_radius} 
-                    onChange={handleChange} 
+                  <label>Alert Radius</label>
+                  <div
                     className={styles.formInput}
-                  />
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'default',
+                      opacity: 0.85,
+                    }}
+                    aria-readonly="true"
+                  >
+                    <span>{effectiveAlertRadius} km</span>
+                    <small style={{ opacity: 0.7, fontSize: '0.75rem' }}>
+                      <i className="fas fa-shield-alt" style={{ marginRight: 4 }}></i>
+                      Set by administrator
+                    </small>
+                  </div>
                 </div>
 
                 {/* Browser Push Toggle */}
@@ -988,7 +999,7 @@ useEffect(() => {
                     </div>
                     <div className={styles.alertStat}>
                       <i className="fas fa-map-marker-alt"></i>
-                      <span>Monitoring Radius: {formData.alert_radius} km</span>
+                      <span>Monitoring Radius: {effectiveAlertRadius} km</span>
                     </div>
                     <div className={styles.alertStat}>
                       <i className="fas fa-desktop"></i>

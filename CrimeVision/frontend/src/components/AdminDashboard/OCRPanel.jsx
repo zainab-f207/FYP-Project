@@ -49,6 +49,13 @@ const OCRPanel = ({ token }) => {
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [error, setError] = useState(null);
+  // Error popup modal — surfaces wrong-format / network / server errors
+  // in a deliberate dialog instead of a tiny inline strip.
+  const [errorPopup, setErrorPopup] = useState({ open: false, kind: 'error', title: '', message: '' });
+  const showErrorPopup = (title, message, kind = 'error') => {
+    setErrorPopup({ open: true, kind, title, message });
+  };
+  const closeErrorPopup = () => setErrorPopup((p) => ({ ...p, open: false }));
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const [nearestAreaEnglish, setNearestAreaEnglish] = useState(null);
@@ -107,7 +114,14 @@ const OCRPanel = ({ token }) => {
     if (!file) return;
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
     if (!validTypes.includes(file.type)) {
-      setError('Please upload a PNG or JPEG image');
+      const fname = file.name || 'this file';
+      const ext = fname.includes('.') ? fname.split('.').pop().toLowerCase() : (file.type || 'unknown');
+      showErrorPopup(
+        'Unsupported file format',
+        `"${fname}" is a .${ext} file. The FIR OCR engine only accepts PNG or JPEG images. Please convert your document to a clear scanned image (PNG or JPEG) and try again.`,
+        'format'
+      );
+      setError(null);
       return;
     }
     const sizeMB = file.size / (1024 * 1024);
@@ -141,7 +155,10 @@ const OCRPanel = ({ token }) => {
 
   // Extract text from image via OCR API
   const handleExtractText = async () => {
-    if (!selectedFile) { setError('Please select an image first'); return; }
+    if (!selectedFile) {
+      showErrorPopup('No file selected', 'Please choose a PNG or JPEG image of the FIR before running extraction.', 'warning');
+      return;
+    }
     setLoading(true);
     setError(null);
     setExtractedFields(null);
@@ -154,7 +171,22 @@ const OCRPanel = ({ token }) => {
       });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || errData.error || `OCR extraction failed (${response.status})`);
+        const detail = errData.detail || errData.error || '';
+        // Categorise so the popup gives a useful message instead of just a 500.
+        if (response.status >= 500) {
+          showErrorPopup(
+            'Server error',
+            detail || `The OCR service responded with HTTP ${response.status}. The backend may be restarting or under heavy load — please try again in a moment.`,
+            'server'
+          );
+        } else if (response.status === 413) {
+          showErrorPopup('File too large', detail || 'The image exceeds the upload size limit. Please compress or resize and try again.', 'format');
+        } else if (response.status === 415 || response.status === 422) {
+          showErrorPopup('Unsupported file', detail || 'The OCR engine could not read this file. Make sure it is a clear PNG or JPEG of the FIR.', 'format');
+        } else {
+          showErrorPopup('Extraction failed', detail || `OCR extraction failed (HTTP ${response.status}).`, 'error');
+        }
+        throw new Error(detail || `OCR extraction failed (${response.status})`);
       }
       const result = await response.json();
       setExtractedText(result.text || '');
@@ -168,7 +200,19 @@ const OCRPanel = ({ token }) => {
       if (result.sections) setExtractedSections(result.sections);
       setNewSectionInput('');
     } catch (err) {
-      setError(err.message || 'OCR extraction failed');
+      // If the popup wasn't already opened above (e.g. fetch threw before we
+      // got a response — DNS, offline, CORS, server down), open it now.
+      const msg = String(err?.message || '');
+      const isNetwork = !msg.includes('OCR extraction failed') && (
+        err?.name === 'TypeError' || /failed to fetch|networkerror|load failed/i.test(msg)
+      );
+      if (isNetwork) {
+        showErrorPopup(
+          'Connection problem',
+          'Could not reach the OCR service. Please check your internet connection or confirm the backend server is running, then try again.',
+          'network'
+        );
+      }
       setExtractedText('');
       setConfidence(null);
     } finally {
@@ -741,6 +785,36 @@ const OCRPanel = ({ token }) => {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ===== Error popup modal ===== */}
+      {errorPopup.open && (
+        <div
+          className={styles.errorPopupOverlay}
+          onClick={closeErrorPopup}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`${styles.errorPopupCard} ${styles[`errorPopupKind_${errorPopup.kind}`] || ''}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.errorPopupIcon}>
+              <i className={
+                errorPopup.kind === 'network' ? 'fas fa-wifi'
+                  : errorPopup.kind === 'server' ? 'fas fa-server'
+                  : errorPopup.kind === 'format' ? 'fas fa-file-excel'
+                  : errorPopup.kind === 'warning' ? 'fas fa-exclamation-triangle'
+                  : 'fas fa-times-circle'
+              }></i>
+            </div>
+            <h3 className={styles.errorPopupTitle}>{errorPopup.title}</h3>
+            <p className={styles.errorPopupMessage}>{errorPopup.message}</p>
+            <button className={styles.errorPopupBtn} onClick={closeErrorPopup}>
+              <i className="fas fa-check"></i> Got it
+            </button>
+          </div>
         </div>
       )}
     </div>

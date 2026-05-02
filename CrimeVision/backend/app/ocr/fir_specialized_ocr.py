@@ -4320,11 +4320,16 @@ except ImportError:
 # Local OCR stays as a fallback for when the API is down, rate-limited, or
 # the key is missing.
 try:
-    import google.generativeai as _genai
+    # Migrated from the deprecated `google-generativeai` package to the
+    # actively maintained `google-genai` SDK. Same Gemini API key works
+    # for both — only the SDK surface changed (Client + models.generate_content).
+    from google import genai as _genai
+    from google.genai import types as _genai_types
     _GEMINI_SDK_AVAILABLE = True
 except ImportError:
     _GEMINI_SDK_AVAILABLE = False
-    logger.warning("google-generativeai SDK not installed — Gemini extractor disabled")
+    _genai_types = None  # type: ignore
+    logger.warning("google-genai SDK not installed — Gemini extractor disabled. Run: pip install google-genai")
 
 import os as _os_gemini
 import threading as _threading_gemini
@@ -4341,29 +4346,33 @@ _GEMINI_MODEL_FALLBACK = _os_gemini.getenv("GEMINI_MODEL_FALLBACK", "").strip()
 # Free-tier ceiling is 15 RPM on gemini-2.0-flash; leave a safety margin.
 _GEMINI_RPM_LIMIT = int(_os_gemini.getenv("GEMINI_RPM_LIMIT", "12"))
 _GEMINI_AVAILABLE = bool(_GEMINI_SDK_AVAILABLE and _GEMINI_API_KEY)
-_gemini_model = None
-_gemini_model_fallback = None
+# In the new SDK there is no per-model wrapper object. We hold a single
+# Client + a list of model name strings, and let the cascade helper iterate.
+# `_gemini_model` is kept as a truthy/falsy sentinel so existing
+# `if _gemini_model is None` guards in the extraction functions still hold.
+_gemini_client = None
+_gemini_model = None  # sentinel: primary model name (str) when ready
+_gemini_model_fallback = None  # sentinel: fallback model name (str) when ready
 _gemini_lock = _threading_gemini.Lock()
 _gemini_request_times: "_deque_gemini[float]" = _deque_gemini()
 
 if _GEMINI_AVAILABLE:
     try:
-        _genai.configure(api_key=_GEMINI_API_KEY)
-        _gemini_model = _genai.GenerativeModel(_GEMINI_MODEL_NAME)
+        _gemini_client = _genai.Client(api_key=_GEMINI_API_KEY)
+        _gemini_model = _GEMINI_MODEL_NAME
         if _GEMINI_MODEL_FALLBACK and _GEMINI_MODEL_FALLBACK != _GEMINI_MODEL_NAME:
-            try:
-                _gemini_model_fallback = _genai.GenerativeModel(_GEMINI_MODEL_FALLBACK)
-            except Exception as _fb_err:
-                logger.warning(f"Gemini fallback model '{_GEMINI_MODEL_FALLBACK}' init failed: {_fb_err}")
-                _gemini_model_fallback = None
+            _gemini_model_fallback = _GEMINI_MODEL_FALLBACK
         logger.info(
             f"✓ Gemini extractor ready (primary={_GEMINI_MODEL_NAME}, "
-            f"fallback={_GEMINI_MODEL_FALLBACK if _gemini_model_fallback else 'none'}, "
+            f"fallback={_gemini_model_fallback or 'none'}, "
             f"rpm_limit={_GEMINI_RPM_LIMIT})"
         )
     except Exception as _gemini_init_err:
         logger.error(f"Gemini init failed: {_gemini_init_err}")
         _GEMINI_AVAILABLE = False
+        _gemini_client = None
+        _gemini_model = None
+        _gemini_model_fallback = None
 elif not _GEMINI_API_KEY:
     logger.warning("GEMINI_API_KEY missing from environment — Gemini extractor disabled")
 
@@ -4375,16 +4384,22 @@ def _gemini_generate_with_cascade(prompt_parts, generation_config):
     attempts fail. Rate-limiting window is shared across models — both
     count against the RPM ceiling since they share the API key.
     """
-    models = []
-    if _gemini_model is not None:
-        models.append((_GEMINI_MODEL_NAME, _gemini_model))
-    if _gemini_model_fallback is not None:
-        models.append((_GEMINI_MODEL_FALLBACK, _gemini_model_fallback))
+    if _gemini_client is None:
+        raise RuntimeError("Gemini client not initialised")
+    model_names = []
+    if _gemini_model:
+        model_names.append(_gemini_model)
+    if _gemini_model_fallback:
+        model_names.append(_gemini_model_fallback)
     last_exc = None
-    for model_name, model in models:
+    for model_name in model_names:
         try:
             _gemini_rate_limit_wait()
-            return model.generate_content(prompt_parts, generation_config=generation_config)
+            return _gemini_client.models.generate_content(
+                model=model_name,
+                contents=prompt_parts,
+                config=generation_config,
+            )
         except Exception as e:
             msg = str(e).lower()
             last_exc = e
@@ -4716,7 +4731,7 @@ def extract_crime_area_with_gemini(image_bytes: bytes) -> str:
         response = _gemini_generate_with_cascade(
             [
                 _GEMINI_PROMPT,
-                {"mime_type": mime, "data": image_bytes},
+                _genai_types.Part.from_bytes(data=image_bytes, mime_type=mime),
             ],
             generation_config={
                 # Small positive temperature lets 2.5-flash produce the full
@@ -4893,7 +4908,7 @@ def extract_date_time_with_gemini(image_bytes: bytes):
         }
         prompt_parts = [
             _GEMINI_DATETIME_PROMPT,
-            {"mime_type": mime, "data": image_bytes},
+            _genai_types.Part.from_bytes(data=image_bytes, mime_type=mime),
         ]
         try:
             response = _gemini_generate_with_cascade(

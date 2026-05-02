@@ -104,16 +104,25 @@
   position: relative;
   width: 120px;
   height: 120px;
+  min-width: 120px;
+  min-height: 120px;
+  max-width: 120px;
+  max-height: 120px;
   margin: 0 auto 2rem;
+  flex-shrink: 0;
+  aspect-ratio: 1 / 1;
 }
 
 .profileModalImage {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--accent-teal);
   box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+  display: block;
 }
 
 .profileImageUpload {
@@ -531,23 +540,44 @@ input:checked + .slider:before {
   .modalOverlay {
     padding: 1rem;
   }
-  
+
   .formGrid {
     grid-template-columns: 1fr;
   }
-  
+
   .modalHeader {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
   }
-  
+
   .modalTabs {
     justify-content: center;
   }
-  
+
   .modalActions {
     flex-direction: column;
+  }
+
+  /* Lock the avatar preview to a sensible size on phones — `!important`
+     to beat any selector-cascade leakage (e.g. `[class*="profileModal"] img`
+     or global responsive rules) that was letting the dataURL preview render
+     at its natural file size. */
+  .profileImageContainer {
+    width: 110px !important;
+    height: 110px !important;
+    min-width: 110px !important;
+    min-height: 110px !important;
+    max-width: 110px !important;
+    max-height: 110px !important;
+  }
+
+  .profileModalImage {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
   }
 }
 
