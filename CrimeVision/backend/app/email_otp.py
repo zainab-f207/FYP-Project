@@ -6,6 +6,7 @@ import smtplib
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formatdate, make_msgid
 from datetime import datetime, timedelta
 
 
@@ -95,69 +96,38 @@ def verify_otp(user_id: int, otp_code: str) -> bool:
 
 
 def send_otp_email(email: str, name: str, otp_code: str) -> bool:
-    """Send OTP code via email with professional SafeVision branding."""
+    """Send OTP code via email."""
     try:
-        otp_digits = ''.join(
-            f'<td style="width:48px;height:56px;background:#0f172a;border-radius:10px;text-align:center;'
-            f'font-size:28px;font-weight:800;color:#00d4ff;letter-spacing:2px;'
-            f'border:2px solid rgba(0,212,255,0.3);">{d}</td>'
-            for d in otp_code
-        )
+        # Minimal text-style HTML — mimics Google/GitHub verification emails.
+        # Heavy gradients, neon colors, emojis, and "security alert" framing trigger spam filters.
         html_content = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
-<tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,0.12);">
-  <!-- Header -->
-  <tr><td style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:36px 40px;text-align:center;">
-    <div style="display:inline-block;margin-bottom:8px;">
-      <span style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#00d4ff,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px;">🛡️ SafeVision</span>
-    </div>
-    <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:6px 0 0;letter-spacing:3px;text-transform:uppercase;">Secure Identity Verification</p>
-  </td></tr>
-  <!-- Body -->
-  <tr><td style="padding:36px 40px 24px;">
-    <p style="color:#334155;font-size:15px;line-height:1.7;margin:0 0 6px;">Hi <strong style="color:#0f172a;">{name}</strong>,</p>
-    <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 28px;">Your SafeVision admin panel requires identity verification. Please enter the code below on the verification screen to proceed securely.</p>
-    <!-- OTP Code -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
-      <tr><td align="center">
-        <table cellpadding="0" cellspacing="8"><tr>{otp_digits}</tr></table>
-      </td></tr>
-    </table>
-    <!-- Timer -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
-      <tr><td align="center">
-        <div style="display:inline-block;background:linear-gradient(135deg,rgba(0,212,255,0.08),rgba(139,92,246,0.08));border:1px solid rgba(0,212,255,0.25);border-radius:8px;padding:10px 22px;">
-          <span style="color:#475569;font-size:13px;">⏱ Valid for <strong style="color:#0f172a;">{OTP_EXPIRY_MINUTES} minutes</strong> — do not share this code</span>
-        </div>
-      </td></tr>
-    </table>
-  </td></tr>
-  <!-- Security Notice -->
-  <tr><td style="padding:0 40px 32px;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:0 8px 8px 0;">
-      <tr><td style="padding:14px 18px;">
-        <p style="color:#991b1b;font-size:13px;margin:0;line-height:1.6;">
-          <strong>⚠️ Security Notice:</strong> If you did not initiate this login, change your password immediately and contact your system administrator.
-        </p>
-      </td></tr>
-    </table>
-  </td></tr>
-  <!-- Footer -->
-  <tr><td style="background:#f8fafc;padding:20px 40px;border-top:1px solid #e2e8f0;text-align:center;">
-    <p style="color:#94a3b8;font-size:11px;margin:0 0 4px;line-height:1.5;">This is an automated message from SafeVision. Do not reply.</p>
-    <p style="color:#94a3b8;font-size:11px;margin:0;">© {datetime.now().year} SafeVision — Government Crime Prediction &amp; Mapping</p>
-  </td></tr>
-</table>
-</td></tr></table>
-</body></html>"""
+<html>
+  <body style="font-family: Arial, sans-serif; color: #202124; line-height: 1.6; padding: 20px;">
+    <p>Hi {name},</p>
+    <p>Your SafeVision sign-in code is:</p>
+    <p style="font-size: 28px; font-weight: bold; letter-spacing: 6px; margin: 24px 0;">{otp_code}</p>
+    <p>This code expires in {OTP_EXPIRY_MINUTES} minutes.</p>
+    <p>If you did not try to sign in, you can ignore this message.</p>
+    <p>Thanks,<br>The SafeVision team</p>
+  </body>
+</html>"""
 
-        msg = MIMEMultipart()
-        msg['From'] = f'"SafeVision Security" <{SMTP_USERNAME}>'
+        plain_text = (
+            f"Hi {name},\n\n"
+            f"Your SafeVision sign-in code is: {otp_code}\n\n"
+            f"This code expires in {OTP_EXPIRY_MINUTES} minutes.\n"
+            f"If you did not try to sign in, you can ignore this message.\n\n"
+            f"Thanks,\nThe SafeVision team\n"
+        )
+
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f'SafeVision <{SMTP_USERNAME}>'
         msg['To'] = email
-        msg['Subject'] = "🔐 SafeVision — Your Secure Login Verification Code"
+        msg['Reply-To'] = SMTP_USERNAME
+        msg['Subject'] = "Your SafeVision sign-in code"
+        msg['Date'] = formatdate(localtime=True)
+        msg['Message-ID'] = make_msgid(domain='safevision.app')
+        msg.attach(MIMEText(plain_text, 'plain'))
         msg.attach(MIMEText(html_content, 'html'))
 
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
@@ -235,10 +205,24 @@ def send_login_alert_email(email: str, name: str, role: str, ip_address: str, lo
 </td></tr></table>
 </body></html>"""
 
-        msg = MIMEMultipart()
-        msg['From'] = f'"SafeVision Alerts" <{SMTP_USERNAME}>'
+        plain_text = (
+            f"Hi {name},\n\n"
+            f"A successful sign-in to your SafeVision {role} account was just recorded.\n\n"
+            f"Time: {login_time}\n"
+            f"IP address: {ip_address}\n"
+            f"Role: {role_label}\n\n"
+            f"If this was not you, please change your password and contact your administrator.\n\n"
+            f"SafeVision\n"
+        )
+
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f'SafeVision <{SMTP_USERNAME}>'
         msg['To'] = email
-        msg['Subject'] = f"🔔 SafeVision — {role.title()} Login Alert"
+        msg['Reply-To'] = SMTP_USERNAME
+        msg['Subject'] = f"New sign-in to your SafeVision {role} account"
+        msg['Date'] = formatdate(localtime=True)
+        msg['Message-ID'] = make_msgid(domain='safevision.app')
+        msg.attach(MIMEText(plain_text, 'plain'))
         msg.attach(MIMEText(html_content, 'html'))
 
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)

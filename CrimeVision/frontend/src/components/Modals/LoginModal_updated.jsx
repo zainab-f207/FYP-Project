@@ -251,6 +251,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
   const [generatedUsername, setGeneratedUsername] = useState("");
   const [requires2FA, setRequires2FA] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [animationStage, setAnimationStage] = useState("entering");
   const [isSwitching, setIsSwitching] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -743,10 +744,10 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
         if (isGoogleLogin2FA && pendingGoogleCredential) {
           // Handle Google login with 2FA
           console.log('🔐 LoginModal: Submitting Google login with 2FA');
-          result = await googleLogin(pendingGoogleCredential, twoFactorCode);
+          result = await googleLogin(pendingGoogleCredential, twoFactorCode, rememberMe);
         } else {
           // Regular login
-          result = await login(formData.email, formData.password, requires2FA ? twoFactorCode : null);
+          result = await login(formData.email, formData.password, requires2FA ? twoFactorCode : null, rememberMe);
         }
 
         if (result.success) {
@@ -885,7 +886,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
     } finally {
       setLoading(false);
     }
-  }, [validateForm, isLogin, formData, login, register, requires2FA, twoFactorCode, isModal, closeModal, isGoogleLogin2FA, pendingGoogleCredential, googleLogin, showNotification, navigate]);
+  }, [validateForm, isLogin, formData, login, register, requires2FA, twoFactorCode, isModal, closeModal, isGoogleLogin2FA, pendingGoogleCredential, googleLogin, showNotification, navigate, rememberMe]);
 
   // --- OTP Verification Handler ---
   const handleVerifyOtp = useCallback(async () => {
@@ -900,7 +901,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
       // and the dashboard surfaces a non-blocking change-password modal that supports "Remind Me Later".
       if (data.access_token) {
         // Login complete (works for both first-login & subsequent logins)
-        const result = await completeOtpLogin(data.access_token, data.refresh_token);
+        const result = await completeOtpLogin(data.access_token, data.refresh_token, rememberMe);
         if (result.success) {
           setRequiresEmailOtp(false);
           setPendingOtpData(null);
@@ -929,7 +930,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
     } finally {
       setLoading(false);
     }
-  }, [emailOtpCode, pendingOtpData, completeOtpLogin, navigate, isModal, closeModal, notif]);
+  }, [emailOtpCode, pendingOtpData, completeOtpLogin, navigate, isModal, closeModal, notif, rememberMe]);
 
   // --- Resend OTP Handler ---
   const handleResendOtp = useCallback(async () => {
@@ -984,7 +985,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
     try {
       await apiService.forceChangePassword(pendingPasswordChangeToken, newPassword, confirmNewPassword);
       // After password change, complete login
-      const result = await completeOtpLogin(pendingPasswordChangeToken);
+      const result = await completeOtpLogin(pendingPasswordChangeToken, null, rememberMe);
       if (result.success) {
         setRequiresPasswordChange(false);
         setPendingPasswordChangeToken(null);
@@ -1005,7 +1006,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
     } finally {
       setLoading(false);
     }
-  }, [newPassword, confirmNewPassword, pendingPasswordChangeToken, pendingPasswordChangeRole, completeOtpLogin, navigate, isModal, closeModal, notif]);
+  }, [newPassword, confirmNewPassword, pendingPasswordChangeToken, pendingPasswordChangeRole, completeOtpLogin, navigate, isModal, closeModal, notif, rememberMe]);
 
   // --- Cancel OTP / Go back handler ---
   const handleCancelOtp = useCallback(() => {
@@ -1308,7 +1309,39 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
               )}
 
               {!isGoogleLogin2FA && (
-                <div className="forgot-password-link">
+                <div
+                  className="login-options-row"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    margin: '8px 0 4px',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                  }}
+                >
+                  <label
+                    htmlFor="rememberMe"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      id="rememberMe"
+                      name="rememberMe"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      disabled={loading}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    Remember me
+                  </label>
                   <button
                     type="button"
                     className="link-button"

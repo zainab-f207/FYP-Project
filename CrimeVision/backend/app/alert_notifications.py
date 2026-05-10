@@ -4,6 +4,7 @@ import math
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import make_msgid, formatdate
 from typing import Dict, Any, List, Optional, cast
 import logging
 from datetime import datetime, timedelta
@@ -428,7 +429,12 @@ class AlertNotificationSystem:
             location_label = location_type.title()  # Home / Work / Monitored
 
             # 🎯 User Goal: "You just entered danger" structure
-            _is_hist = "historical" in risk_lvl.lower() or (risk_pct <= 35 and "Proximity" in getattr(alert, 'alert_trigger_reason', ''))
+            # NB: getattr(..., '') returns None when the attribute exists but
+            # is set to None (e.g. weekly reports never set alert_trigger_reason),
+            # so coerce defensively before substring-checking.
+            _trigger_reason = getattr(alert, 'alert_trigger_reason', '') or ''
+            _risk_lvl_str = (risk_lvl or '').lower() if not isinstance(risk_lvl, str) else risk_lvl.lower()
+            _is_hist = "historical" in _risk_lvl_str or (risk_pct <= 35 and "Proximity" in _trigger_reason)
             _time_str = (time_label or "night").lower()
             radius_km = float(getattr(alert, 'radius_km', 1.0) or 1.0)
             radius_label = f"{radius_km:g}"
@@ -880,21 +886,23 @@ class AlertNotificationSystem:
                 f"for alert type '{alert.alert_type}' at {alert.address} (Risk: {real_risk_pct}%)"
             )
 
-            # Create email message
+            # Create email message.
+            # NOTE: avoid spam-trigger headers. `Precedence: bulk`, `X-Priority: 1`,
+            # `Importance: High` and a `Message-ID` whose domain doesn't match the
+            # authenticated sender all push transactional mail into Gmail/Outlook
+            # spam. Keep the header set minimal and let DKIM/SPF on the sending
+            # domain do the work.
+            sender = self.email_config['smtp_username']
+            sender_domain = sender.split('@')[-1] if '@' in sender else 'safevision.local'
             msg = MIMEMultipart('alternative')
-            msg['From'] = f"SafeVision Alerts <{self.email_config['smtp_username']}>"
+            msg['From'] = f"SafeVision Alerts <{sender}>"
             msg['To'] = user_email
             msg['Subject'] = template_data['subject']
-            msg['X-Priority'] = '1'
-            msg['X-MSMail-Priority'] = 'High'
-            msg['Importance'] = 'High'
-            msg['List-Unsubscribe'] = f'<mailto:{self.email_config["smtp_username"]}?subject=unsubscribe>'
+            msg['Date'] = formatdate(localtime=True)
+            msg['Message-ID'] = make_msgid(domain=sender_domain)
+            msg['List-Unsubscribe'] = f'<mailto:{sender}?subject=unsubscribe>'
             msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
             msg['Auto-Submitted'] = 'auto-generated'
-            msg['Precedence'] = 'bulk'
-            msg['Message-ID'] = f"<{datetime.now().strftime('%Y%m%d%H%M%S')}.{user_email.split('@')[0]}@crimevision.com>"
-            msg['X-Auto-Response-Suppress'] = 'OOF, AutoReply'
-            msg['X-Report-Abuse'] = f'Please report abuse to {self.email_config["smtp_username"]}'
 
             # Attach HTML and plain text
             part1 = MIMEText(template_data['text'], 'plain', 'utf-8')
@@ -1052,11 +1060,17 @@ class AlertNotificationSystem:
                 try:
                     template_data = self.email_templates.nearby_incident_alert(alert_payload)
                     
+                    sender = self.email_config['smtp_username']
+                    sender_domain = sender.split('@')[-1] if '@' in sender else 'safevision.local'
                     msg = MIMEMultipart('alternative')
-                    msg['From'] = f"SafeVision Proximity Alerts <{self.email_config['smtp_username']}>"
+                    msg['From'] = f"SafeVision Proximity Alerts <{sender}>"
                     msg['To'] = user_email
                     msg['Subject'] = template_data['subject']
-                    msg['X-Priority'] = '1' # High priority
+                    msg['Date'] = formatdate(localtime=True)
+                    msg['Message-ID'] = make_msgid(domain=sender_domain)
+                    msg['List-Unsubscribe'] = f'<mailto:{sender}?subject=unsubscribe>'
+                    msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
+                    msg['Auto-Submitted'] = 'auto-generated'
                     
                     part1 = MIMEText(template_data['text'], 'plain', 'utf-8')
                     part2 = MIMEText(template_data['html'], 'html', 'utf-8')
@@ -1090,11 +1104,18 @@ class AlertNotificationSystem:
             # report_data expected keys: area_name, stats (total_7d, high_7d, safety_score), trend, obs_trend, obs_frequency
             template_data = self.email_templates.weekly_safety_report(report_data)
             
+            sender = self.email_config['smtp_username']
+            sender_domain = sender.split('@')[-1] if '@' in sender else 'safevision.local'
             msg = MIMEMultipart('alternative')
-            msg['From'] = f"SafeVision Reports <{self.email_config['smtp_username']}>"
+            msg['From'] = f"SafeVision Reports <{sender}>"
             msg['To'] = user_email
             msg['Subject'] = template_data['subject']
-            
+            msg['Date'] = formatdate(localtime=True)
+            msg['Message-ID'] = make_msgid(domain=sender_domain)
+            msg['List-Unsubscribe'] = f'<mailto:{sender}?subject=unsubscribe>'
+            msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
+            msg['Auto-Submitted'] = 'auto-generated'
+
             part1 = MIMEText(template_data['text'], 'plain', 'utf-8')
             part2 = MIMEText(template_data['html'], 'html', 'utf-8')
             msg.attach(part1)
@@ -1104,7 +1125,7 @@ class AlertNotificationSystem:
                 server.starttls()
                 server.login(self.email_config['smtp_username'], self.email_config['smtp_password'])
                 server.send_message(msg)
-            
+
             area_label = str(report_data.get('area_label', '')).strip().lower()
             log_alert_type = f"weekly_report_{area_label}" if area_label else "weekly_report"
             await self.log_notification_sent(report_data['user_id'], 'email', log_alert_type, True)

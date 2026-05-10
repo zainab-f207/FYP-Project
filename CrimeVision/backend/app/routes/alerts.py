@@ -1221,9 +1221,12 @@ async def create_and_send_alert(user_data, location_type, risk_assessment, lat, 
         # only "low" (safe-area) alerts were rate-limited and high/critical
         # alerts re-fired every poll cycle, which spammed browser notifications
         # roughly once per minute. Cooldown duration comes from system_settings
-        # (`alert_cooldown_minutes`, default 60). Severity is part of the key
-        # so escalating severity for the same location can still notify once.
-        cooldown_key = f"{user_data['id']}_{location_type}_{severity}"
+        # (`alert_cooldown_minutes`, default 60). Severity AND area are part of
+        # the key — escalating severity OR moving to a new area still notifies
+        # once. Without the area, a user driving through several "Moderate"
+        # zones would only get one alert per cooldown window.
+        _area_key = (area_name or 'unknown').strip().lower()
+        cooldown_key = f"{user_data['id']}_{location_type}_{severity}_{_area_key}"
         cooldown_seconds = get_global_alert_cooldown_minutes() * 60
         if cooldown_key in alert_cooldown_cache:
             last_time = alert_cooldown_cache[cooldown_key]
@@ -2698,8 +2701,16 @@ async def dispatch_weekly_safety_reports():
 
         async def _send_area_report(user: Dict[str, Any], area_name: str, area_label: str):
             """
-            Compute weekly stats for ONE specific area using name-only matching
-            and send the report. Uses its own isolated DB connection.
+            Compute weekly stats for ONE specific area and send the report.
+
+            Primary match is by area name (no radius — avoids cross-area
+            pollution). If the name match returns zero rows AND we have
+            coordinates for this area, we fall back to a tight 1 km radius
+            query — this catches spelling variants where the admin stored
+            "Chuburji, Lahore" but the user's home_area is "Chauburji" (same
+            point, different spelling) without bleeding in neighboring areas.
+
+            Uses its own isolated DB connection.
             """
             _conn = None
             _cur  = None
@@ -2710,9 +2721,33 @@ async def dispatch_weekly_safety_reports():
                 user_id    = user['id']
                 user_email = user['email']
                 area_lc    = area_name.lower().strip()
-                # Use area_like_pattern for consistent fuzzy matching
-                from app.utils.area_normalization import area_like_pattern as _alp
+                # area_match_clause handles ", Lahore" suffixes AND spelling
+                # variants (Chuburji vs Chauburji) automatically via SOUNDEX —
+                # no manual alias setup needed for any new area.
+                from app.utils.area_normalization import (
+                    area_like_pattern as _alp,
+                    area_match_clause as _amc,
+                )
                 area_pat = _alp(area_name)
+                _area_clause, _area_params = _amc(area_name, columns=("area", "area_translit"))
+
+                # Pick the coords matching this report's area label.
+                # Used only as a fallback when the name match returns zero.
+                if area_label.lower() == 'work':
+                    fb_lat = user.get('work_latitude')
+                    fb_lng = user.get('work_longitude')
+                else:
+                    fb_lat = user.get('home_latitude')
+                    fb_lng = user.get('home_longitude')
+                try:
+                    fb_lat = float(fb_lat) if fb_lat is not None else None
+                    fb_lng = float(fb_lng) if fb_lng is not None else None
+                except (TypeError, ValueError):
+                    fb_lat = fb_lng = None
+                # Tight radius (km) — large enough that "same place, different
+                # spelling" matches, small enough that genuinely different
+                # neighboring areas don't pollute the stats.
+                _SPELLING_FALLBACK_KM = 1.0
 
                 # Dedupe: skip if a successful weekly report for this area was already
                 # sent to this user in the last 24 hours (covers cron + manual triggers
@@ -2737,29 +2772,83 @@ async def dispatch_weekly_safety_reports():
                     )
                     return
 
-                # Current 7-day stats — area-name ONLY (no radius to avoid cross-area pollution)
-                _cur.execute("""
+                # Current 7-day stats — area name + variants (SOUNDEX) match.
+                # No radius needed; SOUNDEX picks up "Chuburji, Lahore" rows
+                # for a query of "Chauburji" automatically.
+                _cur.execute(
+                    f"""
                     SELECT
                         COUNT(*) as total_7d,
                         SUM(CASE WHEN risk_level = 'High'   THEN 1 ELSE 0 END) as high_7d,
                         SUM(CASE WHEN risk_level = 'Medium' THEN 1 ELSE 0 END) as medium_7d
                     FROM crimes
-                    WHERE (LOWER(area) LIKE %s OR LOWER(area_translit) LIKE %s)
+                    WHERE {_area_clause}
                       AND crime_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                """, (area_pat, area_pat))
+                    """,
+                    _area_params,
+                )
                 curr = _cur.fetchone() or {}
 
-                # Previous 7-day stats (for trend)
-                _cur.execute("""
+                # Spelling-fallback: if the name match found nothing AND we
+                # have coords for this area, retry with a tight radius. This
+                # catches admin-entered variants like "Chuburji, Lahore" when
+                # the user's stored area is "Chauburji" (same lat/lng).
+                if (
+                    int(curr.get('total_7d') or 0) == 0
+                    and fb_lat is not None and fb_lng is not None
+                ):
+                    _cur.execute("""
+                        SELECT
+                            COUNT(*) as total_7d,
+                            SUM(CASE WHEN risk_level = 'High'   THEN 1 ELSE 0 END) as high_7d,
+                            SUM(CASE WHEN risk_level = 'Medium' THEN 1 ELSE 0 END) as medium_7d
+                        FROM crimes
+                        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                          AND SQRT(POW(111.32 * (latitude - %s), 2)
+                                 + POW(111.32 * (%s - longitude) * COS(latitude / 57.3), 2)) <= %s
+                          AND crime_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                    """, (fb_lat, fb_lng, _SPELLING_FALLBACK_KM))
+                    fb_curr = _cur.fetchone() or {}
+                    if int(fb_curr.get('total_7d') or 0) > 0:
+                        logger.info(
+                            f"📍 Weekly report [{area_label}={area_name}] "
+                            f"name match empty — fell back to {_SPELLING_FALLBACK_KM}km radius"
+                        )
+                        curr = fb_curr
+
+                # Previous 7-day stats (for trend) — same matching logic
+                _cur.execute(
+                    f"""
                     SELECT
                         COUNT(*) as total_prev,
                         SUM(CASE WHEN risk_level = 'High' THEN 1 ELSE 0 END) as high_prev
                     FROM crimes
-                    WHERE (LOWER(area) LIKE %s OR LOWER(area_translit) LIKE %s)
+                    WHERE {_area_clause}
                       AND crime_date >= DATE_SUB(NOW(), INTERVAL 14 DAY)
                       AND crime_date <  DATE_SUB(NOW(), INTERVAL 7 DAY)
-                """, (area_pat, area_pat))
+                    """,
+                    _area_params,
+                )
                 prev = _cur.fetchone() or {}
+
+                if (
+                    int(prev.get('total_prev') or 0) == 0
+                    and fb_lat is not None and fb_lng is not None
+                ):
+                    _cur.execute("""
+                        SELECT
+                            COUNT(*) as total_prev,
+                            SUM(CASE WHEN risk_level = 'High' THEN 1 ELSE 0 END) as high_prev
+                        FROM crimes
+                        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                          AND SQRT(POW(111.32 * (latitude - %s), 2)
+                                 + POW(111.32 * (%s - longitude) * COS(latitude / 57.3), 2)) <= %s
+                          AND crime_date >= DATE_SUB(NOW(), INTERVAL 14 DAY)
+                          AND crime_date <  DATE_SUB(NOW(), INTERVAL 7 DAY)
+                    """, (fb_lat, fb_lng, _SPELLING_FALLBACK_KM))
+                    fb_prev = _cur.fetchone() or {}
+                    if int(fb_prev.get('total_prev') or 0) > 0:
+                        prev = fb_prev
 
                 total_curr = int(curr.get('total_7d', 0) or 0)
                 total_prev = int(prev.get('total_prev', 0) or 0)
@@ -2869,49 +2958,128 @@ async def dispatch_weekly_safety_reports():
         if conn and conn.is_connected(): conn.close()
 
 
-# ── In-memory tracker: last crime ID seen, for polling-based incident alerts ──
-_last_polled_crime_id: int = 0
-_manually_dispatched_ids: set = set() # Track IDs sent via API/Approval to avoid double-polling
+# ── Persistent tracker: last crime ID seen, for polling-based incident alerts ──
+# Stored in system_settings so it survives restarts. This way crimes inserted
+# while the backend was offline still get processed when it comes back up,
+# instead of being silently skipped by an in-memory anchor.
+_POLL_CURSOR_KEY = "alerts_last_polled_crime_id"
+# Cap so an extended outage doesn't unleash hundreds of stale alerts at once.
+# Anything older than this is silently advanced past (no alerts dispatched).
+_POLL_MAX_BACKLOG_HOURS = 24
+_last_polled_crime_id: int = 0  # in-memory cache; source of truth is the DB
+_poll_cursor_loaded: bool = False
+_manually_dispatched_ids: set = set()  # Track IDs sent via API/Approval to avoid double-polling
+
+
+def _read_poll_cursor(cursor) -> int:
+    try:
+        cursor.execute(
+            "SELECT setting_value FROM system_settings WHERE setting_key = %s",
+            (_POLL_CURSOR_KEY,),
+        )
+        row = cursor.fetchone()
+        if row and row.get("setting_value") is not None:
+            return int(row["setting_value"])
+    except Exception:
+        pass
+    return -1  # sentinel: no saved cursor
+
+
+def _write_poll_cursor(cursor, value: int) -> None:
+    try:
+        cursor.execute(
+            """INSERT INTO system_settings (setting_key, setting_value, category, updated_by)
+               VALUES (%s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value),
+                   category = VALUES(category)""",
+            (_POLL_CURSOR_KEY, str(value), "alerts", "system"),
+        )
+    except Exception as e:
+        logger.warning(f"Could not persist poll cursor: {e}")
+
 
 async def poll_new_incidents_for_alerts():
     """
     Polling task run every ~2 minutes by the scheduler.
     Detects crimes inserted into the DB by ANY source (API, MySQL Workbench, admin bulk-upload)
     and dispatches incident-based alerts when new High or grouped Medium incidents are found.
+
+    The cursor (last processed crime ID) is persisted to system_settings so
+    crimes inserted while the backend was offline are still processed on restart.
     """
-    global _last_polled_crime_id
+    global _last_polled_crime_id, _poll_cursor_loaded
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Initialise pointer on first run — anchor to current max so we don't re-alert on old data
-        if _last_polled_crime_id == 0:
-            cursor.execute("SELECT COALESCE(MAX(id), 0) as max_id FROM crimes")
-            row = cursor.fetchone()
-            _last_polled_crime_id = int(row['max_id'] or 0)
-            logger.info(f"📍 Incident poll initialised — anchor id={_last_polled_crime_id}")
-            return
+        # First-ever boot OR first poll after process restart: load the cursor
+        # from system_settings. Falls back to MAX(id) only on a truly cold install.
+        if not _poll_cursor_loaded:
+            saved = _read_poll_cursor(cursor)
+            if saved >= 0:
+                _last_polled_crime_id = saved
+                logger.info(f"📍 Incident poll resumed from saved cursor id={saved}")
+            else:
+                cursor.execute("SELECT COALESCE(MAX(id), 0) as max_id FROM crimes")
+                row = cursor.fetchone()
+                _last_polled_crime_id = int(row['max_id'] or 0)
+                _write_poll_cursor(cursor, _last_polled_crime_id)
+                conn.commit()
+                logger.info(
+                    f"📍 First-ever incident poll — anchored at id={_last_polled_crime_id}"
+                )
+            _poll_cursor_loaded = True
 
-        # Fetch any crimes added since last poll
-        cursor.execute("""
+            # On the very first run (cold install) we still return without
+            # processing anything — there's no real "new" crime yet.
+            if saved < 0:
+                return
+
+        # Fetch any crimes added since last poll, but skip rows older than the
+        # backlog cap so an extended outage doesn't fire hundreds of alerts.
+        cursor.execute(
+            """
             SELECT id, area, area_translit, crime_type, risk_level,
-                   latitude, longitude, crime_date
+                   latitude, longitude, crime_date, created_at
             FROM crimes
             WHERE id > %s
+              AND created_at >= (NOW() - INTERVAL %s HOUR)
             ORDER BY id ASC
             LIMIT 100
-        """, (_last_polled_crime_id,))
+            """,
+            (_last_polled_crime_id, _POLL_MAX_BACKLOG_HOURS),
+        )
         new_crimes = cursor.fetchall() or []
 
+        # If there are crimes ABOVE the cursor but all of them are older than
+        # the backlog cap, advance the cursor past them silently so we don't
+        # keep re-querying the same rows on every poll.
         if not new_crimes:
+            cursor.execute(
+                "SELECT COALESCE(MAX(id), 0) as max_id FROM crimes WHERE id > %s",
+                (_last_polled_crime_id,),
+            )
+            mx_row = cursor.fetchone() or {"max_id": 0}
+            mx = int(mx_row.get("max_id") or 0)
+            if mx > _last_polled_crime_id:
+                logger.info(
+                    f"⏩ Advancing past {mx - _last_polled_crime_id} stale crime(s) "
+                    f"older than {_POLL_MAX_BACKLOG_HOURS}h "
+                    f"(cursor {_last_polled_crime_id} → {mx})"
+                )
+                _last_polled_crime_id = mx
+                _write_poll_cursor(cursor, mx)
+                conn.commit()
             return
 
         logger.info(f"📣 Incident poll: {len(new_crimes)} new crime(s) since id={_last_polled_crime_id}")
 
-        # Advance pointer
+        # Advance pointer + persist
         _last_polled_crime_id = int(new_crimes[-1]['id'])
+        _write_poll_cursor(cursor, _last_polled_crime_id)
+        conn.commit()
 
         for crime in new_crimes:
             crime_id = int(crime['id'])

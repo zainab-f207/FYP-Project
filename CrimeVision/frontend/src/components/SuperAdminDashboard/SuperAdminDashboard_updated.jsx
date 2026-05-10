@@ -341,6 +341,7 @@ import SuperAdminPredictionPanel from './SuperAdminPredictionPanel';
 import SuperAdminMainDashboard from './SuperAdminMainDashboard';
 import CrimeHeatmapPanel from '../AdminDashboard/CrimeHeatmapPanel';
 import AuditLogs from './AuditLogs';
+import SessionTimer from '../common/SessionTimer';
 import { 
   SystemMonitorSVG, 
   SecurityShieldSVG, 
@@ -367,6 +368,7 @@ const SuperAdminDashboard = () => {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [userCounts, setUserCounts] = useState({ locked_count: 0, unverified_count: 0 });
   const { user, logout, token } = useAuth();
   const contentRef = useRef(null);
   const notifRef = useRef(null);
@@ -404,13 +406,18 @@ const SuperAdminDashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsResponse, notificationsResponse] = await Promise.all([
+      const [statsResponse, notificationsResponse, countsResponse] = await Promise.all([
         apiService.getAdminStats(token),
-        apiService.getAdminNotifications(token)
+        apiService.getAdminNotifications(token),
+        apiService.getUserCounts(token),
       ]);
-      
+
       setStats(statsResponse);
       setNotifications(Array.isArray(notificationsResponse) ? notificationsResponse : (notificationsResponse.notifications || []));
+      setUserCounts({
+        locked_count: countsResponse?.locked_count ?? 0,
+        unverified_count: countsResponse?.unverified_count ?? 0,
+      });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -419,6 +426,21 @@ const SuperAdminDashboard = () => {
   }, [token]);
 
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+
+  // Refresh user counts every 60s so the sidebar badge stays current
+  useEffect(() => {
+    if (!token) return undefined;
+    const id = setInterval(async () => {
+      try {
+        const c = await apiService.getUserCounts(token);
+        setUserCounts({
+          locked_count: c?.locked_count ?? 0,
+          unverified_count: c?.unverified_count ?? 0,
+        });
+      } catch (_e) { /* swallow */ }
+    }, 60000);
+    return () => clearInterval(id);
+  }, [token]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -572,11 +594,27 @@ const SuperAdminDashboard = () => {
                 badge: 'NEW',
                 svgComponent: <SecurityShieldSVG className={styles.menuSvg} color="#ffc107" />
               },
-              { 
-                key: 'user-management', 
-                icon: 'fas fa-users-cog', 
+              {
+                key: 'user-management',
+                icon: 'fas fa-users-cog',
                 label: 'User Management',
-                svgComponent: <NetworkTopologySVG className={styles.menuSvg} color="#06b6d4" />
+                svgComponent: <NetworkTopologySVG className={styles.menuSvg} color="#06b6d4" />,
+                countBadges: [
+                  userCounts.locked_count > 0 && {
+                    key: 'locked',
+                    text: `${userCounts.locked_count} locked`,
+                    color: '#ef4444',
+                    bg: 'rgba(239,68,68,0.18)',
+                    title: `${userCounts.locked_count} account(s) locked from failed logins`,
+                  },
+                  userCounts.unverified_count > 0 && {
+                    key: 'unverified',
+                    text: `${userCounts.unverified_count} unverified`,
+                    color: '#f59e0b',
+                    bg: 'rgba(245,158,11,0.18)',
+                    title: `${userCounts.unverified_count} unverified account(s)`,
+                  },
+                ].filter(Boolean),
               },
               { 
                 key: 'admin-management', 
@@ -634,6 +672,27 @@ const SuperAdminDashboard = () => {
                   <span>{item.label}</span>
                   {item.pulse && <div className={styles.menuPulse}></div>}
                   {item.badge && <span className={styles.newBadge}>{item.badge}</span>}
+                  {Array.isArray(item.countBadges) && item.countBadges.length > 0 && !sidebarCollapsed && (
+                    <span style={{ display: 'inline-flex', gap: 4, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                      {item.countBadges.map((b) => (
+                        <span
+                          key={b.key}
+                          title={b.title}
+                          style={{
+                            background: b.bg,
+                            color: b.color,
+                            padding: '2px 8px',
+                            borderRadius: 8,
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {b.text}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                   <div className={styles.menuHoverEffect}></div>
                 </a>
               </li>
@@ -685,6 +744,7 @@ const SuperAdminDashboard = () => {
           </div>
 
           <div className={styles.navRight}>
+            <SessionTimer />
             <div className={styles.notificationBell} ref={notifRef} style={{ position: 'relative' }}>
               <button
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, position: 'relative' }}

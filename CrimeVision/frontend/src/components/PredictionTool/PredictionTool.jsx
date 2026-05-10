@@ -1278,26 +1278,50 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
                       weight: 2,
                     }}
                   >
-                    <Popup>
-                      <div style={{ minWidth: 160 }}>
-                        <strong>{formatAreaName(area)}</strong><br />
-                        Estimated Risk: <strong style={{ color: getRiskColor(riskPercentage) }}>{riskPercentage}%</strong><br />
-                        Level: <strong>{riskLevel}</strong>
-                        {timePeriod && <><br />Period: {TIME_PERIOD_ICONS[timePeriod]} {timePeriod}</>}
+                    <Popup className="prediction-area-popup">
+                      <div className="pap-body">
+                        <div className="pap-title">{formatAreaName(area)}</div>
+                        <div className="pap-row">
+                          <span className="pap-label">Estimated Risk</span>
+                          <span className="pap-value" style={{ color: getRiskColor(riskPercentage) }}>{riskPercentage}%</span>
+                        </div>
+                        <div className="pap-row">
+                          <span className="pap-label">Level</span>
+                          <span className="pap-value">{riskLevel}</span>
+                        </div>
+                        {timePeriod && (
+                          <div className="pap-row">
+                            <span className="pap-label">Period</span>
+                            <span className="pap-value">{TIME_PERIOD_ICONS[timePeriod]} {timePeriod}</span>
+                          </div>
+                        )}
                       </div>
                     </Popup>
                   </Circle>
 
                   {/* Area pin */}
                   <Marker position={areaCoords}>
-                    <Popup>
-                      <div style={{ minWidth: 160 }}>
-                        <strong>{formatAreaName(area)}</strong><br />
-                        <span style={{ color: getRiskColor(riskPercentage), fontWeight: 600 }}>
-                          {riskPercentage}% {riskLevel}
-                        </span>
-                        {crimeType && <><br />Crime type: {crimeType}</>}
-                        {date && <><br />Date: {new Date(date).toLocaleDateString()}</>}
+                    <Popup className="prediction-area-popup">
+                      <div className="pap-body">
+                        <div className="pap-title">{formatAreaName(area)}</div>
+                        <div className="pap-row">
+                          <span className="pap-label">Risk</span>
+                          <span className="pap-value" style={{ color: getRiskColor(riskPercentage) }}>
+                            {riskPercentage}% {riskLevel}
+                          </span>
+                        </div>
+                        {crimeType && (
+                          <div className="pap-row">
+                            <span className="pap-label">Crime type</span>
+                            <span className="pap-value">{crimeType}</span>
+                          </div>
+                        )}
+                        {date && (
+                          <div className="pap-row">
+                            <span className="pap-label">Date</span>
+                            <span className="pap-value">{new Date(date).toLocaleDateString()}</span>
+                          </div>
+                        )}
                       </div>
                     </Popup>
                   </Marker>

@@ -12,7 +12,7 @@ import json
 from mysql.connector import Error as MySQLError
 from app.core.database import get_db_connection
 from app.utils.validation import validate_date_format, validate_crime_type
-from app.utils.area_normalization import area_like_pattern
+from app.utils.area_normalization import area_like_pattern, area_match_clause
 from app.core.config import MODEL_DIR
 from app.utils.risk import calculate_unified_risk_summary
 from app.dependencies import get_username_from_token
@@ -146,7 +146,7 @@ def get_crimes(
     crime_type: Optional[str] = Query(None, description="Filter by crime type", max_length=50),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)", regex=r'^\d{4}-\d{2}-\d{2}$'),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)", regex=r'^\d{4}-\d{2}-\d{2}$'),
-    limit: Optional[int] = Query(1000, description="Maximum number of records to return (omit or leave blank for all)", ge=1)
+    limit: Optional[int] = Query(None, description="Maximum number of records to return (omit or leave blank for all)", ge=1)
 ):
     """Retrieve crime data with optional filters"""
     # Validate inputs
@@ -174,8 +174,9 @@ def get_crimes(
         params = []
 
         if area:
-            query += " AND area = %s"
-            params.append(area)
+            area_clause, area_params = area_match_clause(area, columns=("area", "area_translit"))
+            query += f" AND {area_clause}"
+            params.extend(area_params)
         if crime_type:
             query += " AND crime_type = %s"
             params.append(crime_type)
@@ -196,12 +197,19 @@ def get_crimes(
         rows = cursor.fetchall()
 
         crimes_list = []
+        skipped_count = 0
         for row in rows:
             try:
                 row_dict = cast(Dict[str, Any], row)
-                
+
                 latitude = row_dict.get("latitude")
                 longitude = row_dict.get("longitude")
+
+                # Skip rows with missing coordinates outright instead of
+                # letting float(None) raise inside the try-block.
+                if latitude is None or longitude is None:
+                    skipped_count += 1
+                    continue
 
                 # Build a combined datetime string so the frontend gets the
                 # real time without UTC-offset ambiguity.
@@ -222,29 +230,34 @@ def get_crimes(
 
                 crime_record = Crime(
                     id=int(row_dict["id"]),
-                    area=row_dict.get("area", "Unknown"),
+                    area=row_dict.get("area") or "Unknown",
                     area_urdu=row_dict.get("area_urdu") or None,
                     area_translit=row_dict.get("area_translit") or None,
-                    type=row_dict.get("crime_type", "Unknown"),
+                    type=row_dict.get("crime_type") or "Unknown",
                     date=combined_date,
                     crime_time=row_dict.get("crime_time") or None,
-                    coordinates=[
-                        float(latitude),
-                        float(longitude)
-                    ],
-                    risk_level=row_dict.get("risk_level", "Unknown")
+                    coordinates=[float(latitude), float(longitude)],
+                    risk_level=row_dict.get("risk_level") or "Unknown"
                 )
                 crimes_list.append(crime_record)
             except Exception as e:
-                logger.warning(f"Skipping bad row: {e}")
+                skipped_count += 1
+                logger.warning(f"Skipping bad row id={row_dict.get('id') if isinstance(row_dict, dict) else '?'}: {e}")
                 continue
 
-        logger.info(f"Retrieved {len(crimes_list)} records")
+        if skipped_count:
+            logger.info(f"Retrieved {len(crimes_list)} records (skipped {skipped_count} malformed)")
+        else:
+            logger.info(f"Retrieved {len(crimes_list)} records")
         return crimes_list
 
     except Exception as e:
-        logger.error(f"MySQL error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve crime data")
+        # Log the FULL traceback — the previous handler logged only str(e)
+        # which hid the actual cause behind the generic 500. Now any future
+        # 500 here surfaces the real exception in the backend log.
+        import traceback
+        logger.error(f"/api/crimes failed: {e!r}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve crime data: {type(e).__name__}")
     finally:
         if cursor:
             cursor.close()
@@ -318,8 +331,12 @@ def get_area_safety_profile(
         area, months, days, crime_type, date or "now", visit_time,
     )
 
-    # Rely on loose matching (area_like_pattern) to handle DHA variants without hard-coding transformation
-    area_pattern = area_like_pattern(area)
+    # area_match_clause handles ", Lahore" suffixes AND auto-detects spelling
+    # variants via SOUNDEX — so a query for "Chauburji" includes rows stored
+    # as "Chuburji, Lahore" without any manual alias setup.
+    from app.utils.area_normalization import area_match_clause as _amc
+    area_pattern = area_like_pattern(area)  # kept for any downstream uses
+    _area_clause, _area_params = _amc(area, columns=("area",))
     if date and not validate_date_format(date):
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
@@ -333,10 +350,10 @@ def get_area_safety_profile(
     city_filter_sql = " AND crime_type = %s" if crime_type_filter else ""
     city_filter_params = [crime_type_filter] if crime_type_filter else []
 
-    # Logic Alignment: keep area profile strictly area-based by default.
-    # Radius fallback can surface unrelated nearby incidents and confuse users.
-    effective_location_sql = "LOWER(area) LIKE %s"
-    effective_location_params = [area_pattern]
+    # Use the variant-aware clause so spelling-typo'd or suffix-suffixed rows
+    # ("Chuburji", "Chuburji, Lahore") all count toward the user's area stats.
+    effective_location_sql = _area_clause
+    effective_location_params = list(_area_params)
     scope_mode = "area"
 
     conn, cursor = None, None
@@ -495,16 +512,29 @@ def get_area_safety_profile(
             name: float(sum(smoothed_counts[h] for h in hrs))
             for name, hrs in period_hours.items()
         }
+
+        # Per-hour ranking (top-3 lowest / highest smoothed counts) — replaces
+        # the previous fixed 6-hour bucketing that could only ever produce
+        # one of four range strings and made nearby areas look identical.
+        TOP_K_HOURS = 3
         if total_hour_obs == 0:
             safest_hours = []
             riskiest_hours = []
             safest_period = None
             riskiest_period = None
         else:
+            indexed = list(enumerate(smoothed_counts))  # [(hour, smoothed_count), ...]
+            sorted_asc = sorted(indexed, key=lambda x: (x[1], x[0]))
+            sorted_desc = sorted(indexed, key=lambda x: (-x[1], x[0]))
+            safest_hours = sorted([h for h, _ in sorted_asc[:TOP_K_HOURS]])
+            riskiest_hours = sorted([h for h, _ in sorted_desc[:TOP_K_HOURS]])
+            # Drop any overlap from safest list — if two areas have very flat
+            # hourly distributions the top-3 lowest and top-3 highest can share
+            # an hour. Removing the overlap keeps the two windows distinct.
+            riskiest_set = set(riskiest_hours)
+            safest_hours = [h for h in safest_hours if h not in riskiest_set] or safest_hours
             safest_period = min(period_score, key=period_score.get) if period_score else "Morning"
             riskiest_period = max(period_score, key=period_score.get) if period_score else "Evening"
-            safest_hours = period_hours.get(safest_period, [])
-            riskiest_hours = period_hours.get(riskiest_period, [])
 
         def fmt_h(h):
             ampm = 'AM' if h < 12 else 'PM'
@@ -514,7 +544,16 @@ def get_area_safety_profile(
             if not hrs:
                 return 'N/A'
             hrs = sorted(set(hrs))
-            return f"{fmt_h(hrs[0])}-{fmt_h(hrs[-1])}" if len(hrs) > 1 else fmt_h(hrs[0])
+            if len(hrs) == 1:
+                return fmt_h(hrs[0])
+            # Detect a contiguous run (e.g. [2,3,4]) vs scattered hours
+            # (e.g. [2,4,21]). Contiguous → "2 AM-4 AM" range; scattered →
+            # "2 AM, 4 AM, 9 PM" comma list, which is more honest about the
+            # underlying data than fabricating a misleading range.
+            is_contiguous = all((b - a) == 1 for a, b in zip(hrs, hrs[1:]))
+            if is_contiguous:
+                return f"{fmt_h(hrs[0])}-{fmt_h(hrs[-1])}"
+            return ", ".join(fmt_h(h) for h in hrs)
 
         safest_hour_range = hours_to_range(safest_hours)
         riskiest_hour_range = hours_to_range(riskiest_hours)
@@ -1160,50 +1199,223 @@ def get_area_safety_profile(
 @router.get("/areas")
 def get_areas():
     """Get all unique areas with their coordinates from the crimes table.
-    Returns areas sorted by record count (most data-rich areas first).
+
+    Spelling variants and ", Lahore"-style suffixes are clustered together
+    via MySQL SOUNDEX, so dropdowns powered by this endpoint show a single
+    "Chauburji" entry instead of separate "Chuburji", "Chauburji", and
+    "Chuburji, Lahore" rows. The display name picked for each cluster is
+    the spelling with the most records — coordinates and counts are
+    aggregated across every variant in the cluster.
+
+    Returns areas sorted by total record count (most data-rich first).
     """
     conn, cursor = None, None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        query = """
+        # Strip ", Lahore"-style suffix and compute a phonetic key in SQL.
+        # GROUP BY both columns to satisfy ONLY_FULL_GROUP_BY (MySQL 8 default).
+        # Each row here is one cleaned spelling; clustering by phonetic_key
+        # happens in Python below.
+        rows = []
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    TRIM(SUBSTRING_INDEX(area, ',', 1))          AS clean_name,
+                    SOUNDEX(TRIM(SUBSTRING_INDEX(area, ',', 1))) AS phonetic_key,
+                    AVG(latitude)                                AS latitude,
+                    AVG(longitude)                               AS longitude,
+                    COUNT(*)                                     AS cnt
+                FROM crimes
+                WHERE area IS NOT NULL AND area != ''
+                  AND latitude  IS NOT NULL
+                  AND longitude IS NOT NULL
+                GROUP BY TRIM(SUBSTRING_INDEX(area, ',', 1)),
+                         SOUNDEX(TRIM(SUBSTRING_INDEX(area, ',', 1)))
+                ORDER BY cnt DESC
+                """
+            )
+            rows = cursor.fetchall() or []
+        except MySQLError as e:
+            # Fallback: if the SOUNDEX/SUBSTRING_INDEX combo isn't supported on
+            # this server (rare — both are standard MySQL), drop back to the
+            # simple per-area aggregation. We then still cluster in Python via
+            # case-insensitive comma-stripped names — no phonetic merging.
+            logger.warning(
+                f"Clustered /areas query failed ({e!s}); falling back to plain GROUP BY"
+            )
+            cursor.execute(
+                """
+                SELECT
+                    area           AS clean_name,
+                    ''             AS phonetic_key,
+                    AVG(latitude)  AS latitude,
+                    AVG(longitude) AS longitude,
+                    COUNT(*)       AS cnt
+                FROM crimes
+                WHERE area IS NOT NULL AND area != ''
+                  AND latitude  IS NOT NULL
+                  AND longitude IS NOT NULL
+                GROUP BY area
+                ORDER BY cnt DESC
+                """
+            )
+            rows = cursor.fetchall() or []
+
+        # Cluster by (phonetic_key, structural_tokens) so spelling variants
+        # merge but distinct sub-areas don't. Structural tokens = digits
+        # ("DHA Phase 4" vs "5") and short ALL-CAPS abbreviations ("Sector A"
+        # vs "B"). SOUNDEX alone collapses every "DHA Phase N" because it
+        # ignores trailing digits — adding the digit set as a tie-breaker
+        # keeps the phases separate while still merging "Chuburji"/"Chauburji".
+        import re as _re
+        from collections import defaultdict
+
+        def _structural_tokens(s: str) -> tuple:
+            # Digits as whole words: "4", "11"
+            # AND short all-caps tokens: "A", "DHA", "IV"
+            tokens = _re.findall(r"\b\d+\b|\b[A-Z]{1,3}\b", s or "")
+            return tuple(sorted(tokens))
+
+        clusters: dict[tuple, list[dict]] = defaultdict(list)
+        for row in rows:
+            phonetic = (row.get('phonetic_key') or '').strip()
+            clean = (row.get('clean_name') or '').strip()
+            if not clean:
+                continue
+            base_key = phonetic if phonetic else f"_raw:{clean.lower()}"
+            cluster_key = (base_key, _structural_tokens(clean))
+            clusters[cluster_key].append(row)
+
+        areas_list = []
+        for _key, group in clusters.items():
+            valid = [r for r in group if r.get('latitude') is not None and r.get('longitude') is not None]
+            if not valid:
+                continue
+            top = max(valid, key=lambda r: int(r.get('cnt') or 0))
+            display_name = (top.get('clean_name') or '').strip()
+            if not display_name:
+                continue
+            total_count = sum(int(r.get('cnt') or 0) for r in valid)
+            if total_count <= 0:
+                continue
+            weighted_lat = sum(float(r['latitude']) * int(r['cnt']) for r in valid) / total_count
+            weighted_lng = sum(float(r['longitude']) * int(r['cnt']) for r in valid) / total_count
+            # Variants = every cleaned spelling in this cluster, normalised to
+            # lowercase. The frontend location filter compares against this set
+            # so a chip labelled "Iqbal Town" still matches crime rows whose
+            # raw `area` is "Allama Iqbal Town" or "Iqbal Town, Lahore".
+            variants = sorted({
+                (r.get('clean_name') or '').strip().lower()
+                for r in valid
+                if (r.get('clean_name') or '').strip()
+            })
+            areas_list.append({
+                "name": display_name,
+                "coordinates": {"lat": weighted_lat, "lng": weighted_lng},
+                "record_count": total_count,
+                "variants": variants,
+            })
+
+        areas_list.sort(key=lambda a: a['record_count'], reverse=True)
+
+        logger.info(
+            f"Retrieved {len(areas_list)} unique areas "
+            f"(clustered from {len(rows)} raw spellings)"
+        )
+        return {"areas": areas_list}
+
+    except MySQLError as e:
+        logger.error(f"MySQL error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve areas")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+
+@router.get("/areas/search")
+def search_areas(q: str, limit: int = 5):
+    """Fuzzy-match an area name against the crimes table and return matching
+    areas with their average coordinates.
+
+    Used by the dashboard's manual location override as a fallback when
+    Nominatim/OpenStreetMap can't resolve a typed name (e.g. user typed
+    'Chuburji' but Nominatim only knows 'Chauburji', or vice versa).
+
+    Matches:
+      * exact (case-insensitive)
+      * substring either way (LIKE %q% and q LIKE %area%)
+      * comma-stripped variants ('Chuburji, Lahore' matches 'Chuburji')
+
+    Returns top `limit` matches sorted by record count.
+    """
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="q parameter is required")
+
+    needle = q.strip()
+    if len(needle) < 2:
+        raise HTTPException(status_code=400, detail="q must be at least 2 characters")
+
+    conn, cursor = None, None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Normalize: strip ", Lahore"-style suffixes and lowercase for matching.
+        # We compare with LIKE both directions so both
+        #   needle='Chuburji'  matches stored 'Chuburji, Lahore'
+        # and
+        #   needle='Chauburji' matches stored 'Chauburji'
+        like_pattern = f"%{needle}%"
+
+        cursor.execute(
+            """
             SELECT area,
                    AVG(latitude)  AS latitude,
                    AVG(longitude) AS longitude,
                    COUNT(*)       AS record_count
             FROM crimes
             WHERE area IS NOT NULL AND area != ''
-              AND latitude  IS NOT NULL
-              AND longitude IS NOT NULL
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
+              AND (
+                LOWER(area) LIKE LOWER(%s)
+                OR LOWER(%s) LIKE CONCAT('%%', LOWER(SUBSTRING_INDEX(area, ',', 1)), '%%')
+                OR LOWER(SUBSTRING_INDEX(area, ',', 1)) LIKE LOWER(%s)
+              )
             GROUP BY area
-            ORDER BY record_count DESC
-        """
+            ORDER BY
+              CASE WHEN LOWER(area) = LOWER(%s) THEN 0 ELSE 1 END,
+              record_count DESC
+            LIMIT %s
+            """,
+            (like_pattern, needle, like_pattern, needle, max(1, min(20, int(limit)))),
+        )
+        rows = cursor.fetchall() or []
 
-        cursor.execute(query)
-        rows = cursor.fetchall()
-
-        areas_list = []
+        results = []
         for row in rows:
             try:
                 if row['latitude'] and row['longitude']:
-                    areas_list.append({
+                    results.append({
                         "name": row['area'],
                         "coordinates": {
                             "lat": float(row['latitude']),
-                            "lng": float(row['longitude'])
+                            "lng": float(row['longitude']),
                         },
                         "record_count": int(row['record_count']),
                     })
             except (ValueError, TypeError):
                 continue
 
-        logger.info(f"Retrieved {len(areas_list)} unique areas")
-        return {"areas": areas_list}
+        return {"query": needle, "results": results}
 
     except MySQLError as e:
-        logger.error(f"MySQL error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve areas")
+        logger.error(f"MySQL error in search_areas: {e}")
+        raise HTTPException(status_code=500, detail="Failed to search areas")
     finally:
         if cursor:
             cursor.close()
@@ -1964,7 +2176,12 @@ def create_crime(crime: CrimeCreate, background_tasks: BackgroundTasks):
     """Create a new crime record and predict risk level if model is loaded"""
     conn, cursor = None, None
     try:
-        area = crime.area
+        # Canonicalize the area name on insert so spelling variants
+        # (e.g. "Chuburji, Lahore" → "Chauburji") collapse to one form.
+        # Every downstream module that matches by area string will then
+        # treat this row consistently with the user's profile area.
+        from app.utils.area_normalization import canonical_area_name as _canonical_area
+        area = _canonical_area(crime.area) if crime.area else crime.area
         crime_type = crime.crime_type
         date = crime.date or datetime.now().strftime('%Y-%m-%d')
 
@@ -2270,6 +2487,8 @@ def compare_routes(
     end_lng: float,
     date: Optional[str] = Query(None, description="Travel date YYYY-MM-DD (defaults to today)"),
     time: Optional[str] = Query(None, description="Departure time HH:MM (used for night-time risk weighting)"),
+    start_name: Optional[str] = Query(None, description="User-typed start name — used as a hint when reverse-geocoding can't resolve a known DB area"),
+    end_name:   Optional[str] = Query(None, description="User-typed destination name — same hint mechanism"),
 ):
     """
     Calculate multiple route options and analyze safety of each using AI
@@ -2348,6 +2567,39 @@ def compare_routes(
             if _poisson_artifacts:
                 ai_analyzer.set_poisson(_poisson_artifacts, _poisson_predict)
             point_geocode_cache = {} # Cache Nominatim results for this request
+
+            # Try to resolve the user-typed start/end strings to a known DB area.
+            # This handles the case where Nominatim doesn't return a useful name
+            # (e.g. typing "LDA City" reverse-geocodes to "Sant Nagar" which is
+            # not in the DB, but the typed string itself maps cleanly).
+            def _match_name_to_db(raw: Optional[str]) -> Optional[str]:
+                if not raw or not db_areas:
+                    return None
+                # Try each comma-separated piece — handles both "LDA City" and
+                # "LDA City, Township, Lahore, Punjab, Pakistan".
+                parts = [p.strip() for p in raw.split(',') if p.strip()]
+                for part in parts:
+                    cand_clean = part.lower()
+                    cand_no_space = cand_clean.replace(' ', '')
+                    for db_area in db_areas:
+                        db_clean = db_area.lower().strip()
+                        db_no_space = db_clean.replace(' ', '')
+                        if cand_clean == db_clean or cand_no_space == db_no_space:
+                            return db_area
+                        for a, b in ((cand_clean, db_clean), (cand_no_space, db_no_space)):
+                            if a in b or b in a:
+                                longer = max(len(a), len(b))
+                                shorter = min(len(a), len(b))
+                                if longer and shorter / longer >= 0.7:
+                                    return db_area
+                return None
+
+            start_area_hint = _match_name_to_db(start_name)
+            end_area_hint   = _match_name_to_db(end_name)
+            if start_area_hint:
+                logger.info(f"📌 Start name '{start_name}' → DB area '{start_area_hint}'")
+            if end_area_hint:
+                logger.info(f"📌 End name '{end_name}' → DB area '{end_area_hint}'")
             
             for route_type, route_data in routes.items():
                 if route_data is None:
@@ -2355,11 +2607,17 @@ def compare_routes(
                     
                 logger.info(f"🤖 Analyzing {route_type} route...")
                 
-                # Sample points (max 7 points per route to avoid timeouts)
+                # Sample points (max 7 per route to keep Nominatim under the
+                # request budget). Use np.linspace so the FIRST and LAST
+                # coordinates are always included — otherwise the destination
+                # area never gets analyzed and never shows up as a risk marker.
                 coords = route_data['geometry']['coordinates']
                 sample_size = min(7, len(coords))
-                step = max(1, len(coords) // sample_size)
-                sampled_coords = coords[::step][:sample_size]
+                if len(coords) <= sample_size:
+                    sampled_coords = list(coords)
+                else:
+                    indices = np.linspace(0, len(coords) - 1, sample_size, dtype=int).tolist()
+                    sampled_coords = [coords[i] for i in indices]
                 
                 areas = []
                 route_points = [] # (lat, lng)
@@ -2367,7 +2625,25 @@ def compare_routes(
                 for i, coord in enumerate(sampled_coords):
                     lng, lat = coord
                     coord_key = (round(lat, 5), round(lng, 5))
-                    
+
+                    is_start_pt = (i == 0)
+                    is_end_pt   = (i == len(sampled_coords) - 1)
+
+                    # User-typed name for the endpoint wins over Nominatim —
+                    # otherwise typing "LDA City" gets clobbered to "Sant Nagar"
+                    # by the reverse-geocoder and we lose the baseline match.
+                    user_hint = (
+                        start_area_hint if is_start_pt and start_area_hint
+                        else end_area_hint if is_end_pt and end_area_hint
+                        else None
+                    )
+                    if user_hint:
+                        area = user_hint
+                        point_geocode_cache[coord_key] = area
+                        areas.append(area)
+                        route_points.append((lat, lng))
+                        continue
+
                     if coord_key in point_geocode_cache:
                         area = point_geocode_cache[coord_key]
                         logger.debug(f"📍 Using cached geocode for {coord_key}: {area}")
@@ -2393,22 +2669,43 @@ def compare_routes(
                             )
                             if response.ok:
                                 addr = response.json().get('address', {})
-                                area = next((addr.get(k) for k in ['suburb', 'neighbourhood', 'residential', 'quarter', 'city_district', 'district', 'city'] if addr.get(k)), "Lahore")
-                                
-                                # Match with DB using 70% similarity threshold
-                                if db_areas:
-                                    area_clean = area.lower().strip()
-                                    for db_area in db_areas:
-                                        db_area_clean = db_area.lower().strip()
-                                        if area_clean == db_area_clean:
-                                            area = db_area
-                                            break
-                                        if area_clean in db_area_clean or db_area_clean in area_clean:
-                                            longer = max(len(area_clean), len(db_area_clean))
-                                            shorter = min(len(area_clean), len(db_area_clean))
-                                            if shorter / longer >= 0.7:
-                                                area = db_area
+                                # Collect every candidate Nominatim returns (most-specific first).
+                                # Iterating through ALL of them — instead of just picking the
+                                # first non-empty one — lets us fall back to a wider area when
+                                # the suburb (e.g. "Sant Nagar") isn't in the crime DB but the
+                                # city_district / district level (e.g. "LDA City") is.
+                                candidates = [
+                                    addr.get(k) for k in (
+                                        'suburb', 'neighbourhood', 'residential', 'quarter',
+                                        'city_district', 'district', 'city'
+                                    ) if addr.get(k)
+                                ]
+
+                                area = candidates[0] if candidates else "Lahore"
+                                if db_areas and candidates:
+                                    matched = None
+                                    for cand in candidates:
+                                        cand_clean = cand.lower().strip()
+                                        cand_no_space = cand_clean.replace(" ", "")
+                                        for db_area in db_areas:
+                                            db_clean = db_area.lower().strip()
+                                            db_no_space = db_clean.replace(" ", "")
+                                            if cand_clean == db_clean or cand_no_space == db_no_space:
+                                                matched = db_area
                                                 break
+                                            for a, b in ((cand_clean, db_clean), (cand_no_space, db_no_space)):
+                                                if a in b or b in a:
+                                                    longer = max(len(a), len(b))
+                                                    shorter = min(len(a), len(b))
+                                                    if longer and shorter / longer >= 0.7:
+                                                        matched = db_area
+                                                        break
+                                            if matched:
+                                                break
+                                        if matched:
+                                            break
+                                    if matched:
+                                        area = matched
                             else:
                                 logger.warning(f"⚠️ Nominatim returned {response.status_code}")
                         except Exception as geocode_e:
@@ -2419,40 +2716,41 @@ def compare_routes(
                     areas.append(area)
                     route_points.append((lat, lng))
                 
-                # Get crime types for these areas
+                # Get crime types for these areas. Always use the area's TOP
+                # crime type for prediction (no per-route cycling) — otherwise
+                # the same area scores differently in each route just because
+                # the AI was asked about a different crime type, which makes
+                # "LDA City" appear with different risks on every card.
                 crime_types_list = []
                 for area in areas:
                     if area not in area_crime_cache:
                         cursor.execute("""
-                            SELECT crime_type, COUNT(*) as count 
-                            FROM crimes 
-                            WHERE area LIKE %s 
-                            GROUP BY crime_type 
-                            ORDER BY count DESC 
+                            SELECT crime_type, COUNT(*) as count
+                            FROM crimes
+                            WHERE area LIKE %s
+                            GROUP BY crime_type
+                            ORDER BY count DESC
                             LIMIT 5
                         """, (f"%{area}%",))
                         results = cursor.fetchall()
-                        
+
                         if not results:
                             area_no_space = area.replace(" ", "")
                             cursor.execute("""
-                                SELECT crime_type, COUNT(*) as count 
-                                FROM crimes 
-                                WHERE REPLACE(area, ' ', '') LIKE %s 
-                                GROUP BY crime_type 
-                                ORDER BY count DESC 
+                                SELECT crime_type, COUNT(*) as count
+                                FROM crimes
+                                WHERE REPLACE(area, ' ', '') LIKE %s
+                                GROUP BY crime_type
+                                ORDER BY count DESC
                                 LIMIT 5
                             """, (f"%{area_no_space}%",))
                             results = cursor.fetchall()
-                            
-                        if not results:
-                            area_crime_cache[area] = {'types': ["No Crimes Detected"], 'index': 0}
-                        else:
-                            area_crime_cache[area] = {'types': [r[0] for r in results], 'index': 0}
-                            
-                    cache = area_crime_cache[area]
-                    crime_types_list.append(cache['types'][cache['index'] % len(cache['types'])])
-                    cache['index'] += 1
+
+                        area_crime_cache[area] = (
+                            [r[0] for r in results] if results else ["No Crimes Detected"]
+                        )
+
+                    crime_types_list.append(area_crime_cache[area][0])
                 
                 # AI Analysis
                 analysis = ai_analyzer.analyze_route_with_ai(
@@ -2464,14 +2762,159 @@ def compare_routes(
                 route_data_annotated = dict(route_data)
                 route_data_annotated['duration_min_traffic'] = traffic_adjusted_min
                 route_data_annotated['traffic_multiplier'] = round(traffic_multiplier, 2)
+                # Build per-area crime attribution. We surface the TOP crimes
+                # for every unique area on this route (not just the one used
+                # for AI prediction) so chips show the same crimes for the
+                # same area no matter which route card you're looking at.
+                # Skip "Lahore" — that's the city-wide fallback when Nominatim
+                # can't resolve a specific neighborhood; attributing crimes
+                # there would mean "the entire city".
+                crime_attribution: List[Dict[str, str]] = []
+                _seen_pairs = set()
+                for _a in dict.fromkeys(areas):  # unique areas in route order
+                    if (_a or "").strip().lower() == "lahore":
+                        continue
+                    types_for_area = area_crime_cache.get(_a, [])
+                    if not types_for_area or types_for_area == ["No Crimes Detected"]:
+                        continue
+                    for _ct in types_for_area[:3]:  # top 3 per area
+                        pair_key = (_a, _ct)
+                        if pair_key in _seen_pairs:
+                            continue
+                        _seen_pairs.add(pair_key)
+                        crime_attribution.append({"area": _a, "crime_type": _ct})
+
                 analyzed_routes.append({
                     'route_type': route_type,
                     'route_data': route_data_annotated,
                     'safety_analysis': analysis,
                     'areas_along_route': list(dict.fromkeys(areas)),  # deduplicated, order-preserving
-                    'crime_types_detected': sorted({ct for ct in crime_types_list if ct != "No Crimes Detected"}),
+                    'crime_types_detected': crime_attribution,
                 })
-                
+
+            # Compute unified-score "area baseline" for every area touched by any
+            # route. The AI per-point score answers "risk for THIS travel time";
+            # the baseline answers "the area's historical average" (same number
+            # the dashboard shows). Surfacing both side-by-side makes the AI
+            # number's date-specificity explicit instead of contradictory.
+            all_areas = sorted({a for r in analyzed_routes for a in r['areas_along_route']})
+            area_baseline_map: Dict[str, Dict[str, Any]] = {}
+            # Per-area LIKE lookups (instead of one IN-batch) so we tolerate the
+            # same space/format variations the crime_types lookup already does.
+            # WHERE area IN (...) misses "LDA City" when the matched name is
+            # "Sant Nagar" or "Fateh Garh" vs DB's "Fatehgarh".
+            for area_name in all_areas:
+                cursor.execute(
+                    """
+                    SELECT
+                        COUNT(*),
+                        SUM(CASE WHEN risk_level='High' THEN 1 ELSE 0 END),
+                        SUM(CASE WHEN risk_level='Medium' THEN 1 ELSE 0 END),
+                        SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END),
+                        SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END)
+                    FROM crimes
+                    WHERE area LIKE %s OR REPLACE(area, ' ', '') LIKE %s
+                    """,
+                    (f"%{area_name}%", f"%{area_name.replace(' ', '')}%"),
+                )
+                row = cursor.fetchone()
+                if not row or not int(row[0] or 0):
+                    continue
+                summary = calculate_unified_risk_summary({
+                    "total_crimes":      int(row[0] or 0),
+                    "high_risk_count":   int(row[1] or 0),
+                    "medium_risk_count": int(row[2] or 0),
+                    "last_30_days":      int(row[3] or 0),
+                    "last_90_days":      int(row[4] or 0),
+                }, observation_days=365)
+                area_baseline_map[area_name] = {
+                    "safety_score": summary["safety_score"],
+                    "risk_level":   summary["risk_level"],
+                    "total_crimes": int(row[0] or 0),
+                }
+
+            for r in analyzed_routes:
+                r['area_baselines'] = {
+                    a: area_baseline_map.get(a) for a in r['areas_along_route']
+                }
+
+            # ── Baseline floor on AI per-point predictions ──────────────────
+            # If the unified historical baseline for an area says it's risky,
+            # the AI's per-point prediction can't drop below that floor. This
+            # prevents the model from marking known-crime areas as "Low" just
+            # because the Poisson prediction for the specific date is mild,
+            # so map markers reflect what the dashboard already shows.
+            from app.utils.risk import risk_label_from_risk_score
+
+            def _ai_level_from_pct(pct: float) -> str:
+                lbl = risk_label_from_risk_score(pct)
+                if lbl in ("High", "Critical"):
+                    return "High"
+                if lbl == "Moderate":
+                    return "Medium"
+                return "Low"
+
+            is_night_local = travel_hour is not None and (travel_hour >= 20 or travel_hour < 6)
+
+            for r in analyzed_routes:
+                points = r['safety_analysis']['point_predictions']
+                risks: List[float] = []
+                high = 0
+                medium = 0
+                for p in points:
+                    ai_risk_pct = float(p['prediction']['risk_percentage'])
+                    baseline = r['area_baselines'].get(p['area'])
+                    if baseline and baseline.get('safety_score') is not None:
+                        baseline_risk_pct = 100.0 - float(baseline['safety_score'])
+                        # FLOOR: known-risky areas can't be predicted as safer
+                        # than the baseline says they are.
+                        if baseline_risk_pct > ai_risk_pct:
+                            ai_risk_pct = baseline_risk_pct
+                            p['prediction']['baseline_applied'] = True
+                        # CAP: don't let Poisson outliers spike a low-volume
+                        # safe area to "Critical 98%" when the baseline says
+                        # "Low 5%". Allow up to +30 points above baseline so
+                        # the AI can still flag date-specific risk, but no
+                        # contradictions like Model Town 98% vs 94.7% safe.
+                        max_allowed = min(99.0, baseline_risk_pct + 30.0)
+                        if ai_risk_pct > max_allowed:
+                            ai_risk_pct = max_allowed
+                            p['prediction']['baseline_capped'] = True
+                    # Always normalize: the popup renders `${risk_level} Risk
+                    # Zone` so we make sure the label matches the final number
+                    # (Poisson sometimes returns "Critical" which isn't in our
+                    # marker color scheme and confuses users).
+                    p['prediction']['risk_percentage'] = round(ai_risk_pct, 1)
+                    p['prediction']['risk_level'] = _ai_level_from_pct(ai_risk_pct)
+                    lvl = p['prediction']['risk_level']
+                    if lvl == 'High':
+                        high += 1
+                    elif lvl == 'Medium':
+                        medium += 1
+                    risks.append(ai_risk_pct)
+
+                if risks:
+                    avg = sum(risks) / len(risks)
+                    max_r = max(risks)
+                    overall_risk = (avg * 0.7) + (max_r * 0.3)
+                    new_score = 100.0 - overall_risk
+                    if is_night_local:
+                        new_score *= 0.85
+                    new_score = max(10.0, min(100.0, new_score))
+                    r['safety_analysis']['overall_score'] = round(new_score, 1)
+                    r['safety_analysis']['summary']['average_risk_percentage'] = round(avg, 1)
+                    r['safety_analysis']['summary']['high_risk_points'] = high
+                    r['safety_analysis']['summary']['medium_risk_points'] = medium
+                    if new_score >= 80:
+                        r['safety_analysis']['safety_level'] = 'high'
+                    elif new_score >= 60:
+                        r['safety_analysis']['safety_level'] = 'medium'
+                    else:
+                        r['safety_analysis']['safety_level'] = 'low'
+                    r['safety_analysis']['alerts'] = ai_analyzer._generate_ai_alerts(
+                        high, medium, new_score, is_night=is_night_local
+                    )
+
         except Exception as e:
             logger.error(f"❌ Error during route analysis: {e}", exc_info=True)
             raise # Re-raise to be caught by outer except
@@ -2958,13 +3401,14 @@ def get_oov_status(current_user: str = Depends(get_username_from_token)):
     how many new unseen feature combinations have arrived since last retrain.
     """
     try:
-        from utils.auto_retrain import get_oov_status as _get_oov
+        from utils.auto_retrain import get_oov_status as _get_oov, _get_runtime_config as _get_ar_cfg
         status = _get_oov()
+        cfg = _get_ar_cfg()
         return {
             "oov_pair_count":      len(status.get("oov_pairs", [])),
-            "oov_threshold":       20,
+            "oov_threshold":       cfg.get("oov_pair_threshold", 10),
             "new_record_count":    status.get("new_records", 0),
-            "new_record_threshold": 50,
+            "new_record_threshold": cfg.get("new_record_threshold", 10),
             "retrain_count":       status.get("retrain_count", 0),
             "last_retrain":        status.get("last_retrain", 0),
             "oov_pairs_sample":    status.get("oov_pairs", [])[:10],
@@ -2985,7 +3429,7 @@ def trigger_retrain(current_user: str = Depends(get_username_from_token)):
         counters = _load_counters()
         t = threading.Thread(target=_run_retrain, args=(counters,), daemon=True, name="manual-retrain")
         t.start()
-        return {"success": True, "message": "Retrain launched in background. Model will hot-reload when complete."}
+        return {"success": True, "message": "Retrain launched in background. New RF, Poisson, and legacy RF models will hot-reload when complete."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -3000,18 +3444,19 @@ def get_area_heatmap(area: str):
         raise HTTPException(status_code=500, detail="Database connection failed")
     cursor = conn.cursor(dictionary=True)
     try:
-        # Get all crimes for the area
-        cursor.execute("""
+        # Get all crimes for the area (variant-aware, e.g. Chuburji/Chauburji)
+        area_clause, area_params = area_match_clause(area, columns=("area", "area_translit"))
+        cursor.execute(f"""
             SELECT
                 id, area, crime_type, crime_date,
                 latitude, longitude, risk_level
             FROM crimes
-            WHERE area = %s
+            WHERE {area_clause}
                 AND latitude IS NOT NULL
                 AND longitude IS NOT NULL
             ORDER BY crime_date DESC
             LIMIT 1000
-        """, (area,))
+        """, tuple(area_params))
         crimes = cursor.fetchall()
 
         heatmap_data = []

@@ -339,22 +339,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const googleLogin = async (credential, twoFactorCode = null) => {
+  const googleLogin = async (credential, twoFactorCode = null, rememberMe = true) => {
     try {
       console.log('🔐 AuthContext: Starting Google login...');
       const result = await apiService.googleLogin(credential, twoFactorCode);
-      
+
       console.log('🔐 AuthContext: Google login result:', result);
 
       if (result.access_token) {
         console.log('🔐 AuthContext: Access token received, fetching user data...');
         // Fetch user data with the new token (same as regular login)
         const userData = await apiService.getCurrentUser(result.access_token);
-        
+
         console.log('🔐 AuthContext: User data fetched:', userData);
         // Save auth data properly using the context's saveAuthData function
         const refreshToken = result.refresh_token || result.access_token; // Fallback if no refresh token
-        saveAuthData(result.access_token, refreshToken, userData, false); // Default to session storage for Google login
+        saveAuthData(result.access_token, refreshToken, userData, rememberMe);
         return {
           success: true,
           isNewUser: result.is_new_user

@@ -101,6 +101,28 @@ const riskScoreForLevel = (level) => {
 
 const normalizeAreaName = (area) => (area || 'Unknown').toString().trim().toLowerCase() || 'unknown';
 
+// Normalize area tokens to match backend canonicalization:
+// - replace Urdu comma with ascii comma
+// - strip parentheses and their contents
+// - split on comma, take first segment
+// - remove trailing generic suffixes like 'lahore', 'punjab', 'pakistan'
+// - collapse whitespace and lowercase
+const normalizeAreaToken = (s) => {
+  if (!s) return '';
+  let t = String(s).replace(/،/g, ','); // Urdu comma
+  // remove parentheses and contents
+  t = t.replace(/\(.*?\)/g, '');
+  // lower and trim
+  t = t.toLowerCase().trim();
+  // split on comma, take first meaningful segment
+  const first = t.split(',')[0].trim();
+  // remove common suffix words
+  const cleaned = first.replace(/\b(lahore|punjab|pakistan|city|lahore city)\b/gi, '').trim();
+  // remove extra punctuation
+  const normalized = cleaned.replace(/[\s\-\._]+/g, ' ').replace(/[^a-z0-9\s]/g, '').trim();
+  return normalized;
+};
+
 const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = true, initialArea = null }) => {
   const { token, isAuthenticated } = useAuth();
   const { settings: systemSettings, loading: systemSettingsLoading } = useSystemSettings();
@@ -440,7 +462,10 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
         // crimes (typically because the DB is stale relative to today), retry once
         // without the lookback so the map still shows real data.
         const retentionDays = Number(systemSettings?.data_retention_days ?? SYSTEM_SETTINGS_DEFAULTS.data_retention_days);
-        const lookbackEligible = !customStartDate && !customEndDate && retentionDays > 0;
+        // Only apply lookback when the user has NOT explicitly chosen "All records"
+        // (incidentLimit === 0 means All records). This ensures "All records" truly
+        // fetches the full dataset instead of being trimmed by the retention window.
+        const lookbackEligible = !customStartDate && !customEndDate && retentionDays > 0 && incidentLimit !== 0;
         if (customStartDate) queryParams.start_date = customStartDate;
         if (customEndDate) queryParams.end_date = customEndDate;
         if (lookbackEligible) {
@@ -612,13 +637,41 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
   const filteredCrimes = useMemo(() => {
     console.log('Filtering crimes...', crimes.length);
     let filtered = [...crimes];
+
+    // If the user has actively selected one or more locations, show all
+    // incidents in those locations regardless of the global risk visibility
+    // threshold. This ensures selecting "Chuburji" shows all its incidents.
+    const activeLocationKeys = Object.keys(locationFilters).filter(key => locationFilters[key]);
     const threshold = normalizeVisibilityThreshold(systemSettings?.map_alert_visibility_threshold ?? SYSTEM_SETTINGS_DEFAULTS.map_alert_visibility_threshold);
-    const thresholdRank = riskRank[threshold] || 1;
+    let thresholdRank = riskRank[threshold] || 1;
+    if (activeLocationKeys.length > 0) {
+      thresholdRank = 1; // lowest rank (show everything)
+    }
 
     // If predictionData is provided, filter crimes to match prediction area, crimeType, and date
     if (predictionData) {
       filtered = filtered.filter(crime => {
-        const matchesArea = predictionData.area ? (crime.area || '').toLowerCase() === predictionData.area.toLowerCase() : true;
+        // Area matching for predictionData: be tolerant to spelling variants
+        let matchesArea = true;
+        if (predictionData.area) {
+          // normalize crime area tokens
+          const raw = (crime.area || '').toString();
+          const cleaned = normalizeAreaToken(raw);
+
+          // build normalized variant set from area cluster
+          const areaObj = areas.find(a => String(a?.name || '').toLowerCase() === String(predictionData.area || '').toLowerCase());
+          const variantSet = new Set();
+          if (areaObj?.variants?.length) {
+            for (const v of areaObj.variants) variantSet.add(normalizeAreaToken(v));
+            // also add canonical name normalized
+            variantSet.add(normalizeAreaToken(areaObj.name));
+          } else {
+            variantSet.add(normalizeAreaToken(predictionData.area));
+          }
+
+          matchesArea = variantSet.has(cleaned) || variantSet.has(normalizeAreaToken(raw));
+        }
+
         const matchesCrimeType = predictionData.crimeType ? (crime.crime_type || '').toLowerCase() === predictionData.crimeType.toLowerCase() : true;
         const matchesDate = predictionData.date ? (new Date(crime.date).toDateString() === new Date(predictionData.date).toDateString()) : true;
         return matchesArea && matchesCrimeType && matchesDate;
@@ -635,14 +688,58 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
       );
     }
 
-    // Filter by locations
+    // Filter by locations.
+    // The /api/areas response clusters spelling variants under one canonical
+    // name, but crime rows still carry the raw spelling (e.g. "Allama Iqbal
+    // Town", "Iqbal Town, Lahore"). Match against the cluster's `variants`
+    // list so a chip labelled "Iqbal Town" picks up every variant.
     const activeLocations = Object.keys(locationFilters).filter(key => locationFilters[key]);
+    console.log('🔍 DEBUG FILTER: activeLocations:', activeLocations);
+    console.log('🔍 DEBUG FILTER: areas state:', areas);
     if (activeLocations.length > 0) {
-      filtered = filtered.filter(crime =>
-        activeLocations.some(loc =>
-          loc.toLowerCase().trim() === (crime.area || '').toLowerCase().trim()
-        )
-      );
+      const variantSet = new Set();
+      for (const loc of activeLocations) {
+        console.log(`  Searching for area with name="${loc}"`);
+        const areaObj = areas.find(a => String(a?.name || '').toLowerCase() === String(loc || '').toLowerCase());
+        console.log(`  Found areaObj:`, areaObj);
+        if (areaObj?.variants?.length) {
+          for (const v of areaObj.variants) variantSet.add(normalizeAreaToken(v));
+          variantSet.add(normalizeAreaToken(areaObj.name));
+        } else {
+          variantSet.add(normalizeAreaToken(loc));
+        }
+      }
+      console.log('🔍 DEBUG FILTER: variantSet:', Array.from(variantSet));
+      filtered = filtered.filter(crime => {
+        const raw = (crime.area || crime.area_translit || '').toString();
+        if (!raw) return false;
+        const cleaned = normalizeAreaToken(raw);
+
+        // First, prefer cluster-aware canonical match (precise): if the
+        // canonical area for this crime equals the selected canonical name,
+        // include it. This mirrors the backend clustering behavior.
+        try {
+          const canonical = canonicalAreaFor(raw);
+          if (canonical && activeLocations.some(l => String(l).toLowerCase() === String(canonical).toLowerCase())) {
+            return true;
+          }
+        } catch (e) {
+          // ignore and fallback to normalized matching
+        }
+
+        // Exact normalized match against any variant
+        if (variantSet.has(cleaned)) return true;
+
+        // Looser prefix-based matches for cases like "chuburji underpass ..." -> "chuburji"
+        for (const v of variantSet) {
+          if (!v) continue;
+          if (cleaned.startsWith(v)) return true;
+          if (v.startsWith(cleaned)) return true;
+        }
+
+        console.log(`  ❌ Crime area="${crime.area}" (cleaned="${cleaned}") not matched for selected areas`, Array.from(variantSet).slice(0,6));
+        return false;
+      });
     }
 
     // Filter by time period
@@ -704,7 +801,7 @@ const CrimeMapInterface = ({ predictionData = null, showAdditionalSections = tru
 
     console.log('Filtered crimes count (all):', filtered.length);
     return filtered;
-  }, [crimes, filters, locationFilters, selectedTimePeriod, customStartDate, customEndDate, predictionData, systemSettings?.map_alert_visibility_threshold, getRiskLevel]);
+  }, [crimes, areas, filters, locationFilters, selectedTimePeriod, customStartDate, customEndDate, predictionData, systemSettings?.map_alert_visibility_threshold, getRiskLevel]);
 
 // FIXED: More lenient mappable crimes logic
 const mappableCrimes = useMemo(() => {
@@ -760,34 +857,46 @@ const displayCrimes = useMemo(() => {
                           selectedTimePeriod !== 'all';
 
   if (incidentLimit === 0) {
-    return mappableCrimes;
+    return filteredCrimes;
   }
 
-  // If filters are active, show ALL mappable crimes (no limit)
+  // If filters are active, show ALL filtered crimes (no limit)
   // If no filters, apply the incident limit
-  return hasActiveFilters ? mappableCrimes : mappableCrimes.slice(0, incidentLimit);
-}, [mappableCrimes, incidentLimit, filters, locationFilters, predictionData, selectedTimePeriod]);
+  return hasActiveFilters ? filteredCrimes : filteredCrimes.slice(0, incidentLimit);
+}, [filteredCrimes, incidentLimit, filters, locationFilters, predictionData, selectedTimePeriod]);
 
 // FIXED: Add renderedCrimes to ensure count matches actual markers shown on map
 const renderedCrimes = useMemo(() => {
-  const hasActiveFilters = Object.keys(filters).some(k => filters[k]) ||
-                          Object.keys(locationFilters).some(k => locationFilters[k]) ||
-                          predictionData !== null ||
-                          selectedTimePeriod !== 'all';
-
-  // Always apply incidentLimit regardless of filters (fix display limit not applying after filter)
-  let crimesToRender = incidentLimit === 0
-    ? displayCrimes
-    : (hasActiveFilters ? displayCrimes : displayCrimes.slice(0, incidentLimit));
-
-  return crimesToRender.filter(crime => {
+  return displayCrimes.filter(crime => {
     const lat = Array.isArray(crime.coordinates) ? crime.coordinates[0] : crime.latitude;
     const lng = Array.isArray(crime.coordinates) ? crime.coordinates[1] : crime.longitude;
     const numLat = parseFloat(lat);
     const numLng = parseFloat(lng);
     return !(isNaN(numLat) || isNaN(numLng) || !isFinite(numLat) || !isFinite(numLng) || (numLat === 0 && numLng === 0));
   });
-}, [displayCrimes, filters, locationFilters, predictionData, selectedTimePeriod, incidentLimit]);
+}, [displayCrimes]);
+
+// Variant → canonical name lookup so spelling variants ("Chuburji" vs
+// "Chauburji") merge into the same marker / heatmap cluster instead of
+// stacking on sibling pins.
+const canonicalAreaFor = useMemo(() => {
+  const variantToCanonical = new Map();
+  areas.forEach((a) => {
+    if (!a?.name) return;
+    variantToCanonical.set(a.name.toLowerCase().trim(), a.name);
+    (a.variants || []).forEach((v) => {
+      if (v) variantToCanonical.set(String(v).toLowerCase().trim(), a.name);
+    });
+  });
+  return (raw) => {
+    const t = (raw || '').toLowerCase().trim();
+    if (!t) return null;
+    if (variantToCanonical.has(t)) return variantToCanonical.get(t);
+    const cleaned = t.split(',')[0].trim();
+    if (variantToCanonical.has(cleaned)) return variantToCanonical.get(cleaned);
+    return null;
+  };
+}, [areas]);
 
 const plottedMarkers = useMemo(() => {
   const byCoord = new Map();
@@ -801,6 +910,9 @@ const plottedMarkers = useMemo(() => {
 
     const coordKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
     const subarea = (crime.area_translit || crime.area || 'Unknown').trim() || 'Unknown';
+    // FIXED: Group by raw subarea name (not canonical) to show distinct subareas separately
+    // This preserves subarea distinctions (e.g., "Allama Iqbal Town" vs "Iqbal Town East")
+    // while still merging spelling variants (e.g., "Allama Iqbal Town" and "Allama Iqbal Town, Lahore")
     const subareaKey = subarea.toLowerCase();
 
     if (!byCoord.has(coordKey)) {
@@ -911,7 +1023,9 @@ const heatmapClusterSummaryMap = useMemo(() => {
     if (typeof lat !== 'number' || typeof lng !== 'number' || !isFinite(lat) || !isFinite(lng)) return;
 
     const coordKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
-    const areaName = (crime.area || 'Unknown').trim() || 'Unknown';
+    const rawAreaName = (crime.area || 'Unknown').trim() || 'Unknown';
+    // Use canonical area for the cluster key so spelling variants merge.
+    const areaName = canonicalAreaFor(rawAreaName) || rawAreaName;
     const areaKey = normalizeAreaName(areaName);
     const key = `${coordKey}|${areaKey}`;
 
@@ -990,7 +1104,7 @@ const heatmapClusterSummaryMap = useMemo(() => {
   });
 
   return summaries;
-}, [displayCrimes, getRiskLevel]);
+}, [displayCrimes, canonicalAreaFor, getRiskLevel]);
 
 // FIXED: Move debugging useEffect AFTER displayCrimes is defined
 useEffect(() => {
@@ -2068,7 +2182,10 @@ const fetchTrendsData = useCallback(async () => {
                   >
                     <Popup className="crime-popup-wrapper crime-popup-compact crime-popup-cluster">
                       {(() => {
-                          const topArea = (crime.area || 'Unknown').trim() || 'Unknown';
+                          const rawArea = (crime.area || 'Unknown').trim() || 'Unknown';
+                          // Match the cluster key used by heatmapClusterSummaryMap, which keys
+                          // by canonical area so spelling variants merge into one cluster.
+                          const topArea = canonicalAreaFor(rawArea) || rawArea;
                           const coordKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
                           const clusterKey = `${coordKey}|${normalizeAreaName(topArea)}`;
                           const summary = heatmapClusterSummaryMap.get(clusterKey) || {

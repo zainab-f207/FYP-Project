@@ -451,7 +451,72 @@ def api_me_stats_alias(
         zero_incident_period = current_stats is not None and current_stats.get("total_crimes", 0) == 0
         logger.info(f"🔍 Safety calculation: current_stats={current_stats is not None}, total_crimes={current_stats.get('total_crimes', 0) if current_stats else 'N/A'}, zero_incident_period={zero_incident_period}")
         if current_stats and current_stats.get("total_crimes", 0) > 0:
-            safety_score = float(calculate_safety_score(current_stats, days_delta))
+            # Align "All Time" scoring with /area-safety-profile by feeding the
+            # same recency/trend/observation-window inputs to the unified engine.
+            # Without this, the dashboard's All-Time score diverges from the
+            # area profile's "Overall (Complete History)" score because the
+            # latter computes recency from real last-30/90 day counts while the
+            # former falls through to defaults (recency≈0, trend≈50, decay branch).
+            score_observation_days: Optional[int] = days_delta
+            if time_filter == 'all':
+                try:
+                    if (confidence == "medium" or confidence == "low") and resolved_area:
+                        sp_align = area_like_pattern(resolved_area)
+                        cursor.execute(
+                            """
+                            SELECT
+                              SUM(CASE WHEN crime_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)  THEN 1 ELSE 0 END) AS l30,
+                              SUM(CASE WHEN crime_date >= DATE_SUB(NOW(), INTERVAL 90 DAY)  THEN 1 ELSE 0 END) AS l90,
+                              SUM(CASE WHEN crime_date >= DATE_SUB(NOW(), INTERVAL 365 DAY) THEN 1 ELSE 0 END) AS recent_365,
+                              SUM(CASE WHEN crime_date >= DATE_SUB(NOW(), INTERVAL 730 DAY)
+                                       AND  crime_date <  DATE_SUB(NOW(), INTERVAL 365 DAY) THEN 1 ELSE 0 END) AS older_365,
+                              MIN(crime_date) AS dmin,
+                              MAX(crime_date) AS dmax
+                            FROM crimes
+                            WHERE area LIKE %s
+                            """,
+                            (sp_align,),
+                        )
+                    elif confidence == "high" and lat and lon:
+                        cursor.execute(
+                            f"""
+                            SELECT
+                              SUM(CASE WHEN crime_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)  THEN 1 ELSE 0 END) AS l30,
+                              SUM(CASE WHEN crime_date >= DATE_SUB(NOW(), INTERVAL 90 DAY)  THEN 1 ELSE 0 END) AS l90,
+                              SUM(CASE WHEN crime_date >= DATE_SUB(NOW(), INTERVAL 365 DAY) THEN 1 ELSE 0 END) AS recent_365,
+                              SUM(CASE WHEN crime_date >= DATE_SUB(NOW(), INTERVAL 730 DAY)
+                                       AND  crime_date <  DATE_SUB(NOW(), INTERVAL 365 DAY) THEN 1 ELSE 0 END) AS older_365,
+                              MIN(crime_date) AS dmin,
+                              MAX(crime_date) AS dmax
+                            FROM crimes
+                            WHERE ST_Distance_Sphere(point(longitude, latitude), point(%s, %s)) <= {scope_radius_meters}
+                            """,
+                            (lon, lat),
+                        )
+                    else:
+                        cursor.execute("SELECT 0 AS l30, 0 AS l90, 0 AS recent_365, 0 AS older_365, NULL AS dmin, NULL AS dmax")
+                    align_row = cursor.fetchone() or {}
+                    align_dict = cast(Dict[str, Any], align_row)
+                    current_stats["last_30_days"] = int(align_dict.get("l30") or 0)
+                    current_stats["last_90_days"] = int(align_dict.get("l90") or 0)
+                    current_stats["recent_count"] = int(align_dict.get("recent_365") or 0)
+                    current_stats["older_count"] = int(align_dict.get("older_365") or 0)
+                    dmin_val = align_dict.get("dmin")
+                    dmax_val = align_dict.get("dmax")
+                    if dmin_val and dmax_val and hasattr(dmin_val, "toordinal") and hasattr(dmax_val, "toordinal"):
+                        score_observation_days = max(30, (dmax_val.toordinal() - dmin_val.toordinal()) + 1)
+                    else:
+                        score_observation_days = 365
+                    logger.info(
+                        f"📐 All-Time alignment: l30={current_stats['last_30_days']} l90={current_stats['last_90_days']} "
+                        f"recent365={current_stats['recent_count']} older365={current_stats['older_count']} "
+                        f"obs_days={score_observation_days}"
+                    )
+                except Exception as align_exc:
+                    logger.warning(f"All-Time alignment query failed, falling back to defaults: {align_exc}")
+                    score_observation_days = 365
+
+            safety_score = float(calculate_safety_score(current_stats, score_observation_days or 365))
             
             # Previous Period (Comparison) - only if we have a time window
             if days_delta and (confidence == "medium" or confidence == "low") and resolved_area:
@@ -895,7 +960,11 @@ def api_me_stats_alias(
                 "score_components": {}
             }
         else:
-            risk_summary = calculate_unified_risk_summary(current_stats, days_delta)
+            # Use the same observation_days as the safety_score calculation
+            # above so risk_level and score_components stay consistent with
+            # the headline safety_score (especially under time_filter='all').
+            _risk_obs_days = score_observation_days if 'score_observation_days' in locals() and score_observation_days else (days_delta or 365)
+            risk_summary = calculate_unified_risk_summary(current_stats, _risk_obs_days)
 
         logger.info(f"📤 FINAL RESPONSE: safety_score={safety_score}, risk_level={risk_summary.get('risk_level')}, total_crimes={int((current_stats.get('total_crimes') or 0)) if current_stats else 0}, area={resolved_area}, time_filter={time_filter}")
 
@@ -1382,6 +1451,31 @@ def start_background_monitoring():
             replace_existing=True,
             max_instances=poll_max_instances
         )
+
+        # ── Unverified-account cleanup: warn users at day N, delete at day M ──
+        # Configurable via system_settings keys: unverified_warning_after_days,
+        # unverified_delete_after_days. Defaults to 6 / 7. Manual trigger lives at
+        # POST /admin/users/run-unverified-cleanup.
+        def cleanup_unverified_accounts_job():
+            try:
+                from app.jobs.unverified_cleanup import run_unverified_cleanup
+                run_unverified_cleanup()
+            except Exception as e:
+                logger.error(f"cleanup_unverified_accounts_job error: {e}")
+
+        try:
+            scheduler.remove_job('cleanup_unverified_accounts')
+        except Exception:
+            pass
+        scheduler.add_job(
+            cleanup_unverified_accounts_job,
+            trigger=IntervalTrigger(hours=6),
+            id='cleanup_unverified_accounts',
+            name='Warn + delete unverified user accounts',
+            replace_existing=True,
+            max_instances=1,
+        )
+
         logger.info("✅ Background monitoring tasks started successfully")
         print("🕒 Scheduler started - monitoring jobs are active")
         

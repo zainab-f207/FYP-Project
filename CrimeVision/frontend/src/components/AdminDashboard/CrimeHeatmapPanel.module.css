@@ -224,6 +224,118 @@
   min-width: 190px;
   font-family: 'Poppins', sans-serif;
 }
+
+.popupStack {
+  display: grid;
+  gap: 10px;
+}
+
+.popupHero {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(14, 165, 233, 0.12));
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.popupHeroValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #bfdbfe;
+  line-height: 1;
+}
+
+.popupSection {
+  display: grid;
+  gap: 3px;
+}
+
+.popupSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.popupSectionIcon {
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.popupValueMain {
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.popupValueSub {
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.popupValueSubUrdu {
+  color: #a5b4fc;
+  font-size: 0.72rem;
+  margin-top: 1px;
+  font-family: 'Noto Nastaliq Urdu', serif;
+  direction: rtl;
+}
+
+.popupMetricsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.popupMetricCard {
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.popupScoreValue {
+  margin-top: 2px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.popupScoreHigh {
+  color: #fda4af;
+}
+
+.popupScoreMedium {
+  color: #fcd34d;
+}
+
+.popupScoreLow {
+  color: #86efac;
+}
+
+.popupInlineGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.popupFooter {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.popupCoordsText {
+  color: #cbd5e1;
+  font-size: 0.74rem;
+  font-weight: 500;
+}
 .popupHeader {
   display: flex; align-items: center; gap: 7px;
   margin-bottom: 9px; padding-bottom: 8px;
@@ -262,18 +374,23 @@
 }
 
 .popupCrimeTypeList {
-  margin: 0;
-  padding-left: 16px;
-  list-style: disc;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
 }
 
 .popupCrimeTypeItem {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  margin: 3px 0;
   color: #e2e8f0;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(30, 41, 59, 0.45);
+  padding: 4px 7px;
 }
 
 .popupCrimeTypeName {
@@ -283,10 +400,13 @@
 }
 
 .popupCrimeTypeCount {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  color: #93c5fd;
+  color: #bfdbfe;
   white-space: nowrap;
+  border-radius: 999px;
+  padding: 1px 6px;
+  background: rgba(59, 130, 246, 0.2);
 }
 
 @media (max-width: 768px) {

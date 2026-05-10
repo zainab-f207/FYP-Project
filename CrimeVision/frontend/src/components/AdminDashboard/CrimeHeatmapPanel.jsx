@@ -55,6 +55,19 @@ const MAP_STYLES = {
   satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', label: 'Satellite' },
 };
 
+const normalizeAreaToken = (value) => {
+  const raw = String(value || '').trim().replace(/،/g, ',').toLowerCase();
+  if (!raw) return '';
+  const noParens = raw.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const base = noParens.split(',', 1)[0].trim();
+  const noSuffix = base
+    .replace(/\s+lahore\s*$/i, '')
+    .replace(/\s+pakistan\s*$/i, '')
+    .replace(/\s+punjab\s*$/i, '')
+    .trim();
+  return noSuffix || base;
+};
+
 // Syncs the Leaflet map's zoom level whenever the zoom state changes
 // (MapContainer only reads the zoom prop on initial mount)
 const ZoomSyncer = ({ zoom }) => {
@@ -131,6 +144,26 @@ const CrimeHeatmapPanel = ({ token }) => {
   const [viewMode, setViewMode] = useState('heatmap');
   const [mapStyle, setMapStyle] = useState(systemSettings?.map_default_style || SYSTEM_SETTINGS_DEFAULTS.map_default_style);
 
+  const canonicalAreaFor = useMemo(() => {
+    const variantToCanonical = new Map();
+    areas.forEach((a) => {
+      if (!a?.name) return;
+      const canonical = normalizeAreaToken(a.name);
+      if (!canonical) return;
+      variantToCanonical.set(canonical, canonical);
+      (a.variants || []).forEach((v) => {
+        const vt = normalizeAreaToken(v);
+        if (vt) variantToCanonical.set(vt, canonical);
+      });
+    });
+
+    return (raw) => {
+      const token = normalizeAreaToken(raw);
+      if (!token) return '';
+      return variantToCanonical.get(token) || token;
+    };
+  }, [areas]);
+
   useEffect(() => {
     const configuredStyle = String(systemSettings?.map_default_style || SYSTEM_SETTINGS_DEFAULTS.map_default_style);
     if (!mapStyleTouchedRef.current && MAP_STYLES[configuredStyle]) {
@@ -157,6 +190,7 @@ const CrimeHeatmapPanel = ({ token }) => {
           label: a.name,
           coordinates: a.coordinates || null,
           record_count: a.record_count || 0,
+          variants: Array.isArray(a.variants) ? a.variants : [],
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
       setAreas(formatted);
@@ -238,9 +272,28 @@ const CrimeHeatmapPanel = ({ token }) => {
       if (selectedArea !== 'all') {
         // Fetch raw records first so marker/filter counts always reflect real incidents
         const crimes = await fetchCrimesWithFallback({ area: selectedArea, ...queryParams });
-        const points = transformCrimesToPoints(crimes).filter(p =>
-          (p.area || '').trim().toLowerCase() === selectedArea.trim().toLowerCase()
-        );
+        const selectedCanonical = canonicalAreaFor(selectedArea);
+        
+        // DEBUG: Log what we're receiving from backend
+        console.log('🔍 DEBUG: Selected Area:', selectedArea);
+        console.log('🔍 DEBUG: Selected Canonical:', selectedCanonical);
+        console.log('🔍 DEBUG: Crimes returned from backend:', crimes);
+        console.log('🔍 DEBUG: Number of crimes:', Array.isArray(crimes) ? crimes.length : crimes?.crimes?.length);
+        
+        const transformedPoints = transformCrimesToPoints(crimes);
+        console.log('🔍 DEBUG: Transformed points (before filter):', transformedPoints);
+        console.log('🔍 DEBUG: Areas state:', areas);
+        
+        const points = transformedPoints.filter((p) => {
+          const mappedAreaCanonical = canonicalAreaFor(p.area);
+          const firAreaCanonical = canonicalAreaFor(p.area_translit || p.area);
+          const passes = mappedAreaCanonical === selectedCanonical || firAreaCanonical === selectedCanonical;
+          if (!passes) {
+            console.log(`  ❌ Filtered out: p.area="${p.area}", p.area_translit="${p.area_translit}", mapped="${mappedAreaCanonical}", fir="${firAreaCanonical}", selected="${selectedCanonical}"`);
+          }
+          return passes;
+        });
+        console.log('🔍 DEBUG: Filtered points (after filter):', points);
         setRawCrimes(points);
         centerMapOnPoints(points);
 
@@ -265,6 +318,7 @@ const CrimeHeatmapPanel = ({ token }) => {
     } finally { setLoading(false); }
   }, [
     selectedArea,
+    canonicalAreaFor,
     recordLimit,
     crimeTypeFilter,
     riskFilter,
@@ -829,78 +883,75 @@ const CrimeHeatmapPanel = ({ token }) => {
           {(viewMode === 'markers' || viewMode === 'both') && markerDisplayPoints.map((c, i) => (
             <Marker key={`${c.id || 'c'}-${i}`} position={[c.displayLat, c.displayLng]} icon={createRiskIcon(c.risk_level)}>
               <Popup className={styles.crimePopup} maxWidth={320}>
-                <div style={{ padding: '6px', fontSize: '12px', lineHeight: '1.3', color: '#fff', fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#1f2937' }}>
+                <div className={styles.popupCard}>
                   {(() => {
                     const riskScore = subareaRiskScoreByFIRArea.get(String(c.area_translit || c.area || 'Unknown').trim().toLowerCase() || 'unknown') ?? 0;
                     const safetyScore = Math.round(100 - riskScore);
+                    const riskClass = riskScore > 50 ? styles.popupScoreHigh : riskScore > 30 ? styles.popupScoreMedium : styles.popupScoreLow;
+                    const safetyClass = safetyScore > 80 ? styles.popupScoreLow : safetyScore > 50 ? styles.popupScoreMedium : styles.popupScoreHigh;
+
+                    const crimeTypeEntries = Object.entries(c.crime_types || {}).sort((a, b) => b[1] - a[1]);
                     return (
-                      <>
-                        <div style={{ marginBottom: '6px' }}>
-                          <strong style={{ fontSize: '13px', color: '#e5e7eb' }}>Merged Database Rows</strong>
-                          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#3b82f6' }}>{c.row_count || 1}</div>
+                      <div className={styles.popupStack}>
+                        <div className={styles.popupHero}>
+                          <span className={styles.popupLabel}>Merged Database Rows</span>
+                          <div className={styles.popupHeroValue}>{c.row_count || 1}</div>
                         </div>
 
-                        <div style={{ marginBottom: '6px' }}>
-                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>📍</div>
-                          <strong style={{ color: '#e5e7eb', fontSize: '12px' }}>Mapped Area</strong>
-                          <div style={{ color: '#d1d5db', fontSize: '11px', marginTop: '1px' }}>{c.area || '—'}</div>
+                        <div className={styles.popupSection}>
+                          <div className={styles.popupSectionTitle}><span className={styles.popupSectionIcon}>📍</span><span>Mapped Area (OSM / Area Column)</span></div>
+                          <div className={styles.popupValueMain}>{c.area || '—'}</div>
                         </div>
 
-                        <div style={{ marginBottom: '6px' }}>
-                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>🧭</div>
-                          <strong style={{ color: '#e5e7eb', fontSize: '12px' }}>FIR Area</strong>
-                          <div style={{ color: '#d1d5db', fontSize: '11px', marginTop: '1px' }}>{c.area_translit || '—'}</div>
-                          {c.area_urdu && <div style={{ color: '#9ca3af', fontSize: '10px', marginTop: '1px' }}>{c.area_urdu}</div>}
+                        <div className={styles.popupSection}>
+                          <div className={styles.popupSectionTitle}><span className={styles.popupSectionIcon}>🧭</span><span>FIR Area (English / Transliteration)</span></div>
+                          <div className={styles.popupValueMain}>{c.area_translit || '—'}</div>
+                          {c.area_urdu && <div className={styles.popupValueSubUrdu}>{c.area_urdu}</div>}
                         </div>
 
-                        <div style={{ marginBottom: '6px' }}>
-                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>⚠</div>
-                          <strong style={{ color: '#e5e7eb', fontSize: '12px' }}>Risk Score</strong>
-                          <div style={{ fontSize: '14px', fontWeight: 'bold', color: riskScore > 50 ? '#ff6b6b' : riskScore > 30 ? '#fbbf24' : '#4ade80', marginTop: '1px' }}>{riskScore}%</div>
+                        <div className={styles.popupMetricsGrid}>
+                          <div className={styles.popupMetricCard}>
+                            <div className={styles.popupSectionTitle}><span className={styles.popupSectionIcon}>⚠</span><span>Risk Score</span></div>
+                            <div className={`${styles.popupScoreValue} ${riskClass}`}>{riskScore}%</div>
+                          </div>
+                          <div className={styles.popupMetricCard}>
+                            <div className={styles.popupSectionTitle}><span className={styles.popupSectionIcon}>🛡</span><span>Safety Score</span></div>
+                            <div className={`${styles.popupScoreValue} ${safetyClass}`}>{safetyScore}%</div>
+                          </div>
                         </div>
 
-                        <div style={{ marginBottom: '6px' }}>
-                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>🛡</div>
-                          <strong style={{ color: '#e5e7eb', fontSize: '12px' }}>Safety Score</strong>
-                          <div style={{ fontSize: '14px', fontWeight: 'bold', color: safetyScore > 80 ? '#4ade80' : safetyScore > 50 ? '#fbbf24' : '#ff6b6b', marginTop: '1px' }}>{safetyScore}%</div>
+                        <div className={styles.popupInlineGrid}>
+                          <div className={styles.popupSection}>
+                            <div className={styles.popupSectionTitle}><span className={styles.popupSectionIcon}>🗓</span><span>Date</span></div>
+                            <div className={styles.popupValueSub}>{c.date ? new Date(c.date).toLocaleDateString() : '—'}</div>
+                          </div>
+                          <div className={styles.popupSection}>
+                            <div className={styles.popupSectionTitle}><span className={styles.popupSectionIcon}>⏰</span><span>Time</span></div>
+                            <div className={styles.popupValueSub}>{c.crime_time || '—'}</div>
+                          </div>
                         </div>
 
-                        <div style={{ marginBottom: '6px' }}>
-                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>🗓</div>
-                          <strong style={{ color: '#e5e7eb', fontSize: '12px' }}>Date</strong>
-                          <div style={{ color: '#d1d5db', fontSize: '11px', marginTop: '1px' }}>{c.date ? new Date(c.date).toLocaleDateString() : '—'}</div>
-                        </div>
-
-                        <div style={{ marginBottom: '6px' }}>
-                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>⏰</div>
-                          <strong style={{ color: '#e5e7eb', fontSize: '12px' }}>Time</strong>
-                          <div style={{ color: '#d1d5db', fontSize: '11px', marginTop: '1px' }}>{c.crime_time || '—'}</div>
-                        </div>
-
-                        <div style={{ marginBottom: '6px' }}>
-                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>📑</div>
-                          <strong style={{ color: '#e5e7eb', fontSize: '12px' }}>Crime Types</strong>
-                          {Object.keys(c.crime_types || {}).length > 0 ? (
-                            <ul style={{ margin: '2px 0 0 0', paddingLeft: '12px', listStyle: 'none' }}>
-                              {Object.entries(c.crime_types || {})
-                                .sort((a, b) => b[1] - a[1])
-                                .map(([ct, count], idx) => (
-                                  <li key={`${ct}-${idx}`} style={{ fontSize: '11px', color: '#d1d5db', marginBottom: '1px', lineHeight: '1.2' }}>
-                                    {ppcSimpleLabel(ct)} <span style={{ color: '#9ca3af' }}>x{count}</span>
-                                  </li>
-                                ))}
+                        <div className={styles.popupSection}>
+                          <div className={styles.popupSectionTitle}><span className={styles.popupSectionIcon}>📑</span><span>Crime Types</span></div>
+                          {crimeTypeEntries.length > 0 ? (
+                            <ul className={styles.popupCrimeTypeList}>
+                              {crimeTypeEntries.map(([ct, count], idx) => (
+                                <li key={`${ct}-${idx}`} className={styles.popupCrimeTypeItem}>
+                                  <span className={styles.popupCrimeTypeName}>{ppcSimpleLabel(ct)}</span>
+                                  <span className={styles.popupCrimeTypeCount}>x{count}</span>
+                                </li>
+                              ))}
                             </ul>
                           ) : (
-                            <div style={{ color: '#9ca3af', fontSize: '11px', marginTop: '2px' }}>—</div>
+                            <div className={styles.popupValueSub}>—</div>
                           )}
                         </div>
 
-                        <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #4b5563' }}>
-                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>📍</div>
-                          <strong style={{ color: '#e5e7eb', fontSize: '12px' }}>Coordinates</strong>
-                          <div style={{ color: '#d1d5db', fontSize: '11px', marginTop: '1px' }}>📍 {c.lat.toFixed(4)}, {c.lng.toFixed(4)}</div>
+                        <div className={styles.popupFooter}>
+                          <div className={styles.popupSectionTitle}><span className={styles.popupSectionIcon}>📍</span><span>Coordinates</span></div>
+                          <div className={styles.popupCoordsText}>📍 {c.lat.toFixed(4)}, {c.lng.toFixed(4)}</div>
                         </div>
-                      </>
+                      </div>
                     );
                   })()}
                 </div>

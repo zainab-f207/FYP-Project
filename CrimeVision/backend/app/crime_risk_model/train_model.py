@@ -25,6 +25,8 @@ Pipeline
 import os
 import sys
 import json
+import subprocess
+import logging
 import numpy as np
 import pandas as pd
 
@@ -32,6 +34,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import classification_report
+
+logger = logging.getLogger(__name__)
 
 # Allow running from the crime_risk_model directory directly
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -53,6 +57,31 @@ try:
     from utils.poisson_predictor import build_artifacts as _build_poisson, save_artifacts as _save_poisson
 except Exception:
     _build_poisson = _save_poisson = None
+
+
+_LEGACY_TRAIN_SCRIPT = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '..', 'predict_risk_level', 'train_model.py')
+)
+
+
+def _run_legacy_retrain() -> None:
+    """Rebuild the legacy Random Forest fallback as part of the same retrain."""
+    legacy_dir = os.path.dirname(_LEGACY_TRAIN_SCRIPT)
+    logger.info("Building legacy Random Forest fallback...")
+    result = subprocess.run(
+        [sys.executable, _LEGACY_TRAIN_SCRIPT],
+        capture_output=True,
+        text=True,
+        cwd=legacy_dir,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Legacy retrain failed (rc=%d): %s" % (
+                result.returncode,
+                (result.stderr or result.stdout or "")[-2000:],
+            )
+        )
+    logger.info("Legacy Random Forest retrain complete.\n%s", (result.stdout or "")[-1000:])
 
 
 def train_crime_risk_model():
@@ -187,6 +216,14 @@ def train_crime_risk_model():
             print(f"Poisson artifact build warning (non-fatal): {_pe}")
     else:
         print("poisson_predictor module not available — skipping Poisson artifacts.")
+
+    # ------------------------------------------------------------------
+    # 8c. Rebuild the legacy RF fallback before DB labels are refreshed.
+    # ------------------------------------------------------------------
+    try:
+        _run_legacy_retrain()
+    except Exception as _le:
+        print(f"Legacy retrain warning (non-fatal): {_le}")
 
     # ------------------------------------------------------------------
     # 9. Update database with model predictions

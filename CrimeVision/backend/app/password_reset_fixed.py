@@ -118,13 +118,24 @@ def send_password_reset_email(email: str, first_name: str, reset_token: str):
         html_content = html_template.replace("{UserName}", first_name)
         html_content = html_content.replace("{ResetLink}", reset_link)
 
-        # Create message
-        msg = MIMEMultipart()
-        msg['From'] = SMTP_USERNAME
-        msg['To'] = email
-        msg['Subject'] = "Reset Your CrimeVision Password"
+        plain_text = (
+            f"Dear {first_name},\n\n"
+            f"You have requested to reset your password for your SafeVision account. "
+            f"Visit the link below to reset your password:\n\n"
+            f"{reset_link}\n\n"
+            f"This link will expire in 30 minutes.\n"
+            f"If you did not request this password reset, please ignore this message.\n\n"
+            f"Best regards,\nSafeVision Team\nsupport@safevision.com\n"
+        )
 
-        # Attach HTML content
+        # Create message with plain-text + HTML alternatives (better deliverability)
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f"SafeVision <{SMTP_USERNAME}>"
+        msg['To'] = email
+        msg['Reply-To'] = SMTP_USERNAME
+        msg['Subject'] = "Reset your SafeVision password"
+
+        msg.attach(MIMEText(plain_text, 'plain'))
         msg.attach(MIMEText(html_content, 'html'))
 
         # Send email
@@ -159,11 +170,21 @@ def send_password_reset_confirmation_email(email: str, first_name: str):
 
         html_content = html_template.replace("{UserName}", first_name)
 
-        msg = MIMEMultipart()
-        msg['From'] = SMTP_USERNAME
-        msg['To'] = email
-        msg['Subject'] = "CrimeVision Password Reset Confirmation"
+        plain_text = (
+            f"Dear {first_name},\n\n"
+            f"This is a confirmation that your password for your SafeVision account "
+            f"has been successfully reset.\n"
+            f"If you did not perform this action, please contact our support team immediately.\n\n"
+            f"Best regards,\nSafeVision Team\nsupport@safevision.com\n"
+        )
 
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f"SafeVision <{SMTP_USERNAME}>"
+        msg['To'] = email
+        msg['Reply-To'] = SMTP_USERNAME
+        msg['Subject'] = "Your SafeVision password was reset"
+
+        msg.attach(MIMEText(plain_text, 'plain'))
         msg.attach(MIMEText(html_content, 'html'))
 
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)

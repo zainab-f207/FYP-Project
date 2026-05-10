@@ -1326,6 +1326,87 @@ body.dark-mode .chip-red    { background: rgba(248,113,113,0.15);color: #f87171;
   box-shadow: none !important;
 }
 
+/* ── Prediction area / circle popup (matches dark project theme) ────────── */
+.prediction-area-popup .leaflet-popup-content-wrapper {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(14, 165, 233, 0.25) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.prediction-area-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+  color: #e2e8f0 !important;
+}
+.prediction-area-popup .leaflet-popup-tip {
+  background: #0f172a !important;
+  border: 1px solid rgba(14, 165, 233, 0.25) !important;
+  box-shadow: none !important;
+}
+.prediction-area-popup .leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  font-size: 16px !important;
+  top: 6px !important;
+  right: 8px !important;
+}
+.prediction-area-popup .leaflet-popup-close-button:hover {
+  color: #f1f5f9 !important;
+}
+
+.prediction-area-popup .pap-body {
+  padding: 12px 14px;
+  min-width: 200px;
+  font-family: 'Open Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.prediction-area-popup .pap-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.prediction-area-popup .pap-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.82rem;
+  padding: 3px 0;
+}
+.prediction-area-popup .pap-label {
+  color: #94a3b8;
+  font-weight: 500;
+}
+.prediction-area-popup .pap-value {
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+/* Light theme override — keep readable on white modal background */
+body[data-theme="light"] .prediction-area-popup .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18) !important;
+}
+body[data-theme="light"] .prediction-area-popup .leaflet-popup-content { color: #0f172a !important; }
+body[data-theme="light"] .prediction-area-popup .leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+}
+body[data-theme="light"] .prediction-area-popup .pap-title {
+  color: #0f172a;
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+body[data-theme="light"] .prediction-area-popup .pap-label { color: #64748b; }
+body[data-theme="light"] .prediction-area-popup .pap-value { color: #0f172a; }
+body[data-theme="light"] .prediction-area-popup .leaflet-popup-close-button { color: #64748b !important; }
+body[data-theme="light"] .prediction-area-popup .leaflet-popup-close-button:hover { color: #0f172a !important; }
+
 /* ═══════════════════════════════════════════════
    Area Safety Profile Panel
    ═══════════════════════════════════════════════ */

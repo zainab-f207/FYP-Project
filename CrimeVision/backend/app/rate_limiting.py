@@ -85,7 +85,12 @@ def check_rate_limit(email: str, ip_address: str | None = None) -> Tuple[bool, i
 
 
 def record_login_attempt(email: str, ip_address: str | None, success: bool) -> None:
-    """Record a login attempt (successful or failed)."""
+    """Record a login attempt (successful or failed).
+
+    On a failed attempt that crosses the lockout threshold, write an audit_logs
+    row so superadmin notifications surface it (and email is already used by the
+    rate-limit gate to return 429 to the client).
+    """
     conn = None
     try:
         conn = get_db_connection()
@@ -97,6 +102,52 @@ def record_login_attempt(email: str, ip_address: str | None, success: bool) -> N
         )
         conn.commit()
         cursor.close()
+
+        if not success:
+            try:
+                max_attempts, lockout_minutes = _get_dynamic_config()
+                window_start = datetime.now() - timedelta(minutes=lockout_minutes)
+                count_cursor = conn.cursor(dictionary=True)
+                count_cursor.execute(
+                    """SELECT COUNT(*) AS fail_count FROM login_attempts
+                       WHERE email = %s AND success = FALSE AND attempt_time > %s""",
+                    (email, window_start),
+                )
+                row = count_cursor.fetchone() or {}
+                fail_count = int(row.get("fail_count") or 0)
+                count_cursor.close()
+
+                # Only emit on the attempt that *just* crossed the threshold
+                # to avoid duplicating one lockout into many notifications.
+                if fail_count == max_attempts:
+                    try:
+                        import json as _json
+                        audit_cursor = conn.cursor()
+                        audit_cursor.execute(
+                            """INSERT INTO audit_logs
+                                (admin_username, action, target_type, target_id, details, ip_address, created_at)
+                               VALUES (%s, %s, %s, %s, %s, %s, NOW())""",
+                            (
+                                "system",
+                                "account_locked",
+                                "user",
+                                None,
+                                _json.dumps(
+                                    {
+                                        "email": email,
+                                        "fail_count": fail_count,
+                                        "lockout_minutes": lockout_minutes,
+                                    }
+                                ),
+                                ip_address,
+                            ),
+                        )
+                        conn.commit()
+                        audit_cursor.close()
+                    except Exception as audit_err:
+                        logger.warning(f"audit_logs insert (account_locked) failed: {audit_err}")
+            except Exception as count_err:
+                logger.warning(f"lockout-threshold check failed: {count_err}")
     except Exception as e:
         logger.error(f"Failed to record login attempt: {e}")
     finally:

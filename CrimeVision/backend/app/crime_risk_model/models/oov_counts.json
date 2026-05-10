@@ -1,16 +1,6 @@
 {
-  "oov_pairs": [
-    "Bahria Town Sector F Block J S B Block Z|||Rioting Armed with Deadly Weapon",
-    "Bahria Town Sector F Block J S B Block Z|||Punishment for Criminal Intimidation (Threats) (Part B)",
-    "Bahria Town Sector F Block J S B Block Z|||Punishment for Acts of Terrorism (Death / Life Imprisonment / 5-20 Years RI)",
-    "Eden Abad Block F S B Block G|||Disobedience to Order Duly Promulgated by Public Servant",
-    "Eden Abad Block F S B Block G|||Punishment for Wrongful Restraint",
-    "Eden Abad Block F S B Block G|||Punishment for Wrongful Confinement",
-    "Eden Abad Block F S B Block G|||Theft in Dwelling House, Building, Tent or Vessel",
-    "Eden Abad Block F S B Block G|||Punishment for Robbery",
-    "Eden Abad Block F S B Block G|||Punishment for Dacoity (Gang Robbery)"
-  ],
-  "new_records": 16,
-  "last_retrain": 1773428797.851448,
-  "retrain_count": 1
+  "oov_pairs": [],
+  "new_records": 0,
+  "last_retrain": 1778343349.5875301,
+  "retrain_count": 4
 }

@@ -929,6 +929,14 @@ def _execute_fir_submission(request_data: Dict[str, Any], cursor, conn) -> Dict[
             or "Lahore"
         )
 
+        # Resolve known spelling variants to a single canonical form so this
+        # FIR-derived row uses the same area name everyone else does.
+        try:
+            from app.utils.area_normalization import canonical_area_name as _canonical_area
+            area_display = _canonical_area(area_display) or area_display
+        except Exception:
+            pass
+
         logger.info(
             f"FIR Processing: Lat={latitude}, Lon={longitude}, FIR Area='{area_translit}', "
             f"Nearest Mapped Area='{nearest_mapped_area}', Saved Plot Area='{area_display}'"

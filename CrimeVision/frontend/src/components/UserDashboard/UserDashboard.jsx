@@ -635,33 +635,60 @@ useEffect(() => {
 
       // Fall back to all results if no Lahore-specific ones
       const bestResults = lahoreResults.length > 0 ? lahoreResults : results;
-      
-      if (bestResults && bestResults.length > 0) {
-        const { lat, lon, display_name } = bestResults[0];
-        const parsedLat = parseFloat(lat);
-        const parsedLng = parseFloat(lon);
-        const typedArea = locationSearch.trim();
-        console.log('🌍 Manual location override:', { lat: parsedLat, lng: parsedLng, display_name });
-        // Setting userLocation triggers fetchDashboardData which uses coordinates for accurate stats
-        setManualAreaOverride(typedArea);
-        // Clear all caches and data immediately on location change
-        setDataCache(null);
 
+      const applyMatch = (lat, lng, displayName) => {
+        const typedArea = locationSearch.trim();
+        console.log('🌍 Manual location override:', { lat, lng, displayName });
+        setManualAreaOverride(typedArea);
+        setDataCache(null);
         setDashboardData(null);
         const cacheKey = `dashboard_data_${user?.id}`;
         sessionStorage.removeItem(cacheKey);
-
-        // Force timestamp so React always sees a new object and triggers our useEffect
-        setUserLocation({ lat: parsedLat, lng: parsedLng, timestamp: Date.now() });
-
-
+        setUserLocation({ lat, lng, timestamp: Date.now() });
         setIsLocationModalOpen(false);
         setLocationSearch('');
+      };
+
+      if (bestResults && bestResults.length > 0) {
+        const { lat, lon, display_name } = bestResults[0];
+        applyMatch(parseFloat(lat), parseFloat(lon), display_name);
       } else {
+        // Nominatim couldn't resolve the typed name (e.g. spelling variant
+        // like "Chuburji" vs "Chauburji"). Fall back to our own crimes-DB
+        // search — it'll return whatever the admins actually used as the
+        // area string, with averaged coordinates from real incidents.
+        try {
+          const dbMatches = await apiService.searchArea(locationSearch);
+          if (dbMatches.length > 0) {
+            const top = dbMatches[0];
+            console.log('🗄️ Falling back to DB area match:', top);
+            applyMatch(top.coordinates.lat, top.coordinates.lng, top.name);
+            return;
+          }
+        } catch (dbErr) {
+          console.warn('DB area fallback failed:', dbErr);
+        }
         alert(`Location "${locationSearch}" not found in Lahore. Please try a more specific area name (e.g. "Johar Town", "DHA Phase 5").`);
       }
     } catch (error) {
       console.error("Geocoding failed:", error);
+      // Even if Nominatim itself errored, try our DB before giving up
+      try {
+        const dbMatches = await apiService.searchArea(locationSearch);
+        if (dbMatches.length > 0) {
+          const top = dbMatches[0];
+          const typedArea = locationSearch.trim();
+          setManualAreaOverride(typedArea);
+          setDataCache(null);
+          setDashboardData(null);
+          const cacheKey = `dashboard_data_${user?.id}`;
+          sessionStorage.removeItem(cacheKey);
+          setUserLocation({ lat: top.coordinates.lat, lng: top.coordinates.lng, timestamp: Date.now() });
+          setIsLocationModalOpen(false);
+          setLocationSearch('');
+          return;
+        }
+      } catch (_) { /* swallow */ }
       alert("Search service unavailable. Please check your connection.");
     } finally {
       setIsSearchingLocation(false);

@@ -402,7 +402,7 @@ const AIRouteMap = ({
       if (isSelected && route.safety_analysis.point_predictions) {
         route.safety_analysis.point_predictions.forEach((point, pIndex) => {
           const riskLevel = point.prediction.risk_level;
-          
+
           // Show all risk levels with different colors
           let markerColor, markerIcon;
           if (riskLevel === 'High') {
@@ -438,19 +438,46 @@ const AIRouteMap = ({
             icon: riskMarkerIcon,
           }).addTo(map);
 
+          // Crimes recorded in this point's area (from the route's per-area
+          // attribution). Filter to this point's area and dedupe.
+          const crimesHere = Array.from(new Set(
+            (route.crime_types_detected || [])
+              .filter(c => c && typeof c === 'object' && c.area === point.area)
+              .map(c => c.crime_type)
+          ));
+          const crimesHereHtml = crimesHere.length > 0 ? `
+            <div style="border-top:1px solid rgba(255,255,255,0.08);padding:8px 14px 10px;">
+              <div style="color:rgba(255,255,255,0.45);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">⚠️ Crimes recorded here</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                ${crimesHere.slice(0, 4).map(ct =>
+                  `<span style="background:${markerColor}1a;border:1px solid ${markerColor}44;color:rgba(255,255,255,0.85);font-size:0.7rem;padding:2px 7px;border-radius:6px;">${ct}</span>`
+                ).join('')}
+                ${crimesHere.length > 4 ? `<span style="color:rgba(255,255,255,0.5);font-size:0.7rem;padding:2px 4px;">+${crimesHere.length - 4} more</span>` : ''}
+              </div>
+            </div>
+          ` : '';
+
+          // Area baseline (from unified score) — same number the dashboard shows.
+          const baseline = route.area_baselines?.[point.area];
+          const baselineHtml = (baseline && baseline.safety_score != null) ? `
+            <div style="color:rgba(255,255,255,0.7);font-size:0.78rem;">🏘️ Area baseline:&nbsp;<strong style="color:rgba(255,255,255,0.9);">${baseline.safety_score}% safe</strong> <span style="opacity:0.55;">(${baseline.risk_level})</span></div>
+          ` : '';
+
           marker.bindPopup(`
-            <div style="font-family:system-ui,sans-serif;min-width:200px;background:linear-gradient(160deg,#0f172a,#1e293b);border-radius:12px;overflow:hidden;border:1px solid ${markerColor}44;">
+            <div style="font-family:system-ui,sans-serif;min-width:220px;background:linear-gradient(160deg,#0f172a,#1e293b);border-radius:12px;overflow:hidden;border:1px solid ${markerColor}44;">
               <div style="background:${markerColor}18;border-left:4px solid ${markerColor};padding:10px 14px;display:flex;align-items:center;gap:8px;">
                 <span style="font-size:1rem;">${markerIcon}</span>
                 <span style="color:${markerColor};font-weight:700;font-size:0.88rem;">${riskLevel} Risk Zone</span>
               </div>
               <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px;">
                 <div style="color:rgba(255,255,255,0.85);font-size:0.82rem;">📍 <strong style="color:white;">${point.area || 'Unknown Area'}</strong></div>
-                <div style="color:rgba(255,255,255,0.85);font-size:0.82rem;">📊 Risk:&nbsp;<strong style="color:${markerColor};">${point.prediction.risk_percentage}%</strong></div>
-                <div style="color:rgba(255,255,255,0.85);font-size:0.82rem;">🎯 Confidence:&nbsp;<strong style="color:rgba(255,255,255,0.9);">${(point.prediction.confidence * 100).toFixed(0)}%</strong></div>
+                <div style="color:rgba(255,255,255,0.85);font-size:0.82rem;">🤖 AI Risk:&nbsp;<strong style="color:${markerColor};">${point.prediction.risk_percentage}%</strong></div>
+                ${baselineHtml}
+                <div style="color:rgba(255,255,255,0.7);font-size:0.78rem;">🎯 Confidence:&nbsp;<strong style="color:rgba(255,255,255,0.9);">${(point.prediction.confidence * 100).toFixed(0)}%</strong></div>
               </div>
+              ${crimesHereHtml}
             </div>
-          `, { className: styles.darkPopup, maxWidth: 240 });
+          `, { className: styles.darkPopup, maxWidth: 280 });
 
           layersRef.current[`risk_${index}_${pIndex}`] = marker;
         });

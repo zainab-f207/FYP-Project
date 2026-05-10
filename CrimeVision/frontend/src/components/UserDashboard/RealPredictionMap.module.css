@@ -120,38 +120,44 @@
   margin-bottom: 0.5rem;
 }
 
-/* Popup Styles */
+/* Popup Styles — dark theme matching project */
 .predictionPopup,
 .crimePopup {
-  min-width: 250px;
-  color: var(--text-dark);
+  min-width: 240px;
+  padding: 12px 14px;
+  color: #f1f5f9;
+  font-family: 'Open Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 .predictionPopup h4,
 .crimePopup h4 {
-  margin: 0 0 1rem 0;
-  color: var(--text-dark);
-  font-size: 1.1rem;
+  margin: 0 0 10px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  font-size: 1rem;
   font-weight: 700;
 }
 
 .popupContent {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 6px;
 }
 
 .popupItem {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
   line-height: 1.4;
+  color: #e2e8f0;
 }
 
 .popupItem strong {
-  color: var(--text-dark);
+  color: #94a3b8;
+  font-weight: 500;
   min-width: 80px;
 }
 
@@ -517,3 +523,54 @@
 :global(.crime-fir-popup .leaflet-popup-tip) {
   box-shadow: none !important;
 }
+
+/* ── Prediction / crime popup wrapper override (dark theme) ────────────── */
+.realPredictionMap :global(.leaflet-popup-content-wrapper) {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(14, 165, 233, 0.25) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.realPredictionMap :global(.leaflet-popup-content) {
+  margin: 0 !important;
+  color: #f1f5f9 !important;
+}
+.realPredictionMap :global(.leaflet-popup-tip) {
+  background: #0f172a !important;
+  border: 1px solid rgba(14, 165, 233, 0.25) !important;
+  box-shadow: none !important;
+}
+.realPredictionMap :global(.leaflet-popup-close-button) {
+  color: #94a3b8 !important;
+  font-size: 18px !important;
+  top: 6px !important;
+  right: 8px !important;
+}
+.realPredictionMap :global(.leaflet-popup-close-button:hover) {
+  color: #f1f5f9 !important;
+}
+
+/* Light-theme override — keep readable on white surfaces */
+:global(body[data-theme="light"]) .realPredictionMap :global(.leaflet-popup-content-wrapper) {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18) !important;
+}
+:global(body[data-theme="light"]) .realPredictionMap :global(.leaflet-popup-content) { color: #0f172a !important; }
+:global(body[data-theme="light"]) .realPredictionMap :global(.leaflet-popup-tip) {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+}
+:global(body[data-theme="light"]) .predictionPopup,
+:global(body[data-theme="light"]) .crimePopup { color: #0f172a; }
+:global(body[data-theme="light"]) .predictionPopup h4,
+:global(body[data-theme="light"]) .crimePopup h4 {
+  color: #0f172a;
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+:global(body[data-theme="light"]) .popupItem { color: #0f172a; }
+:global(body[data-theme="light"]) .popupItem strong { color: #64748b; }

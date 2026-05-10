@@ -61,8 +61,8 @@ _COUNTER_FILE = os.path.join(_MODELS_DIR, 'oov_counts.json')
 _LOCK_FILE    = os.path.join(_MODELS_DIR, '_retrain.lock')
 
 # Thresholds that trigger a retrain
-DEFAULT_OOV_PAIR_THRESHOLD   = 20   # new unseen (area, crime_type) combos since last train
-DEFAULT_NEW_RECORD_THRESHOLD = 50   # total new records since last retrain (even if no OOV)
+DEFAULT_OOV_PAIR_THRESHOLD   = 10   # new unseen (area, crime_type) combos since last train
+DEFAULT_NEW_RECORD_THRESHOLD = 10   # total new records since last retrain (even if no OOV)
 
 # Minimum gap between automatic retrains (seconds) — avoids thrashing
 DEFAULT_MIN_RETRAIN_INTERVAL = 3600  # 1 hour

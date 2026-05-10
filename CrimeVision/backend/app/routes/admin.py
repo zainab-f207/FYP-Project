@@ -265,13 +265,13 @@ SYSTEM_SETTINGS_DEFAULTS = {
     "monitor_job_max_instances": {"value": "1", "category": "system"},
     "incident_poll_interval_minutes": {"value": "1", "category": "system"},
     "incident_poll_job_max_instances": {"value": "1", "category": "system"},
-    "model_watcher_retrain_threshold_new_crimes": {"value": "500", "category": "system"},
+    "model_watcher_retrain_threshold_new_crimes": {"value": "10", "category": "system"},
     "model_watcher_retrain_threshold_new_areas": {"value": "5", "category": "system"},
     "model_watcher_retrain_threshold_new_crime_types": {"value": "10", "category": "system"},
     "model_watcher_check_interval_seconds": {"value": "3600", "category": "system"},
     "model_watcher_retrain_timeout_seconds": {"value": "600", "category": "system"},
-    "auto_retrain_oov_pair_threshold": {"value": "20", "category": "system"},
-    "auto_retrain_new_record_threshold": {"value": "50", "category": "system"},
+    "auto_retrain_oov_pair_threshold": {"value": "10", "category": "system"},
+    "auto_retrain_new_record_threshold": {"value": "10", "category": "system"},
     "auto_retrain_min_interval_seconds": {"value": "3600", "category": "system"},
     "run_initial_monitor_on_startup": {"value": "true", "category": "system"},
     "weekly_reports_enabled": {"value": "true", "category": "system"},
@@ -435,6 +435,7 @@ async def save_system_settings(request: Request, current_user: str = Depends(get
                 "weekly_reports_enabled", "weekly_reports_day_of_week", "weekly_reports_hour",
                 "weekly_reports_minute", "weekly_reports_timezone", "location_accuracy_threshold_meters",
                 "log_level", "maintenance_mode",
+                "unverified_warning_after_days", "unverified_delete_after_days",
             ]:
                 cat = SYSTEM_SETTINGS_DEFAULTS.get(key, {}).get("category", "general")
                 cursor.execute(
@@ -875,7 +876,11 @@ def get_admin_notifications(current_user: str = Depends(get_username_from_token)
                     r = cast(Dict[str, Any], row)
                     act_raw = r.get("action") or "action"
                     act_lower = act_raw.lower()
-                    if "reject" in act_lower or "delete" in act_lower:
+                    if (
+                        "reject" in act_lower
+                        or "delete" in act_lower
+                        or "account_locked" in act_lower
+                    ):
                         ntype = "warning"
                     elif "approve" in act_lower or "create" in act_lower or "login" in act_lower:
                         ntype = "success"
@@ -1240,6 +1245,8 @@ def get_users(
     current_user: str = Depends(get_username_from_token),
     search: Optional[str] = Query(None, description="Search by username, first name, or email"),
     role: Optional[str] = Query(None, description="Filter by role"),
+    verification: Optional[str] = Query(None, description="Filter by verification: verified | unverified"),
+    locked: Optional[bool] = Query(None, description="Filter by lockout state"),
     limit: int = Query(50, description="Maximum number of records to return", ge=1, le=1000),
     offset: int = Query(0, description="Number of records to skip", ge=0)
 ):
@@ -1253,13 +1260,38 @@ def get_users(
         if not user or user.get("role") not in ["superadmin", "admin"]:
             raise HTTPException(status_code=403, detail="Access denied")
 
+        # Read lockout window from system_settings (matches rate_limiting.py)
+        max_attempts = 5
+        lockout_minutes = 30
+        try:
+            cursor.execute(
+                "SELECT setting_key, setting_value FROM system_settings "
+                "WHERE setting_key IN ('max_login_attempts', 'lockout_duration')"
+            )
+            for row in cursor.fetchall():
+                try:
+                    val = int(row.get("setting_value") or 0)
+                except Exception:
+                    val = 0
+                if val > 0:
+                    if row["setting_key"] == "max_login_attempts":
+                        max_attempts = val
+                    elif row["setting_key"] == "lockout_duration":
+                        lockout_minutes = val
+        except Exception:
+            pass
+
         query = """
             SELECT id, username, first_name, last_name, email, role, permissions,
-                   home_area, work_area, alert_radius, created_at, activity_logs
+                   home_area, work_area, alert_radius, created_at, activity_logs,
+                   COALESCE(is_verified, FALSE) AS is_verified,
+                   COALESCE(email_verified, FALSE) AS email_verified,
+                   verification_status, verified_at, last_login,
+                   COALESCE(is_active, TRUE) AS is_active
             FROM users_info
             WHERE 1=1
         """
-        params = []
+        params: list = []
 
         if search:
             query += " AND (username LIKE %s OR first_name LIKE %s OR last_name LIKE %s OR email LIKE %s)"
@@ -1270,21 +1302,56 @@ def get_users(
             query += " AND role = %s"
             params.append(role)
 
+        if verification == "verified":
+            query += " AND COALESCE(is_verified, FALSE) = TRUE"
+        elif verification == "unverified":
+            query += " AND COALESCE(is_verified, FALSE) = FALSE"
+
         query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
 
         cursor.execute(query, params)
         users = cursor.fetchall()
 
+        # Compute is_locked for the loaded page in one shot
+        emails_on_page = [u["email"] for u in users if u.get("email")]
+        locked_emails: set = set()
+        if emails_on_page:
+            try:
+                placeholders = ",".join(["%s"] * len(emails_on_page))
+                cursor.execute(
+                    f"""
+                    SELECT email, COUNT(*) AS fail_count, MAX(attempt_time) AS last_attempt
+                    FROM login_attempts
+                    WHERE success = FALSE
+                      AND attempt_time > (NOW() - INTERVAL %s MINUTE)
+                      AND email IN ({placeholders})
+                    GROUP BY email
+                    """,
+                    [lockout_minutes, *emails_on_page],
+                )
+                from datetime import datetime as _dt, timedelta as _td
+                now = _dt.now()
+                for row in cursor.fetchall():
+                    if int(row.get("fail_count") or 0) >= max_attempts and row.get("last_attempt"):
+                        if row["last_attempt"] + _td(minutes=lockout_minutes) > now:
+                            locked_emails.add(row["email"])
+            except Exception as _e:
+                logger.warning(f"failed computing locked emails: {_e}")
+
         # Get total count for pagination
         count_query = "SELECT COUNT(*) as total FROM users_info WHERE 1=1"
-        count_params = []
+        count_params: list = []
         if search:
             count_query += " AND (username LIKE %s OR first_name LIKE %s OR last_name LIKE %s OR email LIKE %s)"
             count_params.extend([search_param] * 4)
         if role:
             count_query += " AND role = %s"
             count_params.append(role)
+        if verification == "verified":
+            count_query += " AND COALESCE(is_verified, FALSE) = TRUE"
+        elif verification == "unverified":
+            count_query += " AND COALESCE(is_verified, FALSE) = FALSE"
 
         cursor.execute(count_query, count_params)
         total_result = cast(Dict[str, Any], cursor.fetchone())
@@ -1317,6 +1384,13 @@ def get_users(
             else:
                 activity_logs = []
 
+            is_locked_flag = user.get("email") in locked_emails
+
+            if locked is True and not is_locked_flag:
+                continue
+            if locked is False and is_locked_flag:
+                continue
+
             users_list.append({
                 "id": user["id"],
                 "username": user["username"],
@@ -1329,6 +1403,13 @@ def get_users(
                 "work_area": user["work_area"],
                 "alert_radius": user["alert_radius"],
                 "created_at": user["created_at"].isoformat() if user["created_at"] is not None and hasattr(user["created_at"], "isoformat") else None,
+                "last_login": user["last_login"].isoformat() if user.get("last_login") is not None and hasattr(user["last_login"], "isoformat") else None,
+                "verified_at": user["verified_at"].isoformat() if user.get("verified_at") is not None and hasattr(user["verified_at"], "isoformat") else None,
+                "is_verified": bool(user.get("is_verified")),
+                "email_verified": bool(user.get("email_verified")),
+                "verification_status": user.get("verification_status"),
+                "is_active": bool(user.get("is_active", True)),
+                "is_locked": is_locked_flag,
                 "activity_logs": activity_logs
             })
 
@@ -1345,6 +1426,209 @@ def get_users(
     finally:
         cursor.close()
         conn.close()
+
+
+@router.post("/users/run-unverified-cleanup")
+def run_unverified_cleanup_now(
+    request: Request,
+    warning_after_days: Optional[int] = Query(None, description="Override warn-after days for this run"),
+    delete_after_days: Optional[int] = Query(None, description="Override delete-after days for this run"),
+    notify_admins: bool = Query(False, description="Email superadmins a deletion summary"),
+    current_user: str = Depends(get_username_from_token),
+):
+    """Manually run the unverified-account cleanup job.
+
+    Pass `warning_after_days=0&delete_after_days=0` to process every unverified
+    account regardless of age — useful for end-to-end testing of the warn +
+    delete flow without waiting for the 6-hour scheduler tick.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT role FROM users_info WHERE username = %s", (current_user,))
+        actor = cast(Optional[Dict[str, Any]], cursor.fetchone())
+        if not actor or actor.get("role") != "superadmin":
+            raise HTTPException(status_code=403, detail="Superadmin only")
+    finally:
+        cursor.close()
+        conn.close()
+
+    from app.jobs.unverified_cleanup import run_unverified_cleanup
+    summary = run_unverified_cleanup(
+        warning_after_days=warning_after_days,
+        delete_after_days=delete_after_days,
+        notify_admins=notify_admins,
+    )
+
+    try:
+        audit_conn = get_db_connection()
+        audit_cur = audit_conn.cursor()
+        audit_cur.execute(
+            """INSERT INTO audit_logs
+                (admin_username, action, target_type, target_id, details, ip_address, created_at)
+               VALUES (%s, %s, %s, %s, %s, %s, NOW())""",
+            (
+                current_user,
+                "manual_unverified_cleanup",
+                "system",
+                None,
+                json.dumps(
+                    {
+                        "warning_after_days": summary.get("warning_after_days"),
+                        "delete_after_days": summary.get("delete_after_days"),
+                        "warned_count": summary.get("warned_count"),
+                        "deleted_count": summary.get("deleted_count"),
+                    }
+                ),
+                request.client.host if request.client else None,
+            ),
+        )
+        audit_conn.commit()
+        audit_cur.close()
+        audit_conn.close()
+    except Exception:
+        pass
+
+    return summary
+
+
+@router.get("/users/counts")
+def get_user_counts(current_user: str = Depends(get_username_from_token)):
+    """Lightweight counts for sidebar badges: locked + unverified user accounts."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT role FROM users_info WHERE username = %s", (current_user,))
+        actor = cast(Optional[Dict[str, Any]], cursor.fetchone())
+        if not actor or actor.get("role") not in ["superadmin", "admin"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        max_attempts = 5
+        lockout_minutes = 30
+        try:
+            cursor.execute(
+                "SELECT setting_key, setting_value FROM system_settings "
+                "WHERE setting_key IN ('max_login_attempts', 'lockout_duration')"
+            )
+            for row in cursor.fetchall():
+                try:
+                    val = int(row.get("setting_value") or 0)
+                except Exception:
+                    val = 0
+                if val > 0:
+                    if row["setting_key"] == "max_login_attempts":
+                        max_attempts = val
+                    elif row["setting_key"] == "lockout_duration":
+                        lockout_minutes = val
+        except Exception:
+            pass
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS cnt FROM users_info
+            WHERE COALESCE(is_verified, FALSE) = FALSE
+              AND COALESCE(role, 'user') = 'user'
+            """
+        )
+        unv = cast(Dict[str, Any], cursor.fetchone()) or {"cnt": 0}
+        unverified_count = int(unv.get("cnt") or 0)
+
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT la.email) AS cnt
+            FROM login_attempts la
+            JOIN users_info u ON u.email = la.email
+            WHERE la.success = FALSE
+              AND la.attempt_time > (NOW() - INTERVAL %s MINUTE)
+            GROUP BY la.email
+            HAVING COUNT(*) >= %s
+            """,
+            (lockout_minutes, max_attempts),
+        )
+        locked_rows = cursor.fetchall() or []
+        locked_count = len(locked_rows)
+
+        return {
+            "locked_count": locked_count,
+            "unverified_count": unverified_count,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Database error getting user counts: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@router.post("/users/{user_id}/unlock")
+def unlock_user_account(
+    user_id: int,
+    request: Request,
+    current_user: str = Depends(get_username_from_token),
+):
+    """Clear failed login attempts for a user, releasing any active lockout."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT role FROM users_info WHERE username = %s", (current_user,))
+        actor = cast(Optional[Dict[str, Any]], cursor.fetchone())
+        if not actor or actor.get("role") not in ["superadmin", "admin"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        cursor.execute(
+            "SELECT id, email, username FROM users_info WHERE id = %s", (user_id,)
+        )
+        target = cast(Optional[Dict[str, Any]], cursor.fetchone())
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        cursor.execute(
+            "DELETE FROM login_attempts WHERE email = %s AND success = FALSE",
+            (target["email"],),
+        )
+        try:
+            cursor.execute(
+                "UPDATE users_info SET failed_attempts = 0 WHERE id = %s",
+                (user_id,),
+            )
+        except Exception:
+            pass
+
+        try:
+            cursor.execute(
+                """
+                INSERT INTO audit_logs
+                    (admin_username, action, target_type, target_id, details, ip_address, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                """,
+                (
+                    current_user,
+                    "unlock_user_account",
+                    "user",
+                    user_id,
+                    json.dumps({"email": target.get("email"), "username": target.get("username")}),
+                    request.client.host if request.client else None,
+                ),
+            )
+        except Exception:
+            pass
+
+        conn.commit()
+        return {
+            "success": True,
+            "message": f"Account unlocked for {target.get('username')}",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Database error unlocking user: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+    finally:
+        cursor.close()
+        conn.close()
+
 
 @router.post("/user-bulk")
 def bulk_user_actions(

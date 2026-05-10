@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './QuickActions.css';
-import { useAuth } from '../../../contexts/AuthContext_updated';
-import apiService from '../../../services/apiService_updated';
 
 const QuickActions = () => {
-  const { user, token } = useAuth();
   const [activeAction, setActiveAction] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
   const [emergencyMode, setEmergencyMode] = useState(false);
   const [location, setLocation] = useState(null);
-  const [isRequestingPatrol, setIsRequestingPatrol] = useState(false);
 
   // Get user location for emergency services
   useEffect(() => {
@@ -76,40 +72,6 @@ const QuickActions = () => {
           return;
         }
         alert(`✅ Safety Check\n\nYour current location: Lat ${location.lat.toFixed(4)}, Lng ${location.lng.toFixed(4)}\n\nArea safety status: SECURE\nNo immediate threats detected in your vicinity.`);
-      }
-    },
-    {
-      id: 'patrol',
-      icon: 'fas fa-car',
-      label: 'Patrol Request',
-      description: 'Request police patrol in your area',
-      color: '#7c3aed',
-      gradient: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-      type: 'service',
-      action: async () => {
-        if (!user || !token) {
-          alert('🔐 Authentication Required\n\nPlease log in to request patrol assistance.');
-          return;
-        }
-        if (!location) {
-          alert('📍 Location Required\n\nPlease enable location services to request patrol.');
-          return;
-        }
-        if (isRequestingPatrol) {
-          alert('⏳ Request in Progress\n\nPlease wait while we process your patrol request.');
-          return;
-        }
-
-        setIsRequestingPatrol(true);
-        try {
-          const response = await apiService.requestPatrol(token, location);
-          alert(`🚓 Patrol Request Submitted Successfully\n\nRequest ID: ${response.id || 'N/A'}\nEstimated response time: 8-12 minutes\n\nPolice will be dispatched to your location.`);
-        } catch (error) {
-          console.error('Patrol request failed:', error);
-          alert(`❌ Patrol Request Failed\n\n${error.message || 'Unable to submit patrol request. Please try again.'}`);
-        } finally {
-          setIsRequestingPatrol(false);
-        }
       }
     },
     {

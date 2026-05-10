@@ -141,6 +141,13 @@ const normalizeUser = (user) => ({
   workArea: user.work_area,
   alertRadius: user.alert_radius,
   createdAt: user.created_at,
+  lastLogin: user.last_login,
+  verifiedAt: user.verified_at,
+  isVerified: !!user.is_verified,
+  emailVerified: !!user.email_verified,
+  verificationStatus: user.verification_status,
+  isActive: user.is_active !== false,
+  isLocked: !!user.is_locked,
   activityLogs: user.activity_logs || [],
 });
 
@@ -796,6 +803,22 @@ const apiService = {
     }
   },
 
+  async searchArea(query) {
+    try {
+      const trimmed = (query || '').trim();
+      if (trimmed.length < 2) return [];
+      const response = await fetch(
+        `${API_BASE_URL}/api/crimes/areas/search?q=${encodeURIComponent(trimmed)}&limit=5`
+      );
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data?.results) ? data.results : [];
+    } catch (error) {
+      console.error('Error searching areas:', error);
+      return [];
+    }
+  },
+
   async getAreas() {
     try {
       console.log('Fetching areas from:', `${API_BASE_URL}/api/areas`);
@@ -1410,6 +1433,67 @@ const apiService = {
     }
   },
 
+  async runUnverifiedCleanup(token, { warningAfterDays = null, deleteAfterDays = null, notifyAdmins = false } = {}) {
+    const params = {};
+    if (warningAfterDays !== null && warningAfterDays !== undefined) params.warning_after_days = warningAfterDays;
+    if (deleteAfterDays !== null && deleteAfterDays !== undefined) params.delete_after_days = deleteAfterDays;
+    if (notifyAdmins) params.notify_admins = true;
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/run-unverified-cleanup${buildQueryString(params)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to run cleanup');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error running unverified cleanup:', error);
+      throw error;
+    }
+  },
+
+  async getUserCounts(token) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/counts`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) return { locked_count: 0, unverified_count: 0 };
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user counts:', error);
+      return { locked_count: 0, unverified_count: 0 };
+    }
+  },
+
+  async unlockUser(token, userId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/unlock`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to unlock user');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error unlocking user:', error);
+      throw error;
+    }
+  },
+
   async bulkUserActions(token, action, userIds = []) {
     try {
       if (!Array.isArray(userIds) || userIds.length === 0) {
@@ -1714,6 +1798,16 @@ const apiService = {
       return data;
     } catch (error) {
       console.error('Error triggering model retrain:', error);
+      throw error;
+    }
+  },
+
+  async getModelRetrainStatus(token) {
+    try {
+      const data = await this.get('/api/crimes/model/oov-status', token);
+      return data;
+    } catch (error) {
+      console.error('Error fetching model retrain status:', error);
       throw error;
     }
   },
@@ -2600,43 +2694,6 @@ const apiService = {
       throw error;
     }
   },
-
-  // Patrol request function
-  async requestPatrol(token, locationData) {
-    try {
-      console.log('Requesting patrol assistance:', locationData);
-      const response = await fetch(`${API_BASE_URL}/api/patrol-request`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          latitude: locationData.lat,
-          longitude: locationData.lng,
-          timestamp: new Date().toISOString(),
-          urgency: 'medium', // Can be expanded to allow user selection
-          description: 'User requested patrol assistance via mobile app'
-        }),
-      });
-
-      console.log('Patrol request response status:', response.status, response.statusText);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Patrol request failed:', response.status, errorData);
-        throw new Error(errorData.detail || `Patrol request failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('Patrol request successful:', data);
-      return data;
-    } catch (error) {
-      console.error('Error requesting patrol:', error);
-      throw error;
-    }
-  },
-
 
   // Community API functions
   async getCommunityStats() {

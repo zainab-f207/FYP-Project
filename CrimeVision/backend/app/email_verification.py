@@ -4,75 +4,145 @@ from app.core.config import ALLOWED_ORIGINS
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr, formatdate, make_msgid
 import logging
 
 logger = logging.getLogger(__name__)
 
 # Email configuration
-SMTP_SERVER = "smtp.gmail.com"  
+SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USERNAME = os.getenv('AUTH_EMAIL_USERNAME', 'safevision.noreply@gmail.com')
 SMTP_PASSWORD = os.getenv('AUTH_EMAIL_PASSWORD', '')  # Set this in your environment variables
 
+
+def _resolve_frontend_url() -> str:
+    """Pick the frontend URL the verification / warning links should point to.
+
+    Order of preference:
+      1. FRONTEND_URL env var (always wins — set this in production)
+      2. First non-localhost origin in ALLOWED_ORIGINS (so a deployed app
+         that listed its render.com URL via the ALLOWED_ORIGINS env will work
+         without setting FRONTEND_URL too)
+      3. First localhost origin (development fallback)
+      4. http://localhost:5173 (last-resort default)
+    """
+    explicit = os.getenv('FRONTEND_URL')
+    if explicit:
+        return explicit.rstrip('/')
+
+    try:
+        if ALLOWED_ORIGINS:
+            non_local = [
+                origin for origin in ALLOWED_ORIGINS
+                if origin and 'localhost' not in origin and '127.0.0.1' not in origin
+            ]
+            if non_local:
+                return non_local[0].rstrip('/')
+            local = [
+                origin for origin in ALLOWED_ORIGINS
+                if origin and ('localhost' in origin or '127.0.0.1' in origin)
+            ]
+            if local:
+                return local[0].rstrip('/')
+    except Exception:
+        pass
+
+    return "http://localhost:5173"
+
+
+def _stamp_message_headers(
+    msg: MIMEMultipart,
+    subject: str,
+    to_email: str,
+    *,
+    transactional: bool = True,
+    bulk: bool = False,
+) -> None:
+    """Apply headers that improve deliverability when sending via Gmail SMTP.
+
+    Two relevant scenarios:
+      * `transactional=True` (default): per-user mail like signup verification,
+        warnings, deletion notices. We mark these auto-generated so Gmail
+        classifies them as system mail rather than promotional.
+      * `bulk=True`: optional flag for the SuperAdmin maintenance summary email
+        (one message that goes to all admins). Adds `Precedence: bulk`.
+
+    These headers don't fix sender-domain reputation, but they reliably reduce
+    the chance of landing in spam from a free Gmail SMTP sender.
+    """
+    domain = SMTP_USERNAME.split('@')[-1] if '@' in SMTP_USERNAME else 'safevision.local'
+
+    # Use the bare address (no display name) as the visible From. The mismatch
+    # between a brand-style display name ("SafeVision") and a free @gmail.com
+    # mailbox is a major Gmail spam trigger; better to let recipients see the
+    # actual sending account so the headers line up with the domain.
+    msg['From'] = formataddr((None, SMTP_USERNAME))
+    msg['To'] = to_email
+    msg['Reply-To'] = formataddr((None, SMTP_USERNAME))
+    msg['Sender'] = SMTP_USERNAME
+    msg['Subject'] = subject
+    msg['Date'] = formatdate(localtime=True)
+    msg['Message-ID'] = make_msgid(domain=domain)
+    msg['MIME-Version'] = '1.0'
+
+    # Mark as auto-generated system mail (RFC 3834). Gmail honors this when
+    # classifying — system notifications are less likely to be filtered as
+    # promotional/spam than mail with no auto-submitted hint.
+    if transactional:
+        msg['Auto-Submitted'] = 'auto-generated'
+        msg['X-Auto-Response-Suppress'] = 'All'
+
+    # Neutral priority — explicitly NOT low/promotional
+    msg['X-Priority'] = '3'
+    msg['Importance'] = 'Normal'
+    msg['X-Mailer'] = 'SafeVision-Mailer/1.0'
+
+    if bulk:
+        msg['Precedence'] = 'bulk'
+
 def send_verification_email(email: str, first_name: str, verification_token: str):
     """Send email verification email to user"""
     try:
-        # Determine frontend URL for verification link. Prefer explicit env var, then ALLOWED_ORIGINS, then fallback.
-        frontend_url = os.getenv('FRONTEND_URL')
-        if not frontend_url:
-            try:
-                # For local development, prefer localhost even if ngrok is in ALLOWED_ORIGINS
-                if ALLOWED_ORIGINS and len(ALLOWED_ORIGINS) > 0 and 'ngrok' in ALLOWED_ORIGINS[0]:
-                    frontend_url = "http://localhost:5173"
-                else:
-                    # Check if we have localhost origins
-                    localhost_origins = [origin for origin in ALLOWED_ORIGINS if 'localhost' in origin or '127.0.0.1' in origin]
-                    if localhost_origins:
-                        frontend_url = localhost_origins[0]
-                    else:
-                        frontend_url = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS and len(ALLOWED_ORIGINS) > 0 else None
-            except Exception:
-                frontend_url = None
-
-        if not frontend_url:
-            frontend_url = "http://localhost:5173"
-
-        # Build link to frontend route which will call backend POST /auth/verify-email with the token.
-        verification_link = f"{frontend_url.rstrip('/')}/verify-email?token={verification_token}"
+        frontend_url = _resolve_frontend_url()
+        verification_link = f"{frontend_url}/verify-email?token={verification_token}"
         logger.info(f"Using frontend verification link: {verification_link}")
 
-        # Email template
-        html_template = """<!DOCTYPE html>
+        # Keep the body short, plain-looking, and identical between text + HTML.
+        # Gmail's spam filter compares the two parts; mismatch is a flag. Stay
+        # under ~50 lines, one URL, no images, no marketing-style buttons.
+        display_name = first_name or "there"
+
+        plain_text = (
+            f"Hi {display_name},\n\n"
+            "Please confirm your email so you can finish signing in to SafeVision:\n\n"
+            f"{verification_link}\n\n"
+            "This link is valid for 24 hours. If you did not create a SafeVision "
+            "account, you can ignore this message.\n\n"
+            "Thanks,\n"
+            "The SafeVision team\n"
+        )
+
+        html_content = f"""<!DOCTYPE html>
 <html>
-  <body style="font-family: Arial, sans-serif; background-color: #f8f9fa; padding: 20px;">
-    <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2 style="color: #333333;">Verify Your Account</h2>
-      <p>Dear {UserName},</p>
-      <p>Thank you for registering with <strong>{YourAppName}</strong>. To activate your account, please verify your email address by clicking the button below:</p>
-      <p style="text-align: center; margin: 30px 0;">
-        <a href="{VerificationLink}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Verify Email</a>
-      </p>
-      <p>This link will expire in 24 hours.</p>
-      <p>If you did not create this account, please ignore this message.</p>
-      <p>Best regards,<br><strong>{YourAppName} Team</strong><br>support@{yourappdomain}.com</p>
-    </div>
+  <body style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.55; margin: 0; padding: 24px;">
+    <p>Hi {display_name},</p>
+    <p>Please confirm your email so you can finish signing in to SafeVision:</p>
+    <p><a href="{verification_link}" style="color:#1d4ed8;word-break:break-all;">{verification_link}</a></p>
+    <p>This link is valid for 24 hours. If you did not create a SafeVision account, you can ignore this message.</p>
+    <p>Thanks,<br>The SafeVision team</p>
   </body>
 </html>"""
 
-        # Replace placeholders
-        html_content = html_template.replace("{UserName}", first_name)
-        html_content = html_content.replace("{YourAppName}", "CrimeVision")
-        html_content = html_content.replace("{VerificationLink}", verification_link)
-        html_content = html_content.replace("{yourappdomain}", "crimevision.com")
-
-        # Create message
-        msg = MIMEMultipart()
-        msg['From'] = SMTP_USERNAME
-        msg['To'] = email
-        msg['Subject'] = "Verify Your CrimeVision Account"
-
-        # Attach HTML content
-        msg.attach(MIMEText(html_content, 'html'))
+        msg = MIMEMultipart('alternative')
+        _stamp_message_headers(
+            msg,
+            "Confirm your SafeVision email",
+            email,
+            transactional=True,
+        )
+        msg.attach(MIMEText(plain_text, 'plain', 'utf-8'))
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
         # Send email
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
@@ -130,38 +200,62 @@ def send_admin_notification_email(admin_email: str, deleted_accounts: list):
 <html>
   <body style="font-family: Arial, sans-serif; background-color: #f8f9fa; padding: 20px;">
     <div style="max-width: 800px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-      <h2 style="color: #dc3545;">⚠️ Unverified Accounts Cleanup Report</h2>
+      <h2 style="color: #333333;">Unverified Accounts Cleanup Report</h2>
       <p>Dear SuperAdmin,</p>
-      <p>The automated cleanup process has deleted <strong>{AccountCount}</strong> expired unverified user account(s) from the SafeVision system.</p>
-      <p>These accounts failed to complete email verification within the 24-hour window and have been automatically removed.</p>
-      
-      <h3 style="color: #333333; margin-top: 30px;">Deleted Accounts:</h3>
+      <p>The automated cleanup process has removed <strong>{AccountCount}</strong> expired unverified user account(s) from the SafeVision system.</p>
+      <p>These accounts did not complete email verification within the 24-hour window and have been removed from the database.</p>
+
+      <h3 style="color: #333333; margin-top: 30px;">Affected Accounts:</h3>
       {AccountsTable}
-      
+
       <hr style="margin: 30px 0; border: none; border-top: 1px solid #dee2e6;">
-      
+
       <p style="color: #6c757d; font-size: 14px;">
-        <strong>Note:</strong> This is an automated notification from the SafeVision account cleanup system. 
-        The cleanup process runs every 6 hours to maintain database hygiene.
+        <strong>Note:</strong> This is an automated notification from the SafeVision account maintenance system.
+        The cleanup process runs every 6 hours.
       </p>
-      
+
       <p>Best regards,<br><strong>SafeVision Automated System</strong></p>
     </div>
   </body>
 </html>"""
-        
+
         # Replace placeholders
         html_content = html_template.replace("{AccountCount}", str(len(deleted_accounts)))
         html_content = html_content.replace("{AccountsTable}", accounts_table)
-        
-        # Create message
-        msg = MIMEMultipart()
-        msg['From'] = SMTP_USERNAME
-        msg['To'] = admin_email
-        msg['Subject'] = f"🗑️ CrimeVision: {len(deleted_accounts)} Unverified Account(s) Deleted"
-        
-        # Attach HTML content
-        msg.attach(MIMEText(html_content, 'html'))
+
+        plain_lines = [
+            "Dear SuperAdmin,",
+            "",
+            f"The automated cleanup process has removed {len(deleted_accounts)} "
+            "expired unverified user account(s) from the SafeVision system.",
+            "",
+            "Affected accounts:",
+        ]
+        for account in deleted_accounts:
+            plain_lines.append(
+                f"- {account.get('username', 'N/A')} | {account.get('email', 'N/A')} "
+                f"| {account.get('name', 'N/A')} | created {account.get('created_at', 'N/A')}"
+            )
+        plain_lines.extend([
+            "",
+            "This is an automated notification from the SafeVision account maintenance system.",
+            "The cleanup process runs every 6 hours.",
+            "",
+            "SafeVision Automated System",
+        ])
+        plain_text = "\n".join(plain_lines)
+
+        msg = MIMEMultipart('alternative')
+        _stamp_message_headers(
+            msg,
+            f"SafeVision account maintenance report ({len(deleted_accounts)})",
+            admin_email,
+            transactional=True,
+            bulk=True,
+        )
+        msg.attach(MIMEText(plain_text, 'plain', 'utf-8'))
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
         
         # Send email
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
@@ -172,8 +266,111 @@ def send_admin_notification_email(admin_email: str, deleted_accounts: list):
         server.quit()
         
         logger.info(f"Admin notification email sent successfully to {admin_email}")
-        
+
     except Exception as e:
         logger.error(f"Failed to send admin notification email to {admin_email}: {str(e)}")
         # Don't raise exception here as this is a notification, not critical
 
+
+def send_unverified_warning_email(email: str, first_name: str, hours_remaining: int):
+    """Warn an unverified user that their account will be deleted soon."""
+    try:
+        display_name = first_name or "there"
+        login_link = f"{_resolve_frontend_url()}/"
+
+        if hours_remaining >= 48:
+            window_label = f"{hours_remaining // 24} days"
+        elif hours_remaining >= 24:
+            window_label = "24 hours" if hours_remaining == 24 else f"{hours_remaining} hours"
+        else:
+            window_label = f"{hours_remaining} hour(s)"
+
+        # Neutral, transactional subject — avoids "Action required",
+        # "Urgent", and similar phrases that Gmail scores as promotional.
+        subject = f"Reminder to confirm your SafeVision email"
+
+        plain_text = (
+            f"Hi {display_name},\n\n"
+            "Your SafeVision account is still unconfirmed. If you don't confirm your email, "
+            f"the account will be removed in about {window_label}.\n\n"
+            "To keep the account, request a new confirmation link here:\n"
+            f"{login_link}\n\n"
+            "If you didn't create a SafeVision account, you can ignore this message — "
+            "no further action is needed.\n\n"
+            "Thanks,\n"
+            "The SafeVision team\n"
+        )
+
+        html_content = f"""<!DOCTYPE html>
+<html>
+  <body style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.55; margin: 0; padding: 24px;">
+    <p>Hi {display_name},</p>
+    <p>Your SafeVision account is still unconfirmed. If you don't confirm your email,
+       the account will be removed in about <strong>{window_label}</strong>.</p>
+    <p>To keep the account, request a new confirmation link here:</p>
+    <p><a href="{login_link}" style="color:#1d4ed8;word-break:break-all;">{login_link}</a></p>
+    <p>If you didn't create a SafeVision account, you can ignore this message — no further action is needed.</p>
+    <p>Thanks,<br>The SafeVision team</p>
+  </body>
+</html>"""
+
+        msg = MIMEMultipart('alternative')
+        _stamp_message_headers(msg, subject, email, transactional=True)
+        msg.attach(MIMEText(plain_text, 'plain', 'utf-8'))
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.sendmail(SMTP_USERNAME, email, msg.as_string())
+        server.quit()
+
+        logger.info(f"Unverified-account warning email sent to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send warning email to {email}: {e}")
+
+
+def send_unverified_deleted_email(email: str, first_name: str):
+    """Tell the user their unverified account has been deleted."""
+    try:
+        display_name = first_name or "there"
+        subject = "Your SafeVision account was removed"
+        signup_link = f"{_resolve_frontend_url()}/"
+
+        plain_text = (
+            f"Hi {display_name},\n\n"
+            "Your SafeVision account was never confirmed, so it has been removed during "
+            "routine cleanup.\n\n"
+            "If you still want to use SafeVision, you can sign up again here:\n"
+            f"{signup_link}\n\n"
+            "This time, please open the confirmation link we send to your email.\n\n"
+            "Thanks,\n"
+            "The SafeVision team\n"
+        )
+
+        html_content = f"""<!DOCTYPE html>
+<html>
+  <body style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.55; margin: 0; padding: 24px;">
+    <p>Hi {display_name},</p>
+    <p>Your SafeVision account was never confirmed, so it has been removed during routine cleanup.</p>
+    <p>If you still want to use SafeVision, you can sign up again here:</p>
+    <p><a href="{signup_link}" style="color:#1d4ed8;word-break:break-all;">{signup_link}</a></p>
+    <p>This time, please open the confirmation link we send to your email.</p>
+    <p>Thanks,<br>The SafeVision team</p>
+  </body>
+</html>"""
+
+        msg = MIMEMultipart('alternative')
+        _stamp_message_headers(msg, subject, email, transactional=True)
+        msg.attach(MIMEText(plain_text, 'plain', 'utf-8'))
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.sendmail(SMTP_USERNAME, email, msg.as_string())
+        server.quit()
+
+        logger.info(f"Unverified-account deletion notice sent to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send deletion-notice email to {email}: {e}")

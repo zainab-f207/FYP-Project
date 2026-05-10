@@ -4293,16 +4293,35 @@ def dictionary_fuzzy_correct(text: str, min_similarity: float = 0.75) -> str:
 try:
     import easyocr
     EASYOCR_AVAILABLE = True
+    # EasyOCR uses PyTorch DataLoader with pin_memory=True by default; on CPU-
+    # only machines this prints a UserWarning per call. Cosmetic only — silence
+    # it so logs stay readable.
+    import warnings as _easyocr_warnings
+    _easyocr_warnings.filterwarnings(
+        "ignore",
+        message=".*pin_memory.*argument is set as true but no accelerator.*",
+        category=UserWarning,
+    )
 except ImportError:
     EASYOCR_AVAILABLE = False
     logger.warning("EasyOCR not available")
 
-try:
-    from paddleocr import PaddleOCR
-    PADDLEOCR_AVAILABLE = True
-except (ImportError, Exception):
-    PADDLEOCR_AVAILABLE = False
-    logger.warning("PaddleOCR not available")
+# PaddleOCR is intentionally disabled. The library installs cleanly but its
+# inference path raises "Unknown exception" on every FIR image (likely a 3.x
+# API mismatch with the installed paddle/paddlepaddle wheel on Windows). The
+# multi-engine pipeline only burned ~5-15s per request before falling through
+# to EasyOCR + Tesseract, so we skip it entirely. Set ENABLE_PADDLEOCR=1 in
+# the environment to opt back in if the underlying issue is fixed.
+import os as _os_paddle
+PADDLEOCR_AVAILABLE = False
+if _os_paddle.getenv("ENABLE_PADDLEOCR", "0") == "1":
+    try:
+        from paddleocr import PaddleOCR  # noqa: F401
+        PADDLEOCR_AVAILABLE = True
+    except (ImportError, Exception):
+        logger.warning("PaddleOCR requested via ENABLE_PADDLEOCR=1 but unavailable")
+else:
+    logger.info("PaddleOCR disabled (set ENABLE_PADDLEOCR=1 to enable)")
 
 try:
     import pytesseract
@@ -4336,7 +4355,24 @@ import threading as _threading_gemini
 import time as _time_gemini
 from collections import deque as _deque_gemini
 
-_GEMINI_API_KEY = _os_gemini.getenv("GEMINI_API_KEY", "").strip()
+# Multi-key Gemini rotation: each Google account gets its own 20 RPD free
+# quota. We collect every GEMINI_API_KEY[_N] from the env, build one Client
+# per key, and rotate through them on 429. Total free capacity = 20 × N.
+def _collect_gemini_api_keys() -> "list[str]":
+    keys = []
+    primary = _os_gemini.getenv("GEMINI_API_KEY", "").strip()
+    if primary:
+        keys.append(primary)
+    # Pick up GEMINI_API_KEY_2 .. GEMINI_API_KEY_20 (cap at 20 keys).
+    for i in range(2, 21):
+        k = _os_gemini.getenv(f"GEMINI_API_KEY_{i}", "").strip()
+        if k and k not in keys:
+            keys.append(k)
+    return keys
+
+
+_GEMINI_API_KEYS = _collect_gemini_api_keys()
+_GEMINI_API_KEY = _GEMINI_API_KEYS[0] if _GEMINI_API_KEYS else ""  # back-compat
 # Cascade: primary is the model whose free-tier quota is actually granted on
 # this API key (gemini-2.5-flash = 20 RPD for keys where 2.0-flash shows
 # limit:0). A secondary slot is kept for users whose keys do have access to
@@ -4345,70 +4381,124 @@ _GEMINI_MODEL_NAME = _os_gemini.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 _GEMINI_MODEL_FALLBACK = _os_gemini.getenv("GEMINI_MODEL_FALLBACK", "").strip()
 # Free-tier ceiling is 15 RPM on gemini-2.0-flash; leave a safety margin.
 _GEMINI_RPM_LIMIT = int(_os_gemini.getenv("GEMINI_RPM_LIMIT", "12"))
-_GEMINI_AVAILABLE = bool(_GEMINI_SDK_AVAILABLE and _GEMINI_API_KEY)
-# In the new SDK there is no per-model wrapper object. We hold a single
-# Client + a list of model name strings, and let the cascade helper iterate.
-# `_gemini_model` is kept as a truthy/falsy sentinel so existing
-# `if _gemini_model is None` guards in the extraction functions still hold.
-_gemini_client = None
+_GEMINI_AVAILABLE = (
+    bool(_GEMINI_SDK_AVAILABLE and _GEMINI_API_KEYS)
+    and _os_gemini.getenv("DISABLE_GEMINI", "1") != "1"
+)
+# Per-key Client list. We rotate through these on 429 — each key is bound to
+# a separate Google account so they have independent daily quotas.
+_gemini_clients: "list" = []  # parallel to _GEMINI_API_KEYS
+_gemini_client = None  # sentinel: first client when any key initialised
 _gemini_model = None  # sentinel: primary model name (str) when ready
 _gemini_model_fallback = None  # sentinel: fallback model name (str) when ready
 _gemini_lock = _threading_gemini.Lock()
 _gemini_request_times: "_deque_gemini[float]" = _deque_gemini()
+# Daily request counter for Gemini's per-API-key free-tier quota (default 20
+# RPD on gemini-2.5-flash). Per-key counter so the badge / logs reflect
+# actual usage across the rotation pool.
+_GEMINI_DAILY_QUOTA = int(_os_gemini.getenv("GEMINI_DAILY_QUOTA", "20"))
+_gemini_daily_count = 0          # aggregate across all keys (back-compat)
+_gemini_per_key_count: "list[int]" = []  # parallel to _gemini_clients
+_gemini_daily_date: "Optional[str]" = None  # YYYY-MM-DD
 
 if _GEMINI_AVAILABLE:
-    try:
-        _gemini_client = _genai.Client(api_key=_GEMINI_API_KEY)
+    for idx, _k in enumerate(_GEMINI_API_KEYS):
+        try:
+            _c = _genai.Client(api_key=_k)
+            _gemini_clients.append(_c)
+            _gemini_per_key_count.append(0)
+        except Exception as _gemini_init_err:
+            logger.error(
+                f"Gemini key #{idx + 1} init failed: {_gemini_init_err}"
+            )
+    if _gemini_clients:
+        _gemini_client = _gemini_clients[0]
         _gemini_model = _GEMINI_MODEL_NAME
         if _GEMINI_MODEL_FALLBACK and _GEMINI_MODEL_FALLBACK != _GEMINI_MODEL_NAME:
             _gemini_model_fallback = _GEMINI_MODEL_FALLBACK
         logger.info(
-            f"✓ Gemini extractor ready (primary={_GEMINI_MODEL_NAME}, "
+            f"✓ Gemini extractor ready ({len(_gemini_clients)} key(s), "
+            f"primary={_GEMINI_MODEL_NAME}, "
             f"fallback={_gemini_model_fallback or 'none'}, "
-            f"rpm_limit={_GEMINI_RPM_LIMIT})"
+            f"rpm_limit={_GEMINI_RPM_LIMIT}, "
+            f"daily_quota_total={_GEMINI_DAILY_QUOTA * len(_gemini_clients)})"
         )
-    except Exception as _gemini_init_err:
-        logger.error(f"Gemini init failed: {_gemini_init_err}")
+    else:
         _GEMINI_AVAILABLE = False
-        _gemini_client = None
-        _gemini_model = None
-        _gemini_model_fallback = None
-elif not _GEMINI_API_KEY:
-    logger.warning("GEMINI_API_KEY missing from environment — Gemini extractor disabled")
+        logger.error("Gemini: all keys failed to initialise — disabling")
+elif not _GEMINI_API_KEYS:
+    logger.warning("No GEMINI_API_KEY[_N] in environment — Gemini extractor disabled")
+elif _os_gemini.getenv("DISABLE_GEMINI", "1") == "1":
+    logger.info("Gemini vision disabled (set DISABLE_GEMINI=0 in .env to re-enable)")
 
 
 def _gemini_generate_with_cascade(prompt_parts, generation_config):
-    """Call Gemini with primary model, fall back to secondary on 429/quota.
+    """Call Gemini, rotating across (key, model) combinations on 429/quota.
 
-    Returns the SDK response object, or raises the final exception if all
-    attempts fail. Rate-limiting window is shared across models — both
-    count against the RPM ceiling since they share the API key.
+    Outer loop iterates API keys (each = separate Google account = separate
+    20 RPD pool). Inner loop iterates models (primary + optional fallback)
+    for the current key. We move to the next key only when ALL models on
+    the current key have hit quota. Non-quota errors (safety block, bad
+    request) raise immediately — those won't be cured by rotation.
     """
-    if _gemini_client is None:
-        raise RuntimeError("Gemini client not initialised")
+    if not _gemini_clients:
+        raise RuntimeError("Gemini clients not initialised")
     model_names = []
     if _gemini_model:
         model_names.append(_gemini_model)
     if _gemini_model_fallback:
         model_names.append(_gemini_model_fallback)
+    if not model_names:
+        raise RuntimeError("No Gemini models configured")
+
     last_exc = None
-    for model_name in model_names:
-        try:
-            _gemini_rate_limit_wait()
-            return _gemini_client.models.generate_content(
-                model=model_name,
-                contents=prompt_parts,
-                config=generation_config,
+    for key_idx, client in enumerate(_gemini_clients):
+        all_models_quota_hit = True
+        for model_name in model_names:
+            try:
+                _gemini_rate_limit_wait(key_idx=key_idx)
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt_parts,
+                    config=generation_config,
+                )
+                # Success — log which key handled it for observability.
+                if len(_gemini_clients) > 1:
+                    logger.info(
+                        f"[Gemini] key #{key_idx + 1}/{len(_gemini_clients)} "
+                        f"+ model {model_name} succeeded"
+                    )
+                return response
+            except Exception as e:
+                msg = str(e).lower()
+                last_exc = e
+                if "429" in msg or "quota" in msg or "rate" in msg or "exceeded" in msg:
+                    full_err = str(e)
+                    quota_excerpt = ""
+                    for marker in ("quotaValue", "quotaLimit", "PerDay", "limit:", "remaining"):
+                        ix = full_err.find(marker)
+                        if ix >= 0:
+                            quota_excerpt = full_err[ix:ix + 200]
+                            break
+                    logger.warning(
+                        f"[Gemini quota] ⚠ key #{key_idx + 1} + {model_name} "
+                        f"hit quota. Trying next (key, model) combination. "
+                        f"Per-key counter: {_gemini_per_key_count[key_idx]}/"
+                        f"{_GEMINI_DAILY_QUOTA}. "
+                        f"Google response: {quota_excerpt or full_err[:200]}"
+                    )
+                    continue  # try next model on same key
+                # Non-quota error: don't blow through other keys for it.
+                all_models_quota_hit = False
+                raise
+        if not all_models_quota_hit:
+            break
+        # All models on this key hit quota → loop to next key.
+        if key_idx + 1 < len(_gemini_clients):
+            logger.warning(
+                f"[Gemini] key #{key_idx + 1} exhausted on all models — "
+                f"rotating to key #{key_idx + 2}"
             )
-        except Exception as e:
-            msg = str(e).lower()
-            last_exc = e
-            # Only cascade on quota / rate-limit errors. Other errors (safety
-            # block, malformed request) won't be cured by switching models.
-            if "429" in msg or "quota" in msg or "rate" in msg or "exceeded" in msg:
-                logger.warning(f"[Gemini] {model_name} hit quota, trying next model: {e}")
-                continue
-            raise
     if last_exc is not None:
         raise last_exc
     raise RuntimeError("No Gemini models configured")
@@ -4421,8 +4511,8 @@ def _gemini_generate_with_cascade(prompt_parts, generation_config):
 # result is clearly garbage / UNREADABLE.
 _ADDRESS_CONTINUATION_AFTER_COMMA_GLOBAL = re.compile(
     r"^\s*("
-    r"سب\s*بلاک|بلاک|سیکٹر|گلی|سٹریٹ|پلاٹ|مکان|فیز|فلیٹ|"
-    r"sub\s*block|sub-?block|block|sector|phase|gali|street|plot|house|flat|lane"
+    r"سب\s*بلاک|بلاک|سیکٹر|پلاٹ|مکان|فیز|فلیٹ|"
+    r"sub\s*block|sub-?block|block|sector|phase|plot|house|flat"
     r")\b",
     flags=re.IGNORECASE,
 )
@@ -4431,15 +4521,236 @@ _DROP_LINE_AFTER_GLOBAL = re.compile(
     flags=re.IGNORECASE,
 )
 
+# Known garbled OCR/vision-API outputs for Lahore society names. Vision models
+# occasionally misread "بحریہ ٹاؤن" (Bahria Town) as visually similar Urdu
+# bigrams that share letter shapes (ب/گ, ح/ر, ر/ز, ی/ن, ہ/ن). Map them back
+# to the canonical name BEFORE the rest of post-processing runs so downstream
+# geocoding can match the address.
+_GARBLED_AREA_REPLACEMENTS = [
+    (re.compile(r"گرے\s*نازن"), "بحریہ ٹاؤن"),
+    (re.compile(r"گرے\s*نازں"), "بحریہ ٹاؤن"),
+    (re.compile(r"بھریہ\s*ٹاؤن"), "بحریہ ٹاؤن"),
+    (re.compile(r"بحرہ\s*ٹاؤن"), "بحریہ ٹاؤن"),
+    (re.compile(r"بحربہ\s*ٹاؤن"), "بحریہ ٹاؤن"),
+]
+
 
 def _is_urdu_letter_global(ch: str) -> bool:
     return bool(ch) and ('؀' <= ch <= 'ۿ' or 'ݐ' <= ch <= 'ݿ')
+
+
+# Society prefixes the API may return as the leading token. If the API output
+# starts with a structural pattern (e.g. "<UNKNOWN_NAME> سیکٹر G بلاک D") and
+# <UNKNOWN_NAME> is not in this set, we try to fuzzy-match the leading 1-3
+# Urdu words against this canonical list and substitute the best match. Free-
+# tier vision models hallucinate society names; this guards against that.
+_KNOWN_SOCIETY_PREFIXES = [
+    "بحریہ ٹاؤن",
+    "بحریہ آرچرڈ",
+    "ڈی ایچ اے",
+    "آسکاری",
+    "والینشیا ٹاؤن",
+    "واپڈا ٹاؤن",
+    "لیک سٹی",
+    "لی ڈی اے سٹی",
+    "پی سی ایس آئی آر",
+    "پی آئی اے سوسائٹی",
+    "ماڈل ٹاؤن",
+    "جوہر ٹاؤن",
+    "فیصل ٹاؤن",
+    "گارڈن ٹاؤن",
+    "ٹاؤن شپ",
+    "گلشن راوی",
+    "علامہ اقبال ٹاؤن",
+    "ایڈن آباد",
+]
+
+
+def _validate_society_prefix(text: str) -> str:
+    """If text has a structural address pattern but starts with an unknown
+    society name, fuzzy-match the leading words against known societies.
+
+    Triggers on either of:
+      • "<prefix> سیکٹر X بلاک Y" / "<prefix> فیز X بلاک Y"  (Bahria/DHA/Lake)
+      • "<prefix> <number 1-13> بلاک Y"                       (Askari pattern)
+
+    We compare the leading 1-3 Urdu words against `_KNOWN_SOCIETY_PREFIXES`
+    using SequenceMatcher (same ratio used by `dictionary_fuzzy_correct`)
+    and replace the prefix with the best match if similarity ≥ 0.55. Lower
+    bar than the global fuzzy correct because we only need to recover the
+    society token, and the structural suffix already tells us a society
+    name was intended.
+
+    For the Askari pattern we ALSO trim trailing road / street tokens that
+    appear after the block letter — the model sometimes hallucinates
+    "<garbled-Askari> 11 بلاک D <hallucinated road>" which would otherwise
+    poison geocoding.
+    """
+    if not text:
+        return text
+    has_sector_phase = bool(
+        re.search(r"(سیکٹر|فیز)\s*\S+\s*بلاک\s*\S+", text)
+    )
+    # Match Askari pattern: number + بلاک + letter, optionally followed by
+    # سب بلاک + letter. Capturing the sub-block here is critical — without
+    # it the canonical-snap step below silently dropped "سب بلاک Z" off
+    # outputs like "آسکاری 11 بلاک G سب بلاک Z" and corrupted geocoding.
+    askari_match = re.search(
+        r"(\d{1,2})\s*بلاک\s*([A-Za-z])(?:\s*[،,]?\s*سب\s*بلاک\s*([A-Za-z]))?",
+        text,
+    )
+    has_askari_pattern = bool(
+        askari_match and 1 <= int(askari_match.group(1)) <= 13
+        and not has_sector_phase
+    )
+    if not has_sector_phase and not has_askari_pattern:
+        return text
+
+    def _askari_canonical(m) -> str:
+        num = m.group(1)
+        block = m.group(2).upper()
+        sub = m.group(3)
+        if sub:
+            return f"آسکاری {num} بلاک {block} سب بلاک {sub.upper()}"
+        return f"آسکاری {num} بلاک {block}"
+
+    starts_known = any(text.startswith(p) for p in _KNOWN_SOCIETY_PREFIXES)
+    # Askari pattern with correct prefix → still snap to canonical form to
+    # strip any hallucinated trailing tokens (e.g. "آسکاری 11 بلاک D امام...").
+    if starts_known and has_askari_pattern and askari_match:
+        canonical = _askari_canonical(askari_match)
+        if text != canonical:
+            logger.info(
+                f"[Area validate] Askari pattern trimmed: "
+                f"{repr(text[:80])} -> {repr(canonical)}"
+            )
+            return canonical
+        return text
+    if starts_known:
+        return text
+    # Askari special-case: number 1-13 + block letter is a strong Askari
+    # signal. Snap directly to canonical "آسکاری N بلاک X [سب بلاک Y]" form
+    # regardless of how garbled the prefix was — the structure proves intent.
+    if has_askari_pattern and askari_match:
+        canonical = _askari_canonical(askari_match)
+        logger.info(
+            f"[Area validate] Askari pattern detected, snapping: "
+            f"{repr(text[:80])} -> {repr(canonical)}"
+        )
+        return canonical
+    words = text.split(maxsplit=4)
+    if len(words) < 2:
+        return text
+    try:
+        from difflib import SequenceMatcher
+    except ImportError:
+        return text
+    best_match = ""
+    best_score = 0.0
+    best_word_count = 2
+    for n_words in (2, 3, 1):
+        if n_words > len(words):
+            continue
+        candidate = " ".join(words[:n_words])
+        for canonical in _KNOWN_SOCIETY_PREFIXES:
+            score = SequenceMatcher(None, candidate, canonical).ratio()
+            if score > best_score:
+                best_score = score
+                best_match = canonical
+                best_word_count = n_words
+    if best_match and best_score >= 0.55:
+        remainder = " ".join(words[best_word_count:])
+        repaired = f"{best_match} {remainder}".strip()
+        logger.info(
+            f"[Area validate] society prefix repaired: "
+            f"{repr(text[:80])} -> {repr(repaired[:80])} (score={best_score:.2f})"
+        )
+        return repaired
+    return text
+
+
+# Suffix words that classify a location's type. When the API output has
+# the form "<unknown_prefix> <suffix>", we can constrain fuzzy matching to
+# dictionary entries that ALSO end with the same suffix. This catches
+# garbled-but-recognizable patterns like "امیر مارکیٹ" → "اچھرہ مارکیٹ"
+# (Ichra Market) where the suffix is read correctly but the prefix is OCR
+# noise. Without this constraint a generic dictionary fuzzy match would
+# fail because "امیر" alone has poor similarity to any dictionary key.
+_LANDMARK_SUFFIXES = (
+    "مارکیٹ", "بازار", "روڈ", "گیٹ", "چوک", "اسٹیشن",
+    "پارک", "مسجد", "گراؤنڈ", "ٹاؤن", "کالونی", "نگر",
+    "آباد", "پورہ", "سوسائٹی",
+)
+
+
+def _fuzzy_correct_landmark(text: str) -> str:
+    """Constrain dictionary fuzzy match to entries sharing the same trailing
+    landmark word. Catches cases like "امیر مارکیٹ" → "اچھرہ مارکیٹ" where
+    the suffix is read correctly but the prefix is garbled.
+    """
+    if not URDU_DICT_AVAILABLE or not text:
+        return text
+    tokens = text.split()
+    if len(tokens) < 2:
+        return text
+    last = tokens[-1]
+    if last not in _LANDMARK_SUFFIXES:
+        return text
+    prefix = " ".join(tokens[:-1])
+    # Don't second-guess outputs whose prefix already exists in the dictionary.
+    if any(loc.startswith(prefix + " ") or loc == text for loc in _URDU_KNOWN_LOCATIONS):
+        return text
+    same_suffix_entries = [
+        loc for loc in _URDU_KNOWN_LOCATIONS
+        if loc.split() and loc.split()[-1] == last and len(loc.split()) >= 2
+    ]
+    if not same_suffix_entries:
+        return text
+    try:
+        from difflib import SequenceMatcher
+    except ImportError:
+        return text
+    best_match = ""
+    best_score = 0.0
+    for entry in same_suffix_entries:
+        entry_prefix = " ".join(entry.split()[:-1])
+        sim = SequenceMatcher(None, prefix, entry_prefix).ratio()
+        if sim > best_score:
+            best_score = sim
+            best_match = entry
+    # Threshold 0.45 — looser than the society-prefix check (0.55) because
+    # the suffix already narrowed the candidate space considerably, so a
+    # weaker prefix match is meaningful evidence.
+    if best_match and best_score >= 0.45:
+        logger.info(
+            f"[Area landmark fix] {repr(text[:80])} -> {repr(best_match[:80])} "
+            f"(suffix={last!r}, score={best_score:.2f})"
+        )
+        return best_match
+    return text
 
 
 def _postprocess_crime_area_text(text: str) -> str:
     if not text:
         return ""
     text = text.strip()
+    # Drop trailing fragment after a period — the model sometimes appends
+    # hallucinated road/landmark text like "بلاک D. امام بلوم روڈ" which
+    # poisons geocoding. The first complete sentence/segment is the address.
+    if "." in text:
+        first_seg = text.split(".", 1)[0].strip(" ,،")
+        # Only trim if the first segment looks like a complete address
+        # (has a society marker or block/sector pattern) — don't damage
+        # short standalone names like "ماڈل ٹاؤن".
+        if (
+            re.search(r"(سیکٹر|فیز|بلاک|سب\s*بلاک)", first_seg)
+            or any(first_seg.startswith(p) for p in _KNOWN_SOCIETY_PREFIXES)
+        ):
+            text = first_seg
+    for pattern, replacement in _GARBLED_AREA_REPLACEMENTS:
+        text = pattern.sub(replacement, text)
+    text = _validate_society_prefix(text)
+    text = _fuzzy_correct_landmark(text)
     # Strip model framing
     for prefix in ("```", "Answer:", "Answer :", "answer:",
                    "Crime Location:", "crime location:",
@@ -4496,6 +4807,88 @@ def _postprocess_crime_area_text(text: str) -> str:
     return text
 
 
+# ── Image preprocessing for crime_area vision-API calls ───────────────────
+# Free-tier vision models (Pixtral 12B, Gemini 2.5-flash) misread Urdu on
+# raw FIR scans because letters like بحریہ / گرے share visual shapes at low
+# resolution. Upscaling 2x with Lanczos + light sharpening + contrast bump
+# gives the model cleaner glyph edges and dramatically improves Urdu recall.
+# IMPORTANT: this helper is ONLY called from the three crime-area extractors.
+# Date/time and sections extraction continue to use the original raw bytes
+# so their accuracy is unaffected.
+from PIL import ImageEnhance as _ImageEnhance, ImageFilter as _ImageFilter, ImageOps as _ImageOps
+
+
+def _preprocess_image_for_area_ocr(image_bytes: bytes) -> bytes:
+    """Resize + sharpen + contrast-enhance for crime-area vision OCR.
+
+    Returns JPEG bytes on success, original bytes on any failure (so the
+    caller never has to handle errors). Only used by the area extractors.
+
+    Sizing strategy (chosen to fix two real failure modes we saw):
+      • Tiny images (<2MP):  upscale 2x with Lanczos so Urdu glyph edges are
+        crisp enough for the vision model to read.
+      • Huge images (>4MP):  downscale to ~3MP. A 19MB scan caused
+        SSLWantWriteError on Mistral and write timeouts on OpenRouter — the
+        upload buffer simply couldn't drain on a slow connection. Vision
+        models also read better off cleaner ~3MP frames than 19MB raws.
+      • In-between (2-4MP):  leave dimensions, just sharpen+contrast.
+    Output is JPEG at quality 88 (vs PNG before) — same visual quality for
+    OCR but ~5x smaller payload, which is the actual fix for the timeouts.
+    """
+    if not image_bytes or len(image_bytes) < 100:
+        return image_bytes
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img.load()  # force-decode now so corrupt files fail here, not later
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        pixels = img.width * img.height
+        TARGET_PIXELS = 3_000_000  # ~3MP — clean enough for any Urdu OCR
+        if pixels < 2_000_000:
+            scale = 2.0
+            new_size = (int(img.width * scale), int(img.height * scale))
+            img = img.resize(new_size, Image.LANCZOS)
+        elif pixels > 4_000_000:
+            scale = (TARGET_PIXELS / pixels) ** 0.5
+            new_size = (int(img.width * scale), int(img.height * scale))
+            img = img.resize(new_size, Image.LANCZOS)
+
+        # ── Quality enhancements for faded / noisy FIR scans ──────────────
+        # 1. Mild denoising via median filter (kernel 3) removes salt-and-
+        #    pepper noise that confuses Urdu OCR without smearing letters.
+        img = img.filter(_ImageFilter.MedianFilter(size=3))
+        # 2. Auto-contrast (PIL's analogue of CLAHE) — stretches the
+        #    histogram so faded printer ink reads as solid black again.
+        #    cutoff=1 trims the brightest/darkest 1% before stretching,
+        #    which prevents a single dark stamp or hole-punch shadow from
+        #    pinning the dynamic range.
+        img = _ImageOps.autocontrast(img, cutoff=1)
+        # 3. Sharpen — edges that survive denoising + autocontrast become
+        #    crisp. Slightly stronger radius than before because the image
+        #    is now cleaner so we can afford a bigger kernel.
+        img = img.filter(_ImageFilter.UnsharpMask(radius=1.5, percent=160, threshold=2))
+        # 4. Final contrast bump for the dim-ink case.
+        img = _ImageEnhance.Contrast(img).enhance(1.20)
+
+        out = io.BytesIO()
+        # JPEG quality 88 is visually indistinguishable from PNG for text
+        # while shrinking a 19MB scan to ~600KB — enough headroom that the
+        # SSL write buffer no longer stalls on slow uplinks.
+        img.save(out, format="JPEG", quality=88, optimize=True)
+        result = out.getvalue()
+        logger.info(
+            f"[Area OCR] preprocessed: {len(image_bytes)/1024/1024:.1f}MB "
+            f"→ {len(result)/1024/1024:.1f}MB ({img.width}x{img.height}px)"
+        )
+        return result
+    except Exception as e:
+        logger.warning(
+            f"[Area OCR] preprocessing failed ({type(e).__name__}: {e!r}) — "
+            f"falling back to raw bytes"
+        )
+        return image_bytes
+
+
 # ── Mistral AI (Pixtral) — PRIMARY vision API for crime_area ──────────────
 # Mistral's free tier ("La Plateforme") offers Pixtral 12B / Pixtral Large
 # with vision, at a rate limit of roughly 1 request/second and a much
@@ -4506,145 +4899,29 @@ import base64 as _mistral_base64
 
 _MISTRAL_API_KEY = _os_gemini.getenv("MISTRAL_API_KEY", "").strip()
 _MISTRAL_MODEL = _os_gemini.getenv("MISTRAL_MODEL", "pixtral-12b-2409")
-_MISTRAL_AVAILABLE = bool(_MISTRAL_API_KEY)
+# Mistral Pixtral 12B is DISABLED. The free-tier model hallucinates known
+# Lahore societies on FIR scans it can't read clearly — confidently
+# returning e.g. "بحریہ ٹاؤن سیکٹر G بلاک L" for an Ichra Market FIR with
+# score 10/10 on our heuristic. Disagreement override keeps the wrong
+# result from winning, but the model still wastes a parallel API call,
+# inflates per-request latency, and pollutes logs. Gemini 2.5 Flash alone
+# is more reliable. Set ENABLE_MISTRAL=1 to re-enable for testing.
+_MISTRAL_AVAILABLE = (
+    bool(_MISTRAL_API_KEY)
+    and _os_gemini.getenv("ENABLE_MISTRAL", "0") == "1"
+)
 if _MISTRAL_AVAILABLE:
     logger.info(f"✓ Mistral vision ready (model={_MISTRAL_MODEL})")
+else:
+    logger.info("Mistral vision disabled (set ENABLE_MISTRAL=1 to re-enable)")
 
 
-def extract_crime_area_with_mistral(image_bytes: bytes) -> str:
-    """Extract crime area via Mistral AI's Pixtral vision model.
-
-    Uses the same prompt as the Gemini path so outputs are interchangeable
-    after `_postprocess_crime_area_text`. Returns raw text or "" on failure.
-    """
-    if not _MISTRAL_AVAILABLE or not image_bytes:
-        return ""
-    mime = _sniff_image_mime(image_bytes)
-    try:
-        b64 = _mistral_base64.b64encode(image_bytes).decode("ascii")
-        data_url = f"data:{mime};base64,{b64}"
-        r = requests.post(
-            "https://api.mistral.ai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {_MISTRAL_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": _MISTRAL_MODEL,
-                "temperature": 0.15,
-                "max_tokens": 512,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": _GEMINI_PROMPT},
-                            {"type": "image_url", "image_url": data_url},
-                        ],
-                    }
-                ],
-            },
-            timeout=60,
-        )
-        if r.status_code == 429:
-            logger.warning(f"[Mistral] rate-limited: {r.text[:200]}")
-            return ""
-        r.raise_for_status()
-        data = r.json()
-        text = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            or ""
-        )
-        text = text.strip()
-        logger.warning(f"[Mistral] crime_area raw: {repr(text[:300])}")
-        return text
-    except Exception as e:
-        logger.error(f"[Mistral] crime_area extraction failed: {e}")
-        return ""
-
-
-# ── OpenRouter vision fallback for crime_area ─────────────────────────────
-# OpenRouter (openrouter.ai) offers `google/gemini-2.0-flash-exp:free` and
-# other vision models on its free tier (200 requests/day), on a quota pool
-# that is completely separate from the user's Google Gemini API key. This
-# gives a meaningful boost over Gemini's 20 RPD without requiring billing.
-# Sign up at openrouter.ai → Keys → create a key → put OPENROUTER_API_KEY
-# in your .env. Leave it blank and this path is skipped silently.
-import base64 as _or_base64
-
-_OPENROUTER_API_KEY = _os_gemini.getenv("OPENROUTER_API_KEY_For_Extraction", "").strip()
-_OPENROUTER_MODEL = _os_gemini.getenv(
-    "OPENROUTER_MODEL", "google/gemini-2.0-flash-exp:free"
-)
-_OPENROUTER_AVAILABLE = bool(_OPENROUTER_API_KEY)
-if _OPENROUTER_AVAILABLE:
-    logger.info(f"✓ OpenRouter vision fallback ready (model={_OPENROUTER_MODEL})")
-
-
-def extract_crime_area_with_openrouter(image_bytes: bytes) -> str:
-    """Extract crime area via OpenRouter's free vision routing.
-
-    Uses a free multimodal model (default: gemini-2.0-flash-exp:free) to
-    read the same crime_area row that Gemini/local OCR target. Called as a
-    later fallback when local OCR returned nothing and Gemini either is not
-    configured or has exhausted its daily quota.
-
-    Returns the raw Urdu string (or "" on failure). The caller applies the
-    same em-dash / comma / newline post-processing as the Gemini path.
-    """
-    if not _OPENROUTER_AVAILABLE or not image_bytes:
-        return ""
-    mime = _sniff_image_mime(image_bytes)
-    try:
-        b64 = _or_base64.b64encode(image_bytes).decode("ascii")
-        data_url = f"data:{mime};base64,{b64}"
-        r = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {_OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                # OpenRouter uses these two headers for attribution / rate-limiting
-                # tiers. Harmless placeholders.
-                "HTTP-Referer": "http://localhost:8000",
-                "X-Title": "CrimeVision FIR OCR",
-            },
-            json={
-                "model": _OPENROUTER_MODEL,
-                "temperature": 0.15,
-                "max_tokens": 512,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": _GEMINI_PROMPT},
-                            {"type": "image_url", "image_url": {"url": data_url}},
-                        ],
-                    }
-                ],
-            },
-            timeout=60,
-        )
-        if r.status_code == 429:
-            logger.warning(f"[OpenRouter] rate-limited: {r.text[:200]}")
-            return ""
-        r.raise_for_status()
-        data = r.json()
-        text = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            or ""
-        )
-        text = text.strip()
-        logger.warning(f"[OpenRouter] crime_area raw: {repr(text[:300])}")
-        return text
-    except Exception as e:
-        logger.error(f"[OpenRouter] crime_area extraction failed: {e}")
-        return ""
-
-
-_GEMINI_PROMPT = """You are reading a Punjab Police FIR (First Information Report) image (Lahore, Pakistan). Your job: extract the CRIME LOCATION from Row 4.
+# Mistral-specific prompt — restored from commit 7b23bb05b (the version that
+# was working well for Pixtral 12B yesterday). The newer prompt with the
+# explicit "REFERENCE LIST of common Lahore locations" + "DO NOT GUESS"
+# rules was making Pixtral worse, not better — the model is small enough
+# that long prompts confuse it. This simpler version stays out of its way.
+_MISTRAL_PROMPT = """You are reading a Punjab Police FIR (First Information Report) image (Lahore, Pakistan). Your job: extract the CRIME LOCATION from Row 4.
 
 Row 4 has the label: جائے وقوعہ و فاصلہ تھانہ سے اور سمت
 Its value always has this structure:
@@ -4675,8 +4952,264 @@ Examples of expected output (copy the style exactly — note commas and sub-bloc
 Now read the image and output ONLY the crime location string."""
 
 
-def _gemini_rate_limit_wait() -> None:
-    """Sleep just long enough to stay under the configured RPM ceiling."""
+def extract_crime_area_with_mistral(image_bytes: bytes) -> str:
+    """Extract crime area via Mistral AI's Pixtral vision model.
+
+    Uses a Mistral-specific shorter prompt — Pixtral 12B is a smaller model
+    and behaves better with concise instructions than the long Gemini prompt.
+    Output goes through the same post-processing as the Gemini path.
+    """
+    if not _MISTRAL_AVAILABLE or not image_bytes:
+        return ""
+    image_bytes = _preprocess_image_for_area_ocr(image_bytes)
+    mime = _sniff_image_mime(image_bytes)
+    try:
+        b64 = _mistral_base64.b64encode(image_bytes).decode("ascii")
+        data_url = f"data:{mime};base64,{b64}"
+        r = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {_MISTRAL_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": _MISTRAL_MODEL,
+                # 0.15 was the working config in commit 7b23bb05b. Higher
+                # values let Pixtral hallucinate; 0.0 made it stiff and miss
+                # accents/diacritics on Urdu glyphs.
+                "temperature": 0.15,
+                "max_tokens": 512,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": _MISTRAL_PROMPT},
+                            {"type": "image_url", "image_url": data_url},
+                        ],
+                    }
+                ],
+            },
+            # (connect_timeout, read_timeout). Hard cap at 25s total — beyond
+            # that the consensus deadline kicks in and Mistral's result would
+            # be discarded anyway, so don't drag the request out.
+            timeout=(8, 22),
+        )
+        if r.status_code == 429:
+            logger.warning(f"[Mistral] rate-limited: {r.text[:200]}")
+            return ""
+        r.raise_for_status()
+        data = r.json()
+        text = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            or ""
+        )
+        text = text.strip()
+        logger.warning(f"[Mistral] crime_area raw: {repr(text[:300])}")
+        return text
+    except Exception as e:
+        logger.error(f"[Mistral] crime_area extraction failed: {e}")
+        return ""
+
+
+# ── OpenRouter vision fallback for crime_area ─────────────────────────────
+# OpenRouter (openrouter.ai) offers `google/gemini-2.0-flash-exp:free` and
+# other vision models on its free tier (200 requests/day), on a quota pool
+# that is completely separate from the user's Google Gemini API key. This
+# gives a meaningful boost over Gemini's 20 RPD without requiring billing.
+# Sign up at openrouter.ai → Keys → create a key → put OPENROUTER_API_KEY
+# in your .env. Leave it blank and this path is skipped silently.
+import base64 as _or_base64
+
+_OPENROUTER_API_KEY = _os_gemini.getenv("OPENROUTER_API_KEY_For_Extraction", "").strip()
+# Default to a currently-active free vision model. The previous default
+# `google/gemini-2.0-flash-exp:free` was retired by OpenRouter and now
+# returns 404. As of 2026 the most reliable free vision routes are:
+#   • google/gemini-2.5-flash-image-preview:free  (latest Gemini, free tier)
+#   • meta-llama/llama-3.2-90b-vision-instruct:free  (large, slow)
+#   • qwen/qwen-2-vl-7b-instruct:free  (small, fast)
+# Override with OPENROUTER_MODEL in .env. If the chosen model returns 404,
+# the call site logs a clear diagnostic with a link to OpenRouter's catalog.
+_OPENROUTER_MODEL = _os_gemini.getenv(
+    "OPENROUTER_MODEL", "google/gemini-2.5-flash-image-preview:free"
+)
+_OPENROUTER_AVAILABLE = bool(_OPENROUTER_API_KEY)
+if _OPENROUTER_AVAILABLE:
+    logger.info(f"✓ OpenRouter vision fallback ready (model={_OPENROUTER_MODEL})")
+
+
+def extract_crime_area_with_openrouter(image_bytes: bytes) -> str:
+    """Extract crime area via OpenRouter's free vision routing.
+
+    Uses a free multimodal model (default: gemini-2.0-flash-exp:free) to
+    read the same crime_area row that Gemini/local OCR target. Called as a
+    later fallback when local OCR returned nothing and Gemini either is not
+    configured or has exhausted its daily quota.
+
+    Returns the raw Urdu string (or "" on failure). The caller applies the
+    same em-dash / comma / newline post-processing as the Gemini path.
+    """
+    if not _OPENROUTER_AVAILABLE or not image_bytes:
+        return ""
+    image_bytes = _preprocess_image_for_area_ocr(image_bytes)
+    mime = _sniff_image_mime(image_bytes)
+    try:
+        b64 = _or_base64.b64encode(image_bytes).decode("ascii")
+        data_url = f"data:{mime};base64,{b64}"
+        r = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {_OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                # OpenRouter uses these two headers for attribution / rate-limiting
+                # tiers. Harmless placeholders.
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "CrimeVision FIR OCR",
+            },
+            json={
+                "model": _OPENROUTER_MODEL,
+                "temperature": 0.15,
+                # Bumped from 512 because reasoning models (Nvidia Nemotron VL,
+                # newer Gemma) burn 500+ tokens on internal "reasoning" before
+                # emitting any content. With max_tokens=512 they hit the cap
+                # mid-thought and finish_reason=length with empty content.
+                # 2048 gives reasoning room AND space for the address output.
+                "max_tokens": 2048,
+                # Disable reasoning where the upstream supports the toggle.
+                # OpenRouter passes this through to compatible providers.
+                "reasoning": {"exclude": True},
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": _GEMINI_PROMPT},
+                            {"type": "image_url", "image_url": {"url": data_url}},
+                        ],
+                    }
+                ],
+            },
+            # OpenRouter is the LATER fallback so we can be slightly more
+            # patient than Mistral — but still bounded so a hung connection
+            # doesn't block the whole request indefinitely.
+            timeout=(8, 25),
+        )
+        if r.status_code == 429:
+            logger.warning(f"[OpenRouter] rate-limited: {r.text[:200]}")
+            return ""
+        if r.status_code == 404:
+            # 404 from OpenRouter = invalid/retired model name. Surface the
+            # actual server response so the operator can see which model and
+            # what OpenRouter says about it (often suggests a replacement).
+            logger.error(
+                f"[OpenRouter] 404 — model {_OPENROUTER_MODEL!r} does not exist. "
+                f"Set OPENROUTER_MODEL in .env to a currently-active free vision "
+                f"model. See https://openrouter.ai/models?fmt=table&order=newest "
+                f"and filter for vision support. Server response: {r.text[:400]}"
+            )
+            return ""
+        if r.status_code >= 400:
+            logger.error(
+                f"[OpenRouter] HTTP {r.status_code} for model "
+                f"{_OPENROUTER_MODEL!r}: {r.text[:400]}"
+            )
+            return ""
+        r.raise_for_status()
+        data = r.json()
+        choices = data.get("choices", [])
+        if not choices:
+            logger.error(f"[OpenRouter] no choices in response: {repr(str(data)[:500])}")
+            return ""
+        msg = choices[0].get("message", {})
+        content = msg.get("content", "")
+        # Some models return content as a list of parts (e.g. [{"type":"text","text":"..."}])
+        # rather than a flat string — handle both shapes.
+        if isinstance(content, list):
+            text_parts = [
+                p.get("text", "") for p in content
+                if isinstance(p, dict) and p.get("type") in (None, "text")
+            ]
+            text = " ".join(text_parts).strip()
+        else:
+            text = (content or "").strip()
+        # If we still ended up empty, dump the whole choice + finish_reason
+        # so the operator can see why the model produced nothing — common
+        # causes: safety refusal (finish_reason='content_filter'), token
+        # cap (finish_reason='length'), or the model emitting reasoning
+        # tokens we didn't capture.
+        if not text:
+            finish = choices[0].get("finish_reason", "?")
+            usage = data.get("usage", {})
+            logger.warning(
+                f"[OpenRouter] EMPTY content. finish_reason={finish!r}, "
+                f"usage={usage}, message_keys={list(msg.keys())}, "
+                f"raw_choice={repr(str(choices[0])[:600])}"
+            )
+        else:
+            logger.warning(f"[OpenRouter] crime_area raw: {repr(text[:300])}")
+        return text
+    except Exception as e:
+        logger.error(f"[OpenRouter] crime_area extraction failed: {e}")
+        return ""
+
+
+_GEMINI_PROMPT = """You are reading a Punjab Police FIR (First Information Report) image (Lahore, Pakistan). Your job: extract the CRIME LOCATION from Row 4.
+
+Row 4 has the label: جائے وقوعہ و فاصلہ تھانہ سے اور سمت
+Its value always has this structure:
+    <CRIME LOCATION>  —  <THANA NAME>  سے تقریباً  <DISTANCE>  <DIRECTION>
+
+Return ONLY the <CRIME LOCATION> part — everything BEFORE the em-dash (—), long dash (---), or three-or-more hyphens. The text after the dash is the thana reference and must NOT be included.
+
+CRITICAL — DO NOT GUESS. If you cannot clearly read the address in the image, return the single word UNREADABLE. Never invent or fabricate an address. Never substitute one society name for another just because it "looks similar" — that produces wrong answers, which is worse than no answer.
+
+REFERENCE LIST of common Lahore locations (use ONLY to disambiguate when you can read MOST of the text but a specific letter is genuinely unclear — e.g. you can clearly read "بحر?ہ ٹاؤن سیکٹر G" and need to confirm the unclear letter is "ی"). DO NOT pick from this list if the image text is fundamentally illegible:
+- بحریہ ٹاؤن (Bahria Town — sectors A through H, with blocks A-Z and sub-blocks)
+- بحریہ آرچرڈ (Bahria Orchard Phase 1 / Phase 2)
+- ڈی ایچ اے (DHA Phase 1 through Phase 9, with blocks A-Z)
+- آسکاری (Askari 1 through Askari 13, with blocks A-Z)
+- والینشیا ٹاؤن (Valencia Town, with blocks A-Z and sub-blocks)
+- واپڈا ٹاؤن (WAPDA Town Phase 1 / Phase 2)
+- لیک سٹی (Lake City sectors M1-M8)
+- لی ڈی اے سٹی (LDA City sectors 1-5)
+- پی سی ایس آئی آر (PCSIR Phase 1 / Phase 2)
+- پی آئی اے سوسائٹی (PIA Society)
+- ماڈل ٹاؤن، گلبرگ، جوہر ٹاؤن، فیصل ٹاؤن، گارڈن ٹاؤن، ٹاؤن شپ، گلشن راوی، علامہ اقبال ٹاؤن، سمن آباد، شالامار باغ، سبزہ زار
+- داتا دربار، انارکلی بازار، شاہ عالمی، لوہاری گیٹ، دہلی گیٹ، بھاٹی گیٹ، ریگل چوک، نیلا گنبد، ہال روڈ، لبرٹی مارکیٹ، مین بلیوارڈ گلبرگ، حفیظ سنٹر، قذافی اسٹیڈیم، الحمرا، ایمپوریئم مال، اولڈ انارکلی روڈ، فیروزپور روڈ، کینال روڈ، جیل روڈ، والٹن روڈ، ایم ایم عالم روڈ، مال روڈ، گرے نازن (this is always a misreading of بحریہ ٹاؤن — never output it).
+
+Rules:
+- Return the Urdu text EXACTLY as it appears in the image. If a word is unclear, transcribe what you literally see — DO NOT replace it with a similar-sounding known location.
+- If MOST of the image text is unclear or garbled, return UNREADABLE. It is better to return UNREADABLE than to guess a wrong address.
+- Return the COMPLETE address including every Block, Sub Block, Sector, Phase, House, Plot and Latin code letter (A, B, R, F, N, H, …) that appears.
+- Preserve spaces, parentheses, and Latin letters used as block/sub-block codes.
+- Commas (، or ,) BETWEEN structural address parts (e.g. "بلاک N، سب بلاک H") MUST be preserved.
+- DROP trailing street names ("گلی X روڈ"), nearby-landmark references (نزد / قریب / کے پاس / کے سامنے / near / opposite), and shop/house numbers — they hurt geocoding.
+- Do NOT translate. Do NOT transliterate. Do NOT add quotes. Do NOT add prefixes like "Answer:" or "Crime Location:".
+- If Row 4 has no dash at all, return the full pre-"سے" portion.
+- If Row 4 is truly illegible, return the single word: UNREADABLE
+
+Examples of expected output (copy the style exactly):
+- ڈی ایچ اے فیز 1 بلاک R سب بلاک F
+- لیک سٹی سیکٹر M7 سب بلاک N
+- آسکاری 11 بلاک C سب بلاک T
+- والینشیا ٹاؤن بلاک N سب بلاک H
+- بحریہ ٹاؤن سیکٹر F بلاک J سب بلاک Z
+- ایڈن آباد بلاک F، سب بلاک G
+- کھلاڑی گراؤنڈ سب بلاک D
+- داتا دربار
+- مین بلیوارڈ گلبرگ
+
+Now read the image and output ONLY the crime location string."""
+
+
+def _gemini_rate_limit_wait(key_idx: int = 0) -> None:
+    """Sleep just long enough to stay under the configured RPM ceiling.
+    Also bumps per-key + aggregate daily counters and logs visibility.
+
+    `key_idx` is the index of the API key being used (0-based). Per-key
+    counters reflect each Google account's independent 20 RPD pool.
+    """
+    global _gemini_daily_count, _gemini_daily_date
     with _gemini_lock:
         now = _time_gemini.monotonic()
         # Drop timestamps older than 60 seconds.
@@ -4691,6 +5224,40 @@ def _gemini_rate_limit_wait() -> None:
                 while _gemini_request_times and now - _gemini_request_times[0] > 60.0:
                     _gemini_request_times.popleft()
         _gemini_request_times.append(_time_gemini.monotonic())
+
+        # Daily quota tracking — reset on date change.
+        from datetime import date as _date
+        today_str = _date.today().isoformat()
+        if _gemini_daily_date != today_str:
+            if _gemini_daily_date is not None:
+                per_key_str = ", ".join(
+                    f"key{i + 1}={c}" for i, c in enumerate(_gemini_per_key_count)
+                )
+                logger.info(
+                    f"[Gemini] daily quota reset — yesterday "
+                    f"used {_gemini_daily_count} total ({per_key_str}) "
+                    f"on {_gemini_daily_date}"
+                )
+            _gemini_daily_date = today_str
+            _gemini_daily_count = 0
+            for i in range(len(_gemini_per_key_count)):
+                _gemini_per_key_count[i] = 0
+        _gemini_daily_count += 1
+        if 0 <= key_idx < len(_gemini_per_key_count):
+            _gemini_per_key_count[key_idx] += 1
+        # Aggregate quota = sum of all per-key budgets.
+        total_quota = _GEMINI_DAILY_QUOTA * max(1, len(_gemini_per_key_count))
+        remaining = max(0, total_quota - _gemini_daily_count)
+        log_fn = logger.info if remaining > 5 else logger.warning
+        per_key_str = ", ".join(
+            f"key{i + 1}={c}/{_GEMINI_DAILY_QUOTA}"
+            for i, c in enumerate(_gemini_per_key_count)
+        )
+        log_fn(
+            f"[Gemini quota] request #{_gemini_daily_count}/{total_quota} "
+            f"today across {len(_gemini_per_key_count)} key(s) "
+            f"— {remaining} FIR(s) left ({per_key_str})"
+        )
 
 
 def _sniff_image_mime(image_bytes: bytes) -> str:
@@ -4726,6 +5293,7 @@ def extract_crime_area_with_gemini(image_bytes: bytes) -> str:
         return ""
     if not image_bytes:
         return ""
+    image_bytes = _preprocess_image_for_area_ocr(image_bytes)
     mime = _sniff_image_mime(image_bytes)
     try:
         response = _gemini_generate_with_cascade(
@@ -4754,6 +5322,11 @@ def extract_crime_area_with_gemini(image_bytes: bytes) -> str:
             if text.startswith(prefix):
                 text = text[len(prefix):].strip()
         text = text.strip('`"\'“”‘’').strip()
+        # Repair known garbled Bahria Town variants before any other cuts.
+        for pattern, replacement in _GARBLED_AREA_REPLACEMENTS:
+            text = pattern.sub(replacement, text)
+        # Repair unknown society prefixes via fuzzy match against canonical list.
+        text = _validate_society_prefix(text)
         # Drop trailing em-dash / thana fragment if the model included the full
         # row despite the instructions.
         for sep in ("—", "---", "--", "– "):
@@ -4771,8 +5344,8 @@ def extract_crime_area_with_gemini(image_bytes: bytes) -> str:
         # treated as extraneous and cut.
         _ADDRESS_CONTINUATION_AFTER_COMMA = re.compile(
             r"^\s*("
-            r"سب\s*بلاک|بلاک|سیکٹر|گلی|سٹریٹ|پلاٹ|مکان|فیز|فلیٹ|"
-            r"sub\s*block|sub-?block|block|sector|phase|gali|street|plot|house|flat|lane"
+            r"سب\s*بلاک|بلاک|سیکٹر|پلاٹ|مکان|فیز|فلیٹ|"
+            r"sub\s*block|sub-?block|block|sector|phase|plot|house|flat"
             r")\b",
             flags=re.IGNORECASE,
         )
@@ -8283,6 +8856,23 @@ class FIRExtractor:
                         time_str = f"{hh}:{mm} {ap}"
                         break
 
+            # No-colon fallback: Tesseract often loses faint colons → "0920PM"
+            # → parse as HHMM (last 2 digits are minutes).
+            if not time_str:
+                tm = re.search(r"\b(\d{3,4})\s*([AaPp][Mm])\b", cleaned)
+                if tm:
+                    digits = tm.group(1)
+                    ap = tm.group(2).upper()
+                    mm = digits[-2:]
+                    hh_str = digits[:-2]
+                    try:
+                        hh_int = int(hh_str)
+                        mm_int = int(mm)
+                        if 1 <= hh_int <= 12 and 0 <= mm_int <= 59:
+                            time_str = f"{hh_int}:{mm} {ap}"
+                    except ValueError:
+                        pass
+
             # Ultimate fallback for time: look for ANY HH:MM pattern and
             # accept 24-hour if no AM/PM is present (convert to 12-hour).
             if not time_str:
@@ -8810,6 +9400,28 @@ class FIRExtractor:
             logger.info(f"[Time] fallback matched '{fallback.group(0)}' → {time_part} {ampm_part}")
             return f"{time_part} {ampm_part}"
 
+        # ── Fallback 2: OCR drops colon entirely → "0920PM" / "920PM" ──
+        # Tesseract often loses faint colons in scanned FIRs, leaving 3-4
+        # consecutive digits glued to AM/PM. Parse as HHMM (last 2 = minutes).
+        fallback2 = re.search(r'\b(\d{3,4})\s*([AaPp][Mm])\b', normalised)
+        if fallback2:
+            digits = fallback2.group(1)
+            ampm_part = fallback2.group(2).upper()
+            mm = digits[-2:]
+            hh = digits[:-2]  # 1 or 2 digits
+            try:
+                hh_int = int(hh)
+                mm_int = int(mm)
+                if 1 <= hh_int <= 12 and 0 <= mm_int <= 59:
+                    time_part = f"{hh_int}:{mm}"
+                    logger.info(
+                        f"[Time] no-colon fallback matched '{fallback2.group(0)}' "
+                        f"→ {time_part} {ampm_part}"
+                    )
+                    return f"{time_part} {ampm_part}"
+            except ValueError:
+                pass
+
         logger.info(f"[Time] no match in text: {repr(normalised[:120])}")
         return None
 
@@ -9323,31 +9935,208 @@ class FIRExtractor:
                     logger.warning(f"[Header fallback] failed: {_he}")
 
             sections = self.extract_sections(image)
-            
-            # Crime area cascade — AI first so sub-block details don't get
-            # chopped off by local OCR's narrow strips. Local OCR is the
-            # last-resort fallback. Priority:
-            #   1. Mistral Pixtral (large free quota, primary AI)
-            #   2. OpenRouter (200 RPD free, separate quota pool)
-            #   3. Gemini 2.5-flash (20 RPD free, safety net)
-            #   4. Local OCR (EasyOCR + Tesseract, unlimited, always succeeds
-            #      at something even if imperfect)
+
+            # Crime area: Mistral + Gemini run IN PARALLEL, scored against
+            # the canonical Lahore-society dictionary; the higher-scoring
+            # output wins. This avoids the old failure mode where Mistral's
+            # garbled "گرے نازن سیکٹر G بلاک D" was accepted because the
+            # cascade stopped at the first non-empty result. OpenRouter and
+            # local OCR remain as later fallbacks. Date/time/sections paths
+            # are unchanged — they don't go through this consensus.
             crime_area = ""
             crime_area_source = "ocr"
 
-            # 1. Mistral (primary AI)
-            if _MISTRAL_AVAILABLE:
-                try:
-                    m_text = extract_crime_area_with_mistral(image_bytes)
-                    if m_text:
-                        cleaned = _postprocess_crime_area_text(m_text)
-                        if cleaned:
-                            crime_area = cleaned
-                            crime_area_source = "mistral"
-                except Exception as _me:
-                    logger.error(f"[Mistral] crime_area extraction failed: {_me}")
+            def _score_area_candidate(t: str) -> float:
+                if not t:
+                    return 0.0
+                score = 0.0
+                if any(t.startswith(p) for p in _KNOWN_SOCIETY_PREFIXES):
+                    score += 5.0
+                if re.search(r"(سیکٹر|فیز)\s*\S+\s*بلاک\s*\S+", t):
+                    score += 3.0
+                if re.search(r"سب\s*بلاک\s*\S+", t):
+                    score += 2.0
+                urdu_word_count = sum(
+                    1 for w in t.split()
+                    if any('؀' <= c <= 'ۿ' for c in w)
+                )
+                score += min(urdu_word_count, 6) * 0.5
+                return score
 
-            # 2. OpenRouter (fallback AI)
+            candidates = []  # list of (score, cleaned_text, source)
+
+            # Threshold above which we trust the first result and skip
+            # waiting for the second model. Score = 5 (known society) + 3
+            # (sector/block) = 8. Sub-block adds another 2 so a complete
+            # "بحریہ ٹاؤن سیکٹر G بلاک D سب بلاک F" scores ~12. Anything ≥ 8
+            # means the model gave us a known society + structural address,
+            # which is essentially the best the API can produce.
+            # NOTE: early-exit on a "strong score" was REMOVED because Pixtral
+            # 12B (Mistral) hallucinates known societies — when it can't read
+            # the address it confidently substitutes a list member, scoring
+            # 10/10 on our heuristic and triggering early-exit before Gemini
+            # could disagree. We now ALWAYS wait for both models when both
+            # are configured, and use score + Gemini-tiebreak to pick winner.
+            STRONG_SCORE = 999.0  # effectively disabled
+            # Total budget for the consensus stage. If both models are slow
+            # we still want to give up well before the user sees a stalled
+            # request. Each individual API call has its own internal timeout
+            # (~25s for Mistral, ~30s for Gemini); this is the upper bound
+            # for the COMBINED wait.
+            CONSENSUS_TIMEOUT = 50.0
+            # If the deadline hits but we have ZERO candidates, give the
+            # last pending model a short grace period before falling through
+            # to OpenRouter / local OCR. Gemini sometimes returns a perfect
+            # result at t=40-55s on slow uplinks; without this grace the
+            # answer arrives AFTER local OCR has already started.
+            EMPTY_CANDIDATE_GRACE = 15.0
+
+            def _process_future_result(fut, source_name):
+                """Pull a future's result through post-processing and into
+                `candidates`. Returns (added, score). All exceptions are
+                logged and swallowed so a single failure can't drop other
+                candidates."""
+                try:
+                    raw = fut.result(timeout=0) or ""
+                except Exception as _fe:
+                    logger.error(f"[{source_name}] crime_area extraction raised: {_fe}")
+                    return False, 0.0
+                if not raw:
+                    return False, 0.0
+                try:
+                    cleaned = _postprocess_crime_area_text(raw)
+                except Exception as _pe:
+                    logger.error(f"[{source_name}] post-processing raised: {_pe}")
+                    return False, 0.0
+                if not cleaned:
+                    return False, 0.0
+                score = _score_area_candidate(cleaned)
+                candidates.append((score, cleaned, source_name))
+                logger.info(
+                    f"[Crime Area] {source_name} candidate score={score:.1f} "
+                    f"value={repr(cleaned[:80])}"
+                )
+                return True, score
+
+            if _MISTRAL_AVAILABLE or _GEMINI_AVAILABLE:
+                from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+                pool = ThreadPoolExecutor(max_workers=2)
+                early_exit = False
+                pending = set()
+                try:
+                    futures = {}
+                    if _MISTRAL_AVAILABLE:
+                        f = pool.submit(extract_crime_area_with_mistral, image_bytes)
+                        futures[f] = "mistral"
+                        pending.add(f)
+                    if _GEMINI_AVAILABLE:
+                        f = pool.submit(extract_crime_area_with_gemini, image_bytes)
+                        futures[f] = "gemini"
+                        pending.add(f)
+
+                    deadline = time.monotonic() + CONSENSUS_TIMEOUT
+                    while pending and not early_exit:
+                        remaining = max(0.1, deadline - time.monotonic())
+                        done, pending = wait(pending, timeout=remaining, return_when=FIRST_COMPLETED)
+                        if not done:
+                            # Hit deadline. If we already have ANY candidate, take
+                            # what we've got. If candidates is empty (worst case —
+                            # Mistral failed/empty), give the last pending future
+                            # a short grace before falling through. Otherwise we
+                            # lose Gemini's slow-but-correct answer to a 35-50s
+                            # network upload.
+                            if not candidates and pending:
+                                logger.warning(
+                                    f"[Crime Area] consensus deadline {CONSENSUS_TIMEOUT}s hit "
+                                    f"with no candidates yet — granting "
+                                    f"{EMPTY_CANDIDATE_GRACE}s grace to {len(pending)} pending"
+                                )
+                                done, pending = wait(
+                                    pending,
+                                    timeout=EMPTY_CANDIDATE_GRACE,
+                                    return_when=FIRST_COMPLETED,
+                                )
+                                if not done:
+                                    logger.warning(
+                                        f"[Crime Area] grace period exhausted, "
+                                        f"falling through with empty candidates"
+                                    )
+                                    break
+                                # fall through to processing block below
+                            else:
+                                logger.warning(
+                                    f"[Crime Area] consensus deadline {CONSENSUS_TIMEOUT}s hit "
+                                    f"with {len(pending)} model(s) still pending; "
+                                    f"using {len(candidates)} existing candidate(s)"
+                                )
+                                break
+                        for fut in done:
+                            source_name = futures[fut]
+                            _, score = _process_future_result(fut, source_name)
+                            if score >= STRONG_SCORE:
+                                logger.info(
+                                    f"[Crime Area] {source_name} returned strong result "
+                                    f"(score={score:.1f}) — skipping other model"
+                                )
+                                early_exit = True
+                                break
+                finally:
+                    # Don't block the user on still-pending models. Cancel what we can;
+                    # any future that's already inside its requests.post call will be
+                    # left to finish in the background (Python can't kill a thread).
+                    for f in pending:
+                        f.cancel()
+                    pool.shutdown(wait=False)
+
+            if candidates:
+                # Default ranking: higher score wins, with tiny Gemini bonus on ties.
+                def _sort_key(c):
+                    score, _txt, src = c
+                    return score + (0.1 if src == "gemini" else 0.0)
+                candidates.sort(key=_sort_key, reverse=True)
+                summary = ", ".join(
+                    f"{src}={score:.1f}:{repr(txt[:60])}"
+                    for score, txt, src in candidates
+                )
+                logger.warning(f"[Crime Area] candidates: {summary}")
+
+                # Disagreement override: when Mistral and Gemini share zero
+                # significant Urdu words, one of them has hallucinated. Pixtral
+                # 12B confidently fabricates known societies when it can't read
+                # — scoring 10/10 on our heuristic — while Gemini 2.5 Flash
+                # tends to read what's actually there even if garbled. So in
+                # the disagreement case we OVERRIDE the score and always pick
+                # Gemini's answer if present. (Empirically validated on the
+                # FIR_20 / Ichra Market case where Mistral hallucinated
+                # "بحریہ ٹاؤن سیکٹر G بلاک L" with score=10 vs Gemini's
+                # closer-to-correct "امیر مارکیٹ" with score=1.)
+                pick = candidates[0]
+                if len(candidates) >= 2:
+                    top_words = set(candidates[0][1].split())
+                    other_words = set(candidates[1][1].split())
+                    common = {
+                        w for w in top_words & other_words
+                        if len(w) >= 3 and any('؀' <= c <= 'ۿ' for c in w)
+                    }
+                    if not common:
+                        logger.warning(
+                            f"[Crime Area] ⚠ models DISAGREE strongly — "
+                            f"top={repr(candidates[0][1])} "
+                            f"other={repr(candidates[1][1])}"
+                        )
+                        gemini_cand = next(
+                            (c for c in candidates if c[2] == "gemini"), None
+                        )
+                        if gemini_cand and gemini_cand is not pick:
+                            logger.warning(
+                                f"[Crime Area] disagreement override → preferring "
+                                f"gemini ({repr(gemini_cand[1])}) over "
+                                f"{pick[2]} ({repr(pick[1])})"
+                            )
+                            pick = gemini_cand
+                _, crime_area, crime_area_source = pick
+
+            # Fallback 1: OpenRouter (separate quota pool)
             if not crime_area and _OPENROUTER_AVAILABLE:
                 try:
                     or_text = extract_crime_area_with_openrouter(image_bytes)
@@ -9359,18 +10148,7 @@ class FIRExtractor:
                 except Exception as _oe:
                     logger.error(f"[OpenRouter] crime_area fallback failed: {_oe}")
 
-            # 3. Gemini (safety net, small 20/day quota)
-            if not crime_area and _GEMINI_AVAILABLE:
-                try:
-                    gemini_text = extract_crime_area_with_gemini(image_bytes)
-                    if gemini_text:
-                        crime_area = gemini_text
-                        crime_area_source = "gemini"
-                except Exception as _ge:
-                    logger.error(f"[Gemini] crime_area fallback failed: {_ge}")
-
-            # 4. Local OCR (last resort) — only consult if every AI path failed
-            # or none were configured. Runs the full multi-engine pipeline.
+            # Fallback 2: Local OCR — last resort if every AI path failed.
             if not crime_area:
                 try:
                     local_area = self.extract_crime_area(image) or ""
@@ -9428,7 +10206,37 @@ class FIRExtractor:
                     "crime_time": crime_time is not None,
                     "crime_area": crime_area != "",
                     "sections": len(sections) > 0
-                }
+                },
+                # Quota visibility for the admin UI: shows how many Gemini
+                # requests are left today (sum across the multi-key rotation
+                # pool — each Google account contributes its own daily quota).
+                # Set to None when Gemini is disabled so the frontend hides
+                # the badge.
+                "gemini_quota": (
+                    {
+                        "used_today": _gemini_daily_count,
+                        "daily_limit": _GEMINI_DAILY_QUOTA * max(1, len(_gemini_per_key_count)),
+                        "remaining": max(
+                            0,
+                            _GEMINI_DAILY_QUOTA * max(1, len(_gemini_per_key_count))
+                            - _gemini_daily_count,
+                        ),
+                        "date": _gemini_daily_date or "",
+                        "key_count": len(_gemini_per_key_count),
+                        "per_key_used": list(_gemini_per_key_count),
+                    }
+                    if _GEMINI_AVAILABLE
+                    else None
+                ),
+                # Low-confidence flag — admin should manually verify these.
+                # Triggers when crime_area lacks structural clues (no known
+                # society, no sector/block) which usually means the model
+                # guessed at a faded / poor-quality scan.
+                "low_confidence_area": (
+                    bool(crime_area)
+                    and not any(crime_area.startswith(p) for p in _KNOWN_SOCIETY_PREFIXES)
+                    and not re.search(r"(سیکٹر|فیز)\s*\S+\s*بلاک\s*\S+", crime_area)
+                ),
             }
             
             logger.info("=" * 50)

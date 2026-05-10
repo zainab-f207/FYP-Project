@@ -27,6 +27,8 @@ const KEY_MAP = {
   superadmin_session_timeout: { state: 'superadminSessionTimeout', type: 'number' },
   max_login_attempts: { state: 'maxLoginAttempts', type: 'number' },
   lockout_duration: { state: 'lockoutDuration', type: 'number' },
+  unverified_warning_after_days: { state: 'unverifiedWarningAfterDays', type: 'number' },
+  unverified_delete_after_days: { state: 'unverifiedDeleteAfterDays', type: 'number' },
   password_min_length: { state: 'passwordMinLength', type: 'number' },
   admin_password_min_length: { state: 'adminPasswordMinLength', type: 'number' },
   superadmin_password_min_length: { state: 'superadminPasswordMinLength', type: 'number' },
@@ -104,6 +106,8 @@ const DEFAULTS = {
   superadminSessionTimeout: 60,
   maxLoginAttempts: 5,
   lockoutDuration: 30,
+  unverifiedWarningAfterDays: 6,
+  unverifiedDeleteAfterDays: 7,
   passwordMinLength: 8,
   adminPasswordMinLength: 10,
   superadminPasswordMinLength: 12,
@@ -145,13 +149,13 @@ const DEFAULTS = {
   monitorJobMaxInstances: 1,
   incidentPollIntervalMinutes: 1,
   incidentPollJobMaxInstances: 1,
-  modelWatcherRetrainThresholdNewCrimes: 500,
+  modelWatcherRetrainThresholdNewCrimes: 10,
   modelWatcherRetrainThresholdNewAreas: 5,
   modelWatcherRetrainThresholdNewCrimeTypes: 10,
   modelWatcherCheckIntervalSeconds: 3600,
   modelWatcherRetrainTimeoutSeconds: 600,
-  autoRetrainOovPairThreshold: 20,
-  autoRetrainNewRecordThreshold: 50,
+  autoRetrainOovPairThreshold: 10,
+  autoRetrainNewRecordThreshold: 10,
   autoRetrainMinIntervalSeconds: 3600,
   runInitialMonitorOnStartup: true,
   weeklyReportsEnabled: true,
@@ -181,6 +185,9 @@ const SystemSettings = () => {
   const [modelMeta, setModelMeta]       = useState(null);
   const [retraining, setRetraining]     = useState(false);
   const [retrainMsg, setRetrainMsg]     = useState(null);
+  const [cleanupRunning, setCleanupRunning] = useState(false);
+  const [cleanupResult, setCleanupResult]   = useState(null);
+  const [cleanupTestMode, setCleanupTestMode] = useState(false);
 
   const loadSettings = useCallback(async () => {
     if (!token) return;
@@ -229,14 +236,61 @@ const SystemSettings = () => {
     setRetraining(true);
     setRetrainMsg(null);
     try {
+      const before = await apiService.getModelRetrainStatus(token).catch(() => null);
       const res = await apiService.triggerRetrain(token);
-      const newDate = res?.last_train_date || new Date().toISOString().slice(0, 10);
-      setModelMeta(prev => ({ ...prev, last_train_date: newDate, records_since_last_train: 0 }));
-      setRetrainMsg({ type: 'success', text: res?.message || 'Model retrained successfully.' });
+      setRetrainMsg({ type: 'success', text: res?.message || 'Retrain launched. Waiting for completion...' });
+
+      const startCount = Number(before?.retrain_count || 0);
+      const startTs = Number(before?.last_retrain || 0);
+      let completed = false;
+
+      for (let i = 0; i < 80; i += 1) {
+        // Poll every 5s for up to ~6m40s
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        // eslint-disable-next-line no-await-in-loop
+        const now = await apiService.getModelRetrainStatus(token).catch(() => null);
+        const nowCount = Number(now?.retrain_count || 0);
+        const nowTs = Number(now?.last_retrain || 0);
+        if (nowCount > startCount || nowTs > startTs) {
+          completed = true;
+          const doneDate = nowTs > 0
+            ? new Date(nowTs * 1000).toISOString().slice(0, 10)
+            : new Date().toISOString().slice(0, 10);
+          setModelMeta(prev => ({ ...prev, last_train_date: doneDate, records_since_last_train: 0 }));
+          setRetrainMsg({ type: 'success', text: 'Retrain completed successfully. New RF, Poisson, and legacy RF are refreshed.' });
+          message.success('Model retrain completed successfully');
+          break;
+        }
+      }
+
+      if (!completed) {
+        setRetrainMsg({
+          type: 'success',
+          text: 'Retrain is still running in background. Check again in a minute.',
+        });
+      }
     } catch (err) {
       setRetrainMsg({ type: 'error', text: err?.message || 'Retraining failed. Check backend logs.' });
     } finally {
       setRetraining(false);
+    }
+  };
+
+  const handleRunCleanup = async () => {
+    setCleanupRunning(true);
+    setCleanupResult(null);
+    try {
+      const res = await apiService.runUnverifiedCleanup(token, cleanupTestMode
+        ? { warningAfterDays: 0, deleteAfterDays: 0, notifyAdmins: false }
+        : { notifyAdmins: true });
+      setCleanupResult(res);
+      message.success(`Cleanup ran — warned ${res.warned_count}, deleted ${res.deleted_count}`);
+    } catch (err) {
+      message.error(err?.message || 'Cleanup failed — check backend logs');
+      setCleanupResult({ error: err?.message || 'Cleanup failed' });
+    } finally {
+      setCleanupRunning(false);
     }
   };
 
@@ -288,8 +342,31 @@ const SystemSettings = () => {
     }
   };
 
+  const deriveWatcherThresholds = (newCrimeReports) => {
+    const n = Math.max(1, Number(newCrimeReports) || 1);
+    const minIntervalSeconds = n <= 10 ? 900 : (n <= 50 ? 1800 : 3600);
+    return {
+      modelWatcherRetrainThresholdNewAreas: Math.max(1, Math.round(n / 100)),
+      modelWatcherRetrainThresholdNewCrimeTypes: Math.max(1, Math.round(n / 50)),
+      autoRetrainOovPairThreshold: n,
+      autoRetrainNewRecordThreshold: n,
+      autoRetrainMinIntervalSeconds: minIntervalSeconds,
+    };
+  };
+
   const handleSettingChange = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettings(prev => {
+      const next = { ...prev, [key]: value };
+      if (key === 'modelWatcherRetrainThresholdNewCrimes') {
+        const derived = deriveWatcherThresholds(value);
+        next.modelWatcherRetrainThresholdNewAreas = derived.modelWatcherRetrainThresholdNewAreas;
+        next.modelWatcherRetrainThresholdNewCrimeTypes = derived.modelWatcherRetrainThresholdNewCrimeTypes;
+        next.autoRetrainOovPairThreshold = derived.autoRetrainOovPairThreshold;
+        next.autoRetrainNewRecordThreshold = derived.autoRetrainNewRecordThreshold;
+        next.autoRetrainMinIntervalSeconds = derived.autoRetrainMinIntervalSeconds;
+      }
+      return next;
+    });
   };
 
   if (loading) {
@@ -321,8 +398,8 @@ const SystemSettings = () => {
 
                 <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#93c5fd' }}>Regular User Authentication</div>
-                  <Form.Item label={<span>User Session Timeout (minutes) <Tooltip title="How long a normal user stays signed in"><InfoCircleOutlined style={{ marginLeft: 6, color: 'rgba(255,255,255,0.35)' }} /></Tooltip></span>}>
-                    <InputNumber min={30} max={43200} value={settings.userSessionTimeout} onChange={(v) => handleSettingChange('userSessionTimeout', v)} style={{ width: '100%' }} />
+                  <Form.Item label={<span>User Session Timeout (minutes) <Tooltip title="How long a normal user stays signed in. Common: 43200 = 30 days, 525600 = 1 year"><InfoCircleOutlined style={{ marginLeft: 6, color: 'rgba(255,255,255,0.35)' }} /></Tooltip></span>}>
+                    <InputNumber min={30} max={525600} value={settings.userSessionTimeout} onChange={(v) => handleSettingChange('userSessionTimeout', v)} style={{ width: '100%' }} />
                   </Form.Item>
                   <Form.Item label={<span>User Password Length <Tooltip title="Minimum characters required for regular users"><InfoCircleOutlined style={{ marginLeft: 6, color: 'rgba(255,255,255,0.35)' }} /></Tooltip></span>}>
                     <InputNumber min={6} max={20} value={settings.passwordMinLength} onChange={(v) => handleSettingChange('passwordMinLength', v)} style={{ width: '100%' }} />
@@ -366,6 +443,79 @@ const SystemSettings = () => {
                   <Form.Item label={<span>Lockout Duration (minutes) <Tooltip title="How long the lock stays active"><InfoCircleOutlined style={{ marginLeft: 6, color: 'rgba(255,255,255,0.35)' }} /></Tooltip></span>}>
                     <InputNumber min={5} max={120} value={settings.lockoutDuration} onChange={(v) => handleSettingChange('lockoutDuration', v)} style={{ width: '100%' }} />
                   </Form.Item>
+                </div>
+
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, marginTop: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: '#fca5a5' }}>Unverified Account Cleanup</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginBottom: 10 }}>
+                    Background job runs every 6 hours. Users who don't verify their email get a warning email at "Warn after", then are deleted at "Delete after".
+                  </div>
+                  <Form.Item label={<span>Warn After (days) <Tooltip title="Send a 'your account will be deleted soon' warning email when an unverified account is older than this many days"><InfoCircleOutlined style={{ marginLeft: 6, color: 'rgba(255,255,255,0.35)' }} /></Tooltip></span>}>
+                    <InputNumber min={1} max={30} value={settings.unverifiedWarningAfterDays} onChange={(v) => handleSettingChange('unverifiedWarningAfterDays', v)} style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item label={<span>Delete After (days) <Tooltip title="Permanently delete unverified accounts older than this many days. Must be greater than Warn After"><InfoCircleOutlined style={{ marginLeft: 6, color: 'rgba(255,255,255,0.35)' }} /></Tooltip></span>}>
+                    <InputNumber min={2} max={60} value={settings.unverifiedDeleteAfterDays} onChange={(v) => handleSettingChange('unverifiedDeleteAfterDays', v)} style={{ width: '100%' }} />
+                  </Form.Item>
+
+                  <div style={{ background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 12, marginTop: 8 }}>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>
+                      Run the cleanup job manually for testing. Normally fires every 6 hours.
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <Tooltip title="When ON, this run uses 0 days for both thresholds — every unverified account gets warned + deleted regardless of age. Use only for end-to-end testing.">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                          <Switch size="small" checked={cleanupTestMode} onChange={setCleanupTestMode} />
+                          <span style={{ fontSize: 12, color: cleanupTestMode ? '#fca5a5' : 'rgba(255,255,255,0.7)' }}>
+                            Test mode (ignore TTL — process every unverified user)
+                          </span>
+                        </label>
+                      </Tooltip>
+                    </div>
+                    <Button
+                      icon={<ReloadOutlined />}
+                      onClick={handleRunCleanup}
+                      loading={cleanupRunning}
+                      danger={cleanupTestMode}
+                      type={cleanupTestMode ? 'primary' : 'default'}
+                    >
+                      {cleanupTestMode ? 'Run cleanup NOW (test mode)' : 'Run cleanup now'}
+                    </Button>
+
+                    {cleanupResult && (
+                      <div style={{ marginTop: 10, fontSize: 12 }}>
+                        {cleanupResult.error ? (
+                          <div style={{ color: '#ef4444' }}>Error: {cleanupResult.error}</div>
+                        ) : (
+                          <>
+                            <div style={{ color: 'rgba(255,255,255,0.75)', marginBottom: 6 }}>
+                              <Tag color="orange">Warned {cleanupResult.warned_count ?? 0}</Tag>
+                              <Tag color="red">Deleted {cleanupResult.deleted_count ?? 0}</Tag>
+                              <span style={{ color: 'rgba(255,255,255,0.45)' }}>
+                                · warn_after={cleanupResult.warning_after_days}d
+                                · delete_after={cleanupResult.delete_after_days}d
+                              </span>
+                            </div>
+                            {Array.isArray(cleanupResult.warned) && cleanupResult.warned.length > 0 && (
+                              <div style={{ marginBottom: 4 }}>
+                                <span style={{ color: '#fbbf24' }}>Warned:</span>{' '}
+                                <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+                                  {cleanupResult.warned.map((u) => u.email).join(', ')}
+                                </span>
+                              </div>
+                            )}
+                            {Array.isArray(cleanupResult.deleted) && cleanupResult.deleted.length > 0 && (
+                              <div>
+                                <span style={{ color: '#ef4444' }}>Deleted:</span>{' '}
+                                <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+                                  {cleanupResult.deleted.map((u) => u.email).join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </Form>
             </Card>
@@ -525,7 +675,7 @@ const SystemSettings = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
                 <div style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: 8, padding: '10px 14px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginBottom: 4 }}>Last trained</div><div style={{ fontWeight: 700, color: '#a78bfa', fontSize: '0.92rem' }}>{modelMeta?.last_train_date || '—'}</div></div>
                 <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 8, padding: '10px 14px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginBottom: 4 }}>Total records</div><div style={{ fontWeight: 700, color: '#3b82f6', fontSize: '0.92rem' }}>{modelMeta?.total_records != null ? modelMeta.total_records.toLocaleString() : '—'}</div></div>
-                <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 8, padding: '10px 14px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginBottom: 4 }}>Records since retrain</div><div style={{ fontWeight: 700, color: modelMeta?.records_since_last_train > 500 ? '#f97316' : '#22c55e', fontSize: '0.92rem' }}>{modelMeta?.records_since_last_train != null ? modelMeta.records_since_last_train.toLocaleString() : '—'}{modelMeta?.records_since_last_train > 500 && (<Tag color="orange" style={{ marginLeft: 8, fontSize: '0.7rem' }}>Retrain recommended</Tag>)}</div></div>
+                <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 8, padding: '10px 14px' }}><div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginBottom: 4 }}>Records since retrain</div><div style={{ fontWeight: 700, color: modelMeta?.records_since_last_train > 10 ? '#f97316' : '#22c55e', fontSize: '0.92rem' }}>{modelMeta?.records_since_last_train != null ? modelMeta.records_since_last_train.toLocaleString() : '—'}{modelMeta?.records_since_last_train > 10 && (<Tag color="orange" style={{ marginLeft: 8, fontSize: '0.7rem' }}>Retrain recommended</Tag>)}</div></div>
               </div>
               <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#c4b5fd' }}>Automatic model check</div>

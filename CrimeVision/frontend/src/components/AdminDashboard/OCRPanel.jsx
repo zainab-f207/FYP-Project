@@ -45,6 +45,8 @@ const OCRPanel = ({ token }) => {
   const [confidence, setConfidence] = useState(null);
   const [extractedFields, setExtractedFields] = useState(null);
   const [extractedSections, setExtractedSections] = useState([]);
+  const [geminiQuota, setGeminiQuota] = useState(null);
+  const [lowConfidenceArea, setLowConfidenceArea] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -198,6 +200,8 @@ const OCRPanel = ({ token }) => {
         });
       }
       if (result.sections) setExtractedSections(result.sections);
+      setGeminiQuota(result.gemini_quota || null);
+      setLowConfidenceArea(Boolean(result.low_confidence_area));
       setNewSectionInput('');
     } catch (err) {
       // If the popup wasn't already opened above (e.g. fetch threw before we
@@ -590,12 +594,55 @@ const OCRPanel = ({ token }) => {
               {/* Results Header */}
               <div className={styles.resultsHeader}>
                 <h4 className={styles.resultsTitle}><i className="fas fa-check-circle"></i> Extraction Results</h4>
-                {confidence !== null && (
-                  <span className={`${styles.confidenceBadge} ${confClass}`}>
-                    <i className="fas fa-chart-line"></i> {confidence}% Confidence
-                  </span>
-                )}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {confidence !== null && (
+                    <span className={`${styles.confidenceBadge} ${confClass}`}>
+                      <i className="fas fa-chart-line"></i> {confidence}% Confidence
+                    </span>
+                  )}
+                  {geminiQuota && (
+                    <span
+                      title={`Gemini free-tier daily quota usage. Resets daily.`}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        background: geminiQuota.remaining <= 5 ? '#fef2f2' : '#f0f9ff',
+                        color: geminiQuota.remaining <= 5 ? '#991b1b' : '#0c4a6e',
+                        border: `1px solid ${geminiQuota.remaining <= 5 ? '#fecaca' : '#bae6fd'}`,
+                      }}
+                    >
+                      <i className="fas fa-robot"></i>{' '}
+                      Gemini: {geminiQuota.remaining}/{geminiQuota.daily_limit} left today
+                    </span>
+                  )}
+                </div>
               </div>
+              {lowConfidenceArea && (
+                <div
+                  style={{
+                    margin: '8px 0 12px',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    color: '#854d0e',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <i className="fas fa-exclamation-triangle"></i>
+                  <span>
+                    <strong>Low-confidence area extraction.</strong>{' '}
+                    The OCR could not match a known society or structural address pattern.
+                    Please verify the <em>Crime Area</em> field below before submitting,
+                    and edit it if it looks wrong.
+                  </span>
+                </div>
+              )}
 
               {/* Extracted Fields Grid */}
               {extractedFields && (

@@ -118,6 +118,9 @@ def ensure_users_table(conn) -> None:
             "ALTER TABLE users_info ADD COLUMN notification_preferences JSON DEFAULT NULL",
             # Location tracking source label (gps / network / manual).
             "ALTER TABLE users_info ADD COLUMN location_source VARCHAR(20) DEFAULT 'gps'",
+            # Unverified-account cleanup — set when the "your account will be deleted"
+            # warning email has been sent so the cleanup job doesn't re-send.
+            "ALTER TABLE users_info ADD COLUMN deletion_warning_sent_at TIMESTAMP NULL",
         )
         for statement in updates:
             try:

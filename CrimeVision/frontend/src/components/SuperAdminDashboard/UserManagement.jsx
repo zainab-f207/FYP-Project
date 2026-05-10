@@ -183,6 +183,25 @@ const UserManagement = ({ token }) => {
     }
   };
 
+  const handleUnlock = (user) => {
+    confirm({
+      title: 'Unlock account?',
+      icon: <ExclamationCircleOutlined />,
+      content: `This will clear all failed login attempts for ${user.username || user.email} so they can sign in again.`,
+      okText: 'Unlock',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await apiService.unlockUser(token, user.id);
+          message.success(`Unlocked ${user.username || user.email}`);
+          loadData();
+        } catch (err) {
+          message.error(err.message || 'Failed to unlock user');
+        }
+      },
+    });
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -231,6 +250,26 @@ const UserManagement = ({ token }) => {
         ),
       },
       {
+        title: 'Verified',
+        key: 'verified',
+        width: 110,
+        render: (_, record) => (
+          record.isVerified
+            ? <Tag color="green" style={{ fontSize: 11 }}>VERIFIED</Tag>
+            : <Tag color="orange" style={{ fontSize: 11 }}>UNVERIFIED</Tag>
+        ),
+      },
+      {
+        title: 'Lock',
+        key: 'locked',
+        width: 110,
+        render: (_, record) => (
+          record.isLocked
+            ? <Tag color="red" icon={<LockOutlined />} style={{ fontSize: 11 }}>LOCKED</Tag>
+            : <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>—</span>
+        ),
+      },
+      {
         title: 'Created',
         dataIndex: 'createdAt',
         key: 'createdAt',
@@ -245,7 +284,7 @@ const UserManagement = ({ token }) => {
         title: 'Actions',
         key: 'actions',
         fixed: 'right',
-        width: 200,
+        width: 230,
         render: (_, record) => (
           <Space size={4}>
             <Tooltip title="View details">
@@ -257,6 +296,11 @@ const UserManagement = ({ token }) => {
             <Tooltip title="Permissions">
               <Button size="small" icon={<UnlockOutlined />} type="text" style={{ color: '#1dd1a1' }} onClick={() => openPermissionsModal(record)} />
             </Tooltip>
+            {record.isLocked && (
+              <Tooltip title="Unlock account (clear failed attempts)">
+                <Button size="small" icon={<UnlockOutlined />} type="text" style={{ color: '#fbbf24' }} onClick={() => handleUnlock(record)} />
+              </Tooltip>
+            )}
             {record.role === 'inactive' ? (
               <Tooltip title="Activate">
                 <Button size="small" icon={<UnlockOutlined />} type="text" style={{ color: '#1dd1a1' }} onClick={() => handleBulkAction('activate', [record.id])} />
@@ -327,6 +371,28 @@ const UserManagement = ({ token }) => {
                     {role.label}
                   </Select.Option>
                 ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name="verification" style={{ marginBottom: 0 }}>
+            <Select
+              allowClear
+              placeholder="Verification"
+              style={{ width: 150 }}
+              classNames={{ popup: { root: 'dark-select-dropdown' } }}
+            >
+              <Select.Option value="verified">Verified</Select.Option>
+              <Select.Option value="unverified">Unverified</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="locked" style={{ marginBottom: 0 }}>
+            <Select
+              allowClear
+              placeholder="Lock state"
+              style={{ width: 140 }}
+              classNames={{ popup: { root: 'dark-select-dropdown' } }}
+            >
+              <Select.Option value={true}>Locked</Select.Option>
+              <Select.Option value={false}>Not locked</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
@@ -444,6 +510,19 @@ const UserManagement = ({ token }) => {
             </Descriptions.Item>
             <Descriptions.Item label="Email">{selectedUser.email}</Descriptions.Item>
             <Descriptions.Item label="Role"><Tag color={ROLE_COLORS[selectedUser.role] || 'default'}>{selectedUser.role?.toUpperCase()}</Tag></Descriptions.Item>
+            <Descriptions.Item label="Verification">
+              {selectedUser.isVerified
+                ? <Tag color="green">VERIFIED{selectedUser.verifiedAt ? ` · ${dayjs(selectedUser.verifiedAt).format('DD MMM YYYY')}` : ''}</Tag>
+                : <Tag color="orange">UNVERIFIED</Tag>}
+            </Descriptions.Item>
+            <Descriptions.Item label="Lock State">
+              {selectedUser.isLocked
+                ? <Tag color="red" icon={<LockOutlined />}>LOCKED — clear failed attempts to unlock</Tag>
+                : <span style={{ color: 'rgba(255,255,255,0.5)' }}>Not locked</span>}
+            </Descriptions.Item>
+            <Descriptions.Item label="Last Login">
+              {selectedUser.lastLogin ? dayjs(selectedUser.lastLogin).format('DD MMM YYYY HH:mm') : '—'}
+            </Descriptions.Item>
             <Descriptions.Item label="Home Area">{selectedUser.homeArea || '—'}</Descriptions.Item>
             <Descriptions.Item label="Work Area">{selectedUser.workArea || '—'}</Descriptions.Item>
             <Descriptions.Item label="Alert Radius">{selectedUser.alertRadius ? `${selectedUser.alertRadius} km` : '—'}</Descriptions.Item>

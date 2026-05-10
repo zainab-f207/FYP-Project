@@ -24,6 +24,16 @@ const AIRouteAnalysis = ({ userLocation, initialDestination = null }) => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   });
+  // Per-card expansion state so "+N more" can toggle to show every chip
+  const [expandedAreas, setExpandedAreas] = useState({});
+  const [expandedCrimes, setExpandedCrimes] = useState({});
+
+  const toggleExpanded = (which, key) => (e) => {
+    // Don't bubble to the card's onClick (that selects the route)
+    e.stopPropagation();
+    const setter = which === 'areas' ? setExpandedAreas : setExpandedCrimes;
+    setter(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Initialize start location from user location
   useEffect(() => {
@@ -196,6 +206,8 @@ const AIRouteAnalysis = ({ userLocation, initialDestination = null }) => {
         end_lng: destPosition.lng,
         ...(travelDate && { date: travelDate }),
         ...(travelTime && { time: travelTime }),
+        ...(startLocation && { start_name: startLocation }),
+        ...(destination   && { end_name:   destination   }),
       });
       const response = await fetch(
         `${baseUrl}/api/crimes/compare-routes?${params}`,
@@ -289,6 +301,19 @@ const AIRouteAnalysis = ({ userLocation, initialDestination = null }) => {
     if (score >= 60) return { text: 'Safe', color: '#3b82f6', icon: '✓' };
     if (score >= 40) return { text: 'Moderate', color: '#f59e0b', icon: '⚠️' };
     return { text: 'Risky', color: '#ef4444', icon: '⚠️' };
+  };
+
+  const formatTravelDateTime = () => {
+    if (!travelDate || !travelTime) return '';
+    try {
+      const dt = new Date(`${travelDate}T${travelTime}:00`);
+      return dt.toLocaleString('en-PK', {
+        weekday: 'short', month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit',
+      });
+    } catch {
+      return `${travelDate} ${travelTime}`;
+    }
   };
 
   return (
@@ -519,6 +544,9 @@ const AIRouteAnalysis = ({ userLocation, initialDestination = null }) => {
                       <span style={{ color: safety.color }}>
                         {safety.icon} {safety.text}
                       </span>
+                      <small style={{ color: 'rgba(167,139,250,0.95)', fontWeight: 500 }}>
+                        🤖 AI prediction for {formatTravelDateTime()}
+                      </small>
                       <small style={{ color: 'rgba(255,255,255,0.7)' }}>
                         {route.safety_analysis.summary.high_risk_points} high-risk points
                       </small>
@@ -536,34 +564,72 @@ const AIRouteAnalysis = ({ userLocation, initialDestination = null }) => {
                   )}
 
                   {/* Areas the route passes through */}
-                  {route.areas_along_route?.length > 0 && (
-                    <div className={styles.areasRow}>
-                      <small className={styles.areasLabel}><i className="fas fa-map-marker-alt"></i> Route passes through:</small>
-                      <div className={styles.areaChips}>
-                        {route.areas_along_route.slice(0, 4).map((a, i) => (
-                          <span key={i} className={styles.areaChip}>{a}</span>
-                        ))}
-                        {route.areas_along_route.length > 4 && (
-                          <span className={styles.areaChipMore}>+{route.areas_along_route.length - 4} more</span>
-                        )}
+                  {route.areas_along_route?.length > 0 && (() => {
+                    const cardKey = route.route_type || `idx_${index}`;
+                    const showAll = !!expandedAreas[cardKey];
+                    const visible = showAll ? route.areas_along_route : route.areas_along_route.slice(0, 4);
+                    const extra = route.areas_along_route.length - 4;
+                    return (
+                      <div className={styles.areasRow}>
+                        <small className={styles.areasLabel}><i className="fas fa-map-marker-alt"></i> Route passes through:</small>
+                        <div className={styles.areaChips}>
+                          {visible.map((a, i) => (
+                            <span key={i} className={styles.areaChip}>{a}</span>
+                          ))}
+                          {extra > 0 && (
+                            <button
+                              type="button"
+                              className={styles.areaChipMore}
+                              onClick={toggleExpanded('areas', cardKey)}
+                            >
+                              {showAll ? '− show less' : `+${extra} more`}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
-                  {/* Crime types detected along route */}
-                  {route.crime_types_detected?.length > 0 && (
-                    <div className={styles.crimeTypesRow}>
-                      <small className={styles.crimeTypesLabel}><i className="fas fa-exclamation-triangle"></i> Crimes in path:</small>
-                      <div className={styles.crimeChips}>
-                        {route.crime_types_detected.slice(0, 3).map((ct, i) => (
-                          <span key={i} className={styles.crimeChip}>{ct}</span>
-                        ))}
-                        {route.crime_types_detected.length > 3 && (
-                          <span className={styles.crimeChipMore}>+{route.crime_types_detected.length - 3} more</span>
-                        )}
+                  {/* Crime types detected along route — with per-area attribution */}
+                  {route.crime_types_detected?.length > 0 && (() => {
+                    const cardKey = route.route_type || `idx_${index}`;
+                    const showAll = !!expandedCrimes[cardKey];
+                    const visible = showAll ? route.crime_types_detected : route.crime_types_detected.slice(0, 3);
+                    const extra = route.crime_types_detected.length - 3;
+                    return (
+                      <div className={styles.crimeTypesRow}>
+                        <small className={styles.crimeTypesLabel}><i className="fas fa-exclamation-triangle"></i> Crimes in path:</small>
+                        <div className={styles.crimeChips}>
+                          {visible.map((ct, i) => {
+                            // Backwards compat: backend may return either a
+                            // string (old shape) or {area, crime_type}.
+                            const isObj = ct && typeof ct === 'object';
+                            const crimeType = isObj ? ct.crime_type : ct;
+                            const area      = isObj ? ct.area : null;
+                            return (
+                              <span key={i} className={styles.crimeChip}>
+                                {crimeType}
+                                {area && (
+                                  <span style={{ opacity: 0.65, marginLeft: 4, fontWeight: 400 }}>
+                                    — in {area}
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          })}
+                          {extra > 0 && (
+                            <button
+                              type="button"
+                              className={styles.crimeChipMore}
+                              onClick={toggleExpanded('crimes', cardKey)}
+                            >
+                              {showAll ? '− show less' : `+${extra} more`}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -575,25 +641,51 @@ const AIRouteAnalysis = ({ userLocation, initialDestination = null }) => {
       {selectedRoute && (
         <div className={styles.detailedAnalysis}>
           <h3>🔍 Detailed Analysis - {selectedRoute.label?.toUpperCase()}</h3>
-          
+
+          <div style={{
+            background: 'rgba(59,130,246,0.08)',
+            border: '1px solid rgba(59,130,246,0.25)',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            margin: '0 0 14px 0',
+            fontSize: '0.85rem',
+            color: 'rgba(255,255,255,0.85)',
+            lineHeight: 1.5,
+          }}>
+            ℹ️ <strong>AI prediction</strong> = risk specifically for your selected travel date &amp; time.{' '}
+            <strong>Area baseline</strong> = the area's historical average safety (same number shown on your dashboard).
+          </div>
+
           <div className={styles.analysisGrid}>
             <div className={styles.analysisCard}>
               <h4>📍 Risk Points</h4>
               <div className={styles.riskPoints}>
                 {selectedRoute.safety_analysis.point_predictions
                   .filter(p => p.prediction.risk_level !== 'Low')
-                  .map((point, i) => (
-                    <div key={i} className={styles.riskPoint}>
-                      <span className={styles.riskLevel} style={{
-                        color: point.prediction.risk_level === 'High' ? '#ef4444' : '#f59e0b'
-                      }}>
-                        {point.prediction.risk_level === 'High' ? '🔴' : '🟠'}
-                        {point.area || 'Unknown Area'}
-                      </span>
-                      <small style={{ color: 'white' }}>{point.prediction.risk_percentage}% risk</small>
-                    </div>
-                  ))}
-                {selectedRoute.safety_analysis.summary.high_risk_points === 0 && 
+                  .map((point, i) => {
+                    const baseline = selectedRoute.area_baselines?.[point.area];
+                    return (
+                      <div key={i} className={styles.riskPoint}>
+                        <span className={styles.riskLevel} style={{
+                          color: point.prediction.risk_level === 'High' ? '#ef4444' : '#f59e0b'
+                        }}>
+                          {point.prediction.risk_level === 'High' ? '🔴' : '🟠'}
+                          {point.area || 'Unknown Area'}
+                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                          <small style={{ color: 'white' }}>
+                            🤖 AI: {point.prediction.risk_percentage}% risk
+                          </small>
+                          {baseline?.safety_score != null && (
+                            <small style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.72rem' }}>
+                              Area baseline: {baseline.safety_score}% safe
+                            </small>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                {selectedRoute.safety_analysis.summary.high_risk_points === 0 &&
                  selectedRoute.safety_analysis.summary.medium_risk_points === 0 && (
                   <p className={styles.noRisks}>✅ No significant risk points detected</p>
                 )}

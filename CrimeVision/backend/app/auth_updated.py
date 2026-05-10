@@ -10,9 +10,16 @@ import secrets
 import string
 import logging
 from dotenv import load_dotenv
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 import requests
+
+try:
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+    _GOOGLE_OAUTH_AVAILABLE = True
+except ImportError:
+    id_token = None
+    google_requests = None
+    _GOOGLE_OAUTH_AVAILABLE = False
 
 from app.models.schemas import GOOGLE_CLIENT_ID
 from app.core.database import get_db_connection
@@ -92,7 +99,9 @@ def _get_session_timeout_for_role(role: str) -> int:
         cursor.close()
         if row and row.get("setting_value") is not None:
             parsed = int(cast(Dict[str, Any], row)["setting_value"])
-            return max(5, min(43200, parsed))
+            # Honor whatever system_settings says — only enforce a safety floor
+            # so a misconfigured 0/negative value can't produce broken JWTs.
+            return max(5, parsed)
     except Exception as e:
         logger.warning(f"Using default session timeout for role={role_key}: {e}")
     finally:
@@ -145,6 +154,11 @@ def verify_token(token: str) -> Optional[str]:
 
 def verify_google_token(token: str) -> Dict[str, Any]:
     """Verify Google OAuth token and return user info"""
+    if not _GOOGLE_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth support is unavailable on this server"
+        )
     try:
         logger.info(f"🔍 Verifying Google token with client ID: {GOOGLE_CLIENT_ID}")
         idinfo = id_token.verify_oauth2_token(

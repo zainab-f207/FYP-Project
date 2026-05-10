@@ -1,0 +1,66 @@
+2026-05-09 21:15:37,901 - __main__ - INFO - === CRIME RISK MODEL TRAINING STARTED ===
+2026-05-09 21:15:37,901 - __main__ - INFO - Script started at: 2026-05-09 21:15:37.901136
+2026-05-09 21:15:38,089 - __main__ - INFO - Total records to load: 25377
+2026-05-09 21:15:38,089 - __main__ - INFO - Loading data in chunks of 10000...
+2026-05-09 21:15:38,120 - __main__ - INFO - Loaded chunk 1, total records: 10000
+2026-05-09 21:15:38,209 - __main__ - INFO - Loaded chunk 2, total records: 20000
+2026-05-09 21:15:38,289 - __main__ - INFO - Loaded chunk 3, total records: 30000
+2026-05-09 21:15:38,332 - __main__ - INFO - Loaded 25377 records with risk_level from database
+2026-05-09 21:15:38,332 - __main__ - INFO - === DATA DISTRIBUTION ANALYSIS ===
+2026-05-09 21:15:38,332 - __main__ - INFO - Risk level distribution:
+{'Medium': 11399, 'High': 7646, 'Low': 6332}
+2026-05-09 21:15:38,332 - __main__ - INFO - Top 10 areas:
+{'Bahria Town, Lahore': 3212, 'LDA City': 2675, 'Bahria Orchard, Lahore': 1274, 'DHA Phase 4': 1168, 'DHA Phase 1': 1158, 'DHA Phase 2': 1124, 'DHA Phase 3': 1098, 'Wapda Town': 1056, 'DHA Phase 8': 1052, 'DHA Phase 9': 1030}
+2026-05-09 21:15:38,332 - __main__ - INFO - Total unique areas: 62
+2026-05-09 21:15:38,343 - __main__ - INFO - Crime type distribution:
+{'Punishment for Criminal Intimidation (Threats)': 1620, 'Mischief Committed After Preparation for Causing Death or Hurt': 944, 'Disobedience to Order Duly Promulgated by Public Servant': 910, 'Robbery or Dacoity with Attempt to Cause Death or Grievous Hurt': 908, 'Attempt to Murder / Voluntarily Causing Hurt by Dangerous Weapons or Means': 904, 'Theft After Preparation Made for Causing Death, Hurt or Restraint': 887, 'Punishment of Abetment If Act Abetted Is Committed': 887, 'Assault or Criminal Force to Deter Public Servant from Discharge of Duty': 883, 'Every Member of Unlawful Assembly Guilty of Offence Committed in Common Object': 876, 'Punishment for Dacoity (Gang Robbery)': 872, 'Mischief by Fire or Explosive Substance with Intent to Destroy House (Arson)': 872, 'Mischief by Fire or Explosive Substance with Intent to Cause Damage': 871, 'Punishment for Theft': 867, 'Rioting Armed with Deadly Weapon': 865, 'Punishment for Wrongful Restraint': 865, 'Murder (Qatl-i-Amd) - Punishment (Death/Life Imprisonment)': 865, 'Mischief Causing Damage to Amount of Fifty Rupees or More': 862, 'Punishment for Wrongful Confinement': 856, 'Punishment of Criminal Conspiracy': 848, 'Abettor Present When Offence Is Committed': 835, 'Acts Done by Several Persons in Furtherance of Common Intention': 830, 'Punishment for Acts of Terrorism (Death / Life Imprisonment / 5-20 Years RI)': 830, 'Obstructing Public Servant in Discharge of Public Functions': 827, 'Punishment for Robbery': 824, 'Theft in Dwelling House, Building, Tent or Vessel': 789, 'Unknown PPC Section - 392': 626, 'Unknown PPC Section - 379': 624, 'Unknown PPC Section - 379-A': 584, 'Unknown PPC Section - 379/392': 576, 'Unknown PPC Section - 379/381': 552, 'Punishment for Criminal Intimidation (Threats) (Part B)': 2, 'Sedition': 2, 'Punishment for Rioting': 2, 'Act Endangering Life or Personal Safety of Others (Rash/Negligent)': 2, 'Deliberate and Malicious Acts Intended to Outrage Religious Feelings': 2, 'Statements Conducing to Public Mischief': 2, 'Promoting Enmity Between Different Groups': 2, 'Being Member of Unlawful Assembly': 2, 'Concealing Design to Commit Offence Punishable with Imprisonment (Part B)': 1, 'Robbery': 1}
+2026-05-09 21:15:38,343 - __main__ - INFO - Total unique crime types: 40
+2026-05-09 21:15:38,345 - __main__ - INFO - Date range: 2025-01-01 to 2026-05-05
+2026-05-09 21:15:38,345 - __main__ - INFO - === ANALYZING DETERMINISTIC PATTERNS ===
+2026-05-09 21:15:38,359 - __main__ - INFO - Highly deterministic patterns (>90%): 322
+2026-05-09 21:15:38,411 - __main__ - INFO - Diverse patterns (no risk level > 70%): 37
+2026-05-09 21:15:38,411 - __main__ - INFO - Found 322 highly deterministic area-crime-risk patterns
+2026-05-09 21:15:38,411 - __main__ - INFO - Creating memory-optimized visualizations...
+2026-05-09 21:15:38,411 - __main__ - INFO - Using 20,000 sample for visualizations
+2026-05-09 21:15:40,358 - __main__ - INFO - Data distribution analysis saved to model/data_distribution_analysis.png
+2026-05-09 21:15:40,455 - __main__ - INFO - Data analysis results saved to model/data_analysis_results.json
+2026-05-09 21:15:40,520 - __main__ - INFO - Adding 10.0% noise to break deterministic patterns...
+2026-05-09 21:15:44,825 - __main__ - INFO - Added targeted noise to break deterministic patterns
+2026-05-09 21:15:44,843 - __main__ - INFO - Risk level distribution after processing: {'Medium': 11449, 'High': 7540, 'Low': 6388}
+2026-05-09 21:15:44,843 - __main__ - INFO - Feature matrix shape: (25377, 8)
+2026-05-09 21:15:45,265 - __main__ - INFO - Train accuracy: 61.69%
+2026-05-09 21:15:45,265 - __main__ - INFO - Test accuracy: 57.28%
+2026-05-09 21:15:45,265 - __main__ - INFO - Overfitting gap: 4.41%
+2026-05-09 21:15:45,315 - __main__ - INFO - Weighted Precision: 0.575
+2026-05-09 21:15:45,315 - __main__ - INFO - Weighted Recall: 0.573
+2026-05-09 21:15:45,315 - __main__ - INFO - Weighted F1-Score: 0.558
+2026-05-09 21:15:45,315 - __main__ - INFO - 
+Classification Report:
+2026-05-09 21:15:45,324 - __main__ - INFO -               precision    recall  f1-score   support
+
+        High       0.56      0.70      0.62      2262
+         Low       0.58      0.78      0.67      1917
+      Medium       0.58      0.38      0.46      3435
+
+    accuracy                           0.57      7614
+   macro avg       0.57      0.62      0.58      7614
+weighted avg       0.58      0.57      0.56      7614
+
+2026-05-09 21:15:45,334 - __main__ - INFO - Confusion Matrix:
+[[1578   56  628]
+ [ 132 1493  292]
+ [1131 1014 1290]]
+2026-05-09 21:15:45,607 - __main__ - INFO - Model performance visualization saved to model/model_performance.png
+2026-05-09 21:15:45,607 - __main__ - INFO - Detailed performance metrics saved to model/performance_metrics.json
+2026-05-09 21:15:45,670 - __main__ - INFO - Model saved as model/random_forest_model.joblib
+2026-05-09 21:15:45,670 - __main__ - INFO - 
+=== SAMPLE PREDICTIONS ===
+2026-05-09 21:15:45,670 - __main__ - WARNING - Could not test Cantt + Burglary: y contains previously unseen labels: 'Burglary'
+2026-05-09 21:15:45,680 - __main__ - INFO - DHA Phase 5 + Robbery: High (probs: [0.455 0.199 0.347])
+2026-05-09 21:15:45,682 - __main__ - INFO - Sample predictions saved to model/sample_predictions.json
+2026-05-09 21:15:45,682 - __main__ - INFO - 
+=== TRAINING SUMMARY ===
+2026-05-09 21:15:45,682 - __main__ - INFO - Final Model Accuracy: 0.573
+2026-05-09 21:15:45,682 - __main__ - INFO - Overfitting Gap: 0.044
+2026-05-09 21:15:45,682 - __main__ - INFO - Total Training Time: 0:00:07.781156
+2026-05-09 21:15:45,682 - __main__ - INFO - Training completed successfully!

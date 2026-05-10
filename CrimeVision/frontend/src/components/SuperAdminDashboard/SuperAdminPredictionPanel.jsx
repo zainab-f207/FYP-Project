@@ -1392,10 +1392,33 @@ const IntelCommandCenter = () => {
     setRetraining(true);
     setRetrainMsg(null);
     try {
+      const before = await apiService.getModelRetrainStatus(token).catch(() => null);
       const res = await apiService.triggerRetrain(token);
-      setRetrainMsg({ ok: true, text: res?.message || 'Retrain launched. Model will hot-reload when complete.' });
-      // Refresh intel after a short delay to pick up updated last_train_date
-      setTimeout(() => fetchData(), 8000);
+      setRetrainMsg({ ok: true, text: res?.message || 'Retrain launched. Waiting for completion...' });
+
+      const startCount = Number(before?.retrain_count || 0);
+      const startTs = Number(before?.last_retrain || 0);
+      let completed = false;
+
+      for (let i = 0; i < 80; i += 1) {
+        // Poll every 5s for up to ~6m40s
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        // eslint-disable-next-line no-await-in-loop
+        const now = await apiService.getModelRetrainStatus(token).catch(() => null);
+        const nowCount = Number(now?.retrain_count || 0);
+        const nowTs = Number(now?.last_retrain || 0);
+        if (nowCount > startCount || nowTs > startTs) {
+          completed = true;
+          setRetrainMsg({ ok: true, text: 'Retrain completed successfully. New RF, Poisson, and legacy RF are refreshed.' });
+          fetchData();
+          break;
+        }
+      }
+
+      if (!completed) {
+        setRetrainMsg({ ok: true, text: 'Retrain is still running in background. Check again shortly.' });
+      }
     } catch (e) {
       setRetrainMsg({ ok: false, text: e?.message || 'Failed to trigger retrain.' });
     } finally {
@@ -1537,7 +1560,7 @@ const IntelCommandCenter = () => {
             </div>
             {ds.records_since_last_train != null && (
               <div className={styles.cmdStat}>
-                <div className={styles.cmdStatVal} style={{ color: ds.records_since_last_train > 500 ? '#f97316' : '#22c55e' }}>
+                <div className={styles.cmdStatVal} style={{ color: ds.records_since_last_train > 10 ? '#f97316' : '#22c55e' }}>
                   {ds.records_since_last_train.toLocaleString()}
                 </div>
                 <div className={styles.cmdStatLabel}>New Since Last Train</div>

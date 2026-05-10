@@ -42,7 +42,7 @@ from app.core.database import get_db_connection
 logger = logging.getLogger(__name__)
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
-DEFAULT_RETRAIN_THRESHOLD_NEW_CRIMES      = 500   # new rows since last training
+DEFAULT_RETRAIN_THRESHOLD_NEW_CRIMES      = 10    # new rows since last training
 DEFAULT_RETRAIN_THRESHOLD_NEW_AREAS       = 5     # brand-new areas
 DEFAULT_RETRAIN_THRESHOLD_NEW_CRIME_TYPES = 10    # brand-new crime types
 DEFAULT_CHECK_INTERVAL_SECONDS            = 3600  # periodic check every 60 min
