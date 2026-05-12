@@ -611,11 +611,17 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
 
         body = await request.json()
 
-        first_name = body.get("firstName", "").strip()
-        last_name = body.get("lastName", "").strip()
-        email = body.get("email", "").strip()
-        role = body.get("role", "").strip()
-        department = body.get("department", "").strip()
+        cursor.execute(
+            "SELECT username, first_name, last_name, email, role, department, permissions FROM admins WHERE id = %s",
+            (admin_id,),
+        )
+        current_admin = cast(Optional[Dict[str, Any]], cursor.fetchone()) or {}
+
+        first_name = body.get("firstName", current_admin.get("first_name", "")).strip()
+        last_name = body.get("lastName", current_admin.get("last_name", "")).strip()
+        email = body.get("email", current_admin.get("email", "")).strip()
+        role = body.get("role", current_admin.get("role", "admin")).strip()
+        department = body.get("department", current_admin.get("department", "")).strip()
         new_username = body.get("username", "").strip()
         new_password = body.get("password", "").strip()
         # Optional permissions update — only applied when key is present
@@ -638,16 +644,28 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
             if cursor.fetchone():
                 raise HTTPException(status_code=400, detail="Username already taken")
 
+        effective_role = role or str(current_admin.get("role", "admin") or "admin")
+        current_permissions = current_admin.get("permissions")
+        if isinstance(current_permissions, str) and current_permissions.strip():
+            try:
+                current_permissions = json.loads(current_permissions)
+            except Exception:
+                current_permissions = []
+        if not isinstance(current_permissions, list):
+            current_permissions = []
+
+        effective_permissions = new_permissions if permissions_provided else current_permissions
+
         # Build admins table UPDATE dynamically
         admin_fields = "first_name = %s, last_name = %s, email = %s, role = %s, department = %s"
-        admin_params: list = [first_name, last_name, email, role or "admin", department]
+        admin_params: list = [first_name, last_name, email, effective_role, department]
 
         if new_username:
             admin_fields += ", username = %s"
             admin_params.append(new_username)
 
         if new_password:
-            pw_error = validate_password_strength(new_password, role or "admin")
+            pw_error = validate_password_strength(new_password, effective_role or "admin")
             if pw_error:
                 raise HTTPException(status_code=400, detail=pw_error)
             admin_fields += ", password_hash = %s"
@@ -655,7 +673,7 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
 
         if permissions_provided:
             admin_fields += ", permissions = %s"
-            admin_params.append(json.dumps(new_permissions))
+            admin_params.append(json.dumps(effective_permissions))
 
         admin_params.append(admin_id)
         cursor.execute(f"UPDATE admins SET {admin_fields} WHERE id = %s", tuple(admin_params))
@@ -663,7 +681,7 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
         # Also update users_info
         if old_username:
             ui_fields = "first_name = %s, last_name = %s, email = %s, role = %s"
-            ui_params: list = [first_name, last_name, email, role or "admin"]
+            ui_params: list = [first_name, last_name, email, effective_role]
 
             if new_username:
                 ui_fields += ", username = %s"
@@ -675,7 +693,7 @@ async def update_admin(admin_id: int, request: Request, current_user: str = Depe
 
             if permissions_provided:
                 ui_fields += ", permissions = %s"
-                ui_params.append(json.dumps(new_permissions))
+                ui_params.append(json.dumps(effective_permissions))
 
             ui_params.append(old_username)
             cursor.execute(f"UPDATE users_info SET {ui_fields} WHERE username = %s", tuple(ui_params))
@@ -838,6 +856,10 @@ def get_admin_notifications(current_user: str = Depends(get_username_from_token)
                 "title": "High Risk Crimes",
                 "message": f"{high_risk} high-risk crimes reported in the last 24 hours",
                 "timestamp": datetime.now().isoformat()
+                ,"details": {
+                    "high_risk_count": high_risk,
+                    "window": "24 hours",
+                }
             })
 
         # New user registrations today
@@ -855,6 +877,10 @@ def get_admin_notifications(current_user: str = Depends(get_username_from_token)
                 "title": "New User Registrations",
                 "message": f"{new_users} new users registered today",
                 "timestamp": datetime.now().isoformat()
+                ,"details": {
+                    "new_users": new_users,
+                    "window": "today",
+                }
             })
 
         # SuperAdmin notifications: surface recent admin actions from audit_logs
@@ -896,6 +922,13 @@ def get_admin_notifications(current_user: str = Depends(get_username_from_token)
                         "title": pretty,
                         "message": f"{r.get('admin_username')} · {target_lbl} · {r.get('ip_address') or 'unknown ip'}",
                         "timestamp": r["created_at"].isoformat() if r.get("created_at") else None,
+                        "details": {
+                            "action": act_raw,
+                            "admin_username": r.get("admin_username"),
+                            "target_type": r.get("target_type"),
+                            "target_id": r.get("target_id"),
+                            "ip_address": r.get("ip_address"),
+                        },
                     })
             except Exception as _e:
                 logger.warning(f"superadmin audit-log notifications skipped: {_e}")
@@ -916,6 +949,7 @@ def get_admin_notifications(current_user: str = Depends(get_username_from_token)
                         "title": "Approvals waiting for review",
                         "message": f"{pend_n} admin request{'s' if pend_n != 1 else ''} pending your decision",
                         "timestamp": datetime.now().isoformat(),
+                        "details": {"pending_count": pend_n},
                     })
             except Exception as _e:
                 logger.warning(f"superadmin pending-approvals notifications skipped: {_e}")
@@ -959,6 +993,12 @@ def get_admin_notifications(current_user: str = Depends(get_username_from_token)
                         "title": "Approval approved" if is_approved else "Approval rejected",
                         "message": base_msg,
                         "timestamp": r["reviewed_at"].isoformat() if r.get("reviewed_at") else None,
+                        "details": {
+                            "action_type": r.get("action_type"),
+                            "target_type": r.get("target_type"),
+                            "reviewed_by": r.get("reviewed_by"),
+                            "review_notes": r.get("review_notes"),
+                        },
                     })
             except Exception as _e:
                 logger.warning(f"approval-decision notifications skipped: {_e}")
@@ -971,7 +1011,8 @@ def get_admin_notifications(current_user: str = Depends(get_username_from_token)
                 "type": "success",
                 "title": "System Status",
                 "message": "All systems operational",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "details": {"status": "operational"},
             })
 
         return {"notifications": notifications}
@@ -1625,6 +1666,100 @@ def unlock_user_account(
     except Exception as e:
         logger.error(f"Database error unlocking user: {e}")
         raise HTTPException(status_code=500, detail="Database error")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@router.post("/user-action-approval")
+def submit_user_action_for_approval(
+    request: Request,
+    payload: dict = Body(...),
+    current_user: str = Depends(get_username_from_token),
+):
+    """Submit a user action (suspend, activate, delete, edit) for superadmin approval"""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Check if current user is an admin
+        cursor.execute("SELECT role, permissions FROM users_info WHERE username = %s", (current_user,))
+        actor = cast(Optional[Dict[str, Any]], cursor.fetchone())
+        if not actor or actor.get("role") not in ["admin", "superadmin"]:
+            raise HTTPException(status_code=403, detail="Only admins can submit actions for approval")
+
+        action_type = payload.get("action_type")
+        target_id = payload.get("target_id")
+        reason = payload.get("reason", "")
+        target_username = payload.get("target_username")
+        target_email = payload.get("target_email")
+
+        # Validate action type
+        valid_actions = [
+            "suspend_user_admin",
+            "activate_user_admin",
+            "delete_user_admin",
+            "edit_user_admin",
+        ]
+        if action_type not in valid_actions:
+            raise HTTPException(status_code=400, detail=f"Invalid action type: {action_type}")
+
+        # Verify target user exists
+        cursor.execute("SELECT id, username, email FROM users_info WHERE id = %s", (target_id,))
+        target_user = cast(Optional[Dict[str, Any]], cursor.fetchone())
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Target user not found")
+
+        # Check if admin has permission to manage users
+        permissions = []
+        if actor.get("permissions"):
+            try:
+                permissions = json.loads(actor["permissions"]) if isinstance(actor["permissions"], str) else actor["permissions"]
+            except Exception:
+                permissions = []
+
+        if not (actor.get("role") == "superadmin" or "manage_users" in permissions):
+            raise HTTPException(status_code=403, detail="You don't have permission to manage users")
+
+        # Create approval request
+        request_data = {
+            "reason": reason,
+            "target_username": target_username,
+            "target_email": target_email,
+            "action_type": action_type,
+            "submitted_by": current_user,
+        }
+
+        request_id = create_approval_request(
+            admin_username=current_user,
+            action_type=action_type,
+            target_type="user",
+            target_id=target_id,
+            request_data=request_data,
+        )
+
+        if not request_id:
+            raise HTTPException(status_code=500, detail="Failed to create approval request")
+
+        # Log the submission
+        log_admin_action(
+            admin_username=current_user,
+            action=f"submit_{action_type}",
+            target_type="user",
+            target_id=target_id,
+            details={"reason": reason, "request_id": request_id},
+            request=request,
+        )
+
+        return {
+            "success": True,
+            "message": f"Action submitted for superadmin approval",
+            "request_id": request_id,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting user action for approval: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         conn.close()

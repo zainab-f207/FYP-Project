@@ -21,16 +21,22 @@ const actionIcons = {
   fir_ocr_submission: 'fa-file-image',
 };
 
-// Maps each action to the permission required (mirrors backend ACTION_PERMISSIONS)
-// null = any admin may perform this action
-const ACTION_PERMISSIONS = {
-  delete_user: 'manage_users',
-  bulk_delete: 'manage_users',
-  bulk_suspend: 'manage_users',
-  change_role_to_admin: 'manage_users',
-  change_role_to_superadmin: 'manage_users',
-  fir_ocr_submission: null,  // any admin can submit FIR for approval
+const APPROVAL_CATEGORIES = {
+  fir: {
+    label: 'FIR Approvals',
+    color: '#8b5cf6',
+    actions: ['fir_ocr_submission'],
+  },
+  admin: {
+    label: 'Admin Approvals',
+    color: '#2d7fb8',
+    actions: ['delete_user', 'bulk_delete', 'bulk_suspend', 'change_role_to_admin', 'change_role_to_superadmin'],
+  },
 };
+
+const getApprovalCategory = (actionType) => (
+  actionType === 'fir_ocr_submission' ? APPROVAL_CATEGORIES.fir : APPROVAL_CATEGORIES.admin
+);
 
 const statusColors = {
   pending: { color: '#f9a826', bg: '#f9a82615', icon: 'fa-clock' },
@@ -482,11 +488,20 @@ const PendingApprovalsPanel = () => {
           </div>
           <div className={styles.actionsList}>
             <span className={styles.actionsTitle}><i className="fas fa-list"></i> Actions Requiring Approval:</span>
-            <div className={styles.actionsGrid}>
-              {Object.entries(actionLabels).map(([key, label]) => (
-                <div key={key} className={styles.actionItem}>
-                  <i className={`fas ${actionIcons[key] || 'fa-gavel'}`}></i>
-                  <span>{label}</span>
+            <div className={styles.actionsGrid} style={{ gridTemplateColumns: '1fr' }}>
+              {Object.values(APPROVAL_CATEGORIES).map((category) => (
+                <div key={category.label} style={{ marginBottom: 8 }}>
+                  <div style={{ marginBottom: 8, color: category.color, fontSize: '0.76rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {category.label}
+                  </div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {category.actions.map((key) => (
+                      <div key={key} className={styles.actionItem}>
+                        <i className={`fas ${actionIcons[key] || 'fa-gavel'}`}></i>
+                        <span>{actionLabels[key]}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -514,17 +529,14 @@ const PendingApprovalsPanel = () => {
                 <select value={submitForm.action_type}
                   onChange={e => setSubmitForm(p => ({ ...p, action_type: e.target.value }))} required>
                   <option value="">Select action...</option>
-                  {Object.entries(actionLabels)
-                    .filter(([key]) => {
-                      // Only show actions the admin has permission for
-                      const requiredPerm = ACTION_PERMISSIONS[key];
-                      if (!requiredPerm) return true; // no restriction
-                      const userPerms = user?.permissions || [];
-                      return userPerms.includes(requiredPerm);
-                    })
-                    .map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
+                  <option value="fir_ocr_submission">{actionLabels.fir_ocr_submission}</option>
+                  <optgroup label="Admin Approvals">
+                    <option value="delete_user">{actionLabels.delete_user}</option>
+                    <option value="bulk_delete">{actionLabels.bulk_delete}</option>
+                    <option value="bulk_suspend">{actionLabels.bulk_suspend}</option>
+                    <option value="change_role_to_admin">{actionLabels.change_role_to_admin}</option>
+                    <option value="change_role_to_superadmin">{actionLabels.change_role_to_superadmin}</option>
+                  </optgroup>
                 </select>
               </div>
               {/* Target Type & Target ID — only relevant for user-targeted actions */}
@@ -613,6 +625,9 @@ const PendingApprovalsPanel = () => {
                       <div className={styles.actionBadge}>
                         <i className={`fas ${actionIcons[req.action_type] || 'fa-gavel'}`}></i>
                         {actionLabels[req.action_type] || req.action_type}
+                      </div>
+                      <div className={styles.statusBadge} style={{ color: getApprovalCategory(req.action_type).color, borderColor: getApprovalCategory(req.action_type).color, background: `${getApprovalCategory(req.action_type).color}15` }}>
+                        {getApprovalCategory(req.action_type).label}
                       </div>
                       <div className={styles.statusBadge} style={{ color: sInfo.color, borderColor: sInfo.color, background: sInfo.bg }}>
                         <i className={`fas ${sInfo.icon}`}></i> {(req.status || 'pending').charAt(0).toUpperCase() + (req.status || 'pending').slice(1)}
@@ -846,6 +861,9 @@ const PendingApprovalsPanel = () => {
                     <div className={styles.actionBadge}>
                       <i className={`fas ${actionIcons[req.action_type] || 'fa-gavel'}`}></i>
                       {actionLabels[req.action_type] || req.action_type}
+                    </div>
+                    <div className={styles.statusBadge} style={{ color: getApprovalCategory(req.action_type).color, borderColor: getApprovalCategory(req.action_type).color, background: `${getApprovalCategory(req.action_type).color}15` }}>
+                      {getApprovalCategory(req.action_type).label}
                     </div>
                     <div className={styles.statusBadge} style={{ color: sInfo.color, borderColor: sInfo.color, background: sInfo.bg }}>
                       <i className={`fas ${sInfo.icon}`}></i> {(req.status || 'pending').charAt(0).toUpperCase() + (req.status || 'pending').slice(1)}

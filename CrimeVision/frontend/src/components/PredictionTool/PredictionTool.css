@@ -170,12 +170,33 @@ body.dark-mode .prediction-tool {
   flex-shrink: 0;
 }
 
+.risk-band-hero {
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.risk-band-hero.risk-low {
+  color: var(--risk-low);
+}
+
+.risk-band-hero.risk-medium {
+  color: var(--risk-medium);
+}
+
+.risk-band-hero.risk-high {
+  color: var(--risk-high);
+}
+
 .risk-value {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
 }
 

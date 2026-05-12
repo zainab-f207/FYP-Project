@@ -278,14 +278,11 @@ def _risk_score_for_row(severity, hour, is_weekend, area_freq_percentile):
     """
     Normalized composite risk score in the range [0.0, 1.0].
 
-    Each component is independently scaled to [0, 1] before weighting so that
-    no single feature dominates by magnitude.
-
-    Weights (sum to 1.0):
-      0.40  crime severity     (normalized from 3-10 range)
-      0.25  time of day        (night=1.0, evening=0.65, early-morning=0.35, day=0.0)
-      0.25  area hotspot rank  (area_freq_percentile / 100)
-      0.10  weekend            (weekend=0.10, weekday=0.0)
+    Weights (aligned with risk.py philosophy):
+      0.45  crime severity     (normalized from 3-10 range)
+      0.35  area hotspot rank  (area_freq_percentile / 100)
+      0.15  time of day        (night=1.0, evening=0.65, early-morning=0.35, day=0.0)
+      0.05  weekend            (weekend=0.05, weekday=0.0)
 
     Returns a float in [0.0, 1.0].
     """
@@ -306,13 +303,13 @@ def _risk_score_for_row(severity, hour, is_weekend, area_freq_percentile):
     area_norm = float(area_freq_percentile) / 100.0
 
     # -- component 4: weekend
-    wknd_norm = 0.10 if is_weekend else 0.0
+    wknd_norm = 0.05 if is_weekend else 0.0
 
     # -- weighted composite
-    score = (sev_norm * 0.40
-             + time_norm * 0.25
-             + area_norm * 0.25
-             + wknd_norm)          # already 0.10 weight baked in
+    score = (sev_norm * 0.45
+             + area_norm * 0.35
+             + time_norm * 0.15
+             + wknd_norm)
 
     return float(np.clip(score, 0.0, 1.0))
 
@@ -470,10 +467,16 @@ def _parse_hour(time_val) -> int:
     s = str(time_val).strip()
     if not s:
         return -1
+    # Normalize common user-entered AM/PM variants like "11:29am", "11:29 A.M."
+    s = s.replace('.', '')
+    if s.lower().endswith('am') or s.lower().endswith('pm'):
+        s = s[:-2].strip() + ' ' + s[-2:].upper()
+    else:
+        s = s.strip()
     # Try 12-hour format first (e.g. "03:22 AM")
     for fmt in ("%I:%M %p", "%I:%M:%S %p"):
         try:
-            return _dt.datetime.strptime(s.upper(), fmt).hour
+            return _dt.datetime.strptime(s, fmt).hour
         except ValueError:
             pass
     # Try 24-hour format (e.g. "21:30:00" or "21:30")

@@ -112,7 +112,7 @@
 .riskBadge {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px; border-radius: 20px;
-  font-size: 0.77rem; font-weight: 700;
+  font-size: 0.84rem; font-weight: 800;
 }
 .momentumBadge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -138,6 +138,13 @@
 .gaugeCenter {
   position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
   text-align: center; padding-bottom: 2px;
+}
+.gaugeRiskLevel {
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
 }
 .gaugeNum   { font-size: 1.6rem; font-weight: 800; line-height: 1; }
 .gaugeNum span { font-size: 0.85rem; font-weight: 400; color: #94a3b8; }

@@ -89,6 +89,10 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
 
       {result && (
         <div className={styles.resultCard}>
+          {(() => {
+            const isRfComposite = result.model === 'rf_composite';
+            return (
+              <>
           <div className={styles.rcHeader}>
             <span className={styles.rcTitle}><i className="fas fa-shield-halved"></i> Prediction Result</span>
             <RiskBadge level={result.risk_level} pct={result.risk_percentage} />
@@ -130,19 +134,22 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
                   className={styles.gaugeArc} />
               </svg>
               <div className={styles.gaugeCenter}>
+                {isRfComposite && <div className={styles.gaugeRiskLevel}>{result.risk_level}</div>}
                 <div className={styles.gaugeNum} style={{ color: scoreColor }}>{result.risk_percentage}%</div>
-                <div className={styles.gaugeLabel}>Risk</div>
+                <div className={styles.gaugeLabel}>{result.risk_percentage_label || (isRfComposite ? 'Risk Index' : 'Risk')}</div>
               </div>
             </div>
 
             {/* Tech metrics */}
             <div className={styles.techMetrics}>
               <div className={styles.techRow}>
-                <span className={styles.techLabel}>Confidence</span>
+                <span className={styles.techLabel}>{isRfComposite ? 'Reliability' : 'Confidence'}</span>
                 <strong>{`${Math.round((result.confidence || 0) * 100)}%`}</strong>
               </div>
               <div className={styles.confExplain}>
-                {result.is_estimated
+                {isRfComposite
+                  ? (result.reliability_note || 'RF reliability is based on historical data coverage for this area and crime type.')
+                  : result.is_estimated
                   ? 'Estimated from regional patterns — limited direct observations for this area × crime combination'
                   : Math.round((result.confidence || 0) * 100) >= 85
                     ? 'High confidence — dense historical observations for this area × crime combination'
@@ -150,18 +157,39 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
                       ? 'Moderate confidence — sufficient data; some sparsity in this combination'
                       : 'Lower confidence — sparse data; prediction uses regional base rates as fallback'}
               </div>
-              {result.probability != null && <TechRow label="P(crime ≥1)" value={`${(result.probability * 100).toFixed(1)}%`} />}
-              {result.lambda     != null && <TechRow label="Poisson λ"    value={typeof result.lambda === 'number' ? result.lambda.toFixed(4) : '—'} />}
+                          <TechRow label="Model Type" value={result.model_label || result.model || 'Unknown'} />
+                          <TechRow label="Score Type" value={result.risk_percentage_label || (isRfComposite ? 'Risk Index' : 'Risk Score')} />
+              {!isRfComposite && result.probability != null && <TechRow label="P(crime ≥1)" value={`${(result.probability * 100).toFixed(1)}%`} />}
+              {!isRfComposite && result.lambda     != null && <TechRow label="Poisson λ"    value={typeof result.lambda === 'number' ? result.lambda.toFixed(4) : '—'} />}
+              {isRfComposite && result.model_confidence != null && <TechRow label="RF Class Confidence" value={`${Math.round((result.model_confidence || 0) * 100)}%`} />}
               {result.time_period       && <TechRow label="Time Period"   value={result.time_period} />}
               {result.area_trend && (
-                <TechRow label="Area Trend (6m)"
-                  value={`${result.area_trend.direction === 'increasing' ? '↑' : result.area_trend.direction === 'decreasing' ? '↓' : '→'} ${result.area_trend.change_pct > 0 ? '+' : ''}${result.area_trend.change_pct}%`}
-                  color={result.area_trend.direction === 'decreasing' ? '#22c55e' : result.area_trend.direction === 'increasing' ? '#dc2626' : '#9ca3af'}
-                />
+                <>
+                  <TechRow label="Area Trend (6m)"
+                    value={`${result.area_trend.direction === 'increasing' ? '↑' : result.area_trend.direction === 'decreasing' ? '↓' : '→'} ${result.area_trend.change_pct > 0 ? '+' : ''}${result.area_trend.change_pct}%`}
+                    color={result.area_trend.direction === 'decreasing' ? '#22c55e' : result.area_trend.direction === 'increasing' ? '#dc2626' : '#9ca3af'}
+                  />
+                  {result.time_was_provided && result.time_used_by_model === false && (
+                    <div style={{ marginTop: 8, gridColumn: '1 / -1' }}>
+                      <div style={{ fontSize: '0.85rem', color: '#f97316' }}>
+                        <i className="fas fa-circle-info"></i> Selected visit time was provided but not used by this legacy model — it is advisory only.
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               <TechRow label="Data Quality" value={result.is_estimated ? 'Estimated (sparse)' : 'Modeled'} color={result.is_estimated ? '#f97316' : '#22c55e'} />
             </div>
           </div>
+
+          {result.comparability_note && (
+            <div className={styles.periodModelNote}>
+              <i className="fas fa-scale-balanced"></i> {result.comparability_note}
+            </div>
+          )}
+              </>
+            );
+          })()}
 
           {/* Hourly profile */}
           {result.hourly_risk_profile && Object.keys(result.hourly_risk_profile).length > 0 && (
@@ -177,7 +205,19 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
                 </div>
               ))}
               <div className={styles.periodModelNote}>
-                <i className="fas fa-circle-info"></i> Time period percentages show the average Poisson probability for each 4‑hour window. The overall prediction combines the Poisson baseline × ML adjustment × day-of-week × seasonal factors — so the final score may differ from any single time window.
+                <i className="fas fa-circle-info"></i> {
+                  (() => {
+                    const model = (result.model || '').toString().toLowerCase();
+                    const label = (result.model_label || '').toString().toLowerCase();
+                    const isRf = model === 'rf_composite';
+                    const isPoisson = model.includes('poisson') || label.includes('poisson');
+                    const isLegacy = model.includes('legacy') || label.includes('legacy');
+                    if (isRf) return 'Time period percentages show the RF composite Risk Index for each 4-hour window, using severity, hotspot rank, and time factors. The overall score may differ slightly from any single window.';
+                    if (isPoisson) return 'Time period percentages show the average Poisson probability for each 4-hour window. The overall prediction combines the Poisson baseline × ML adjustment × day-of-week × seasonal factors — so the final score may differ from any single time window.';
+                    if (isLegacy) return 'Time period percentages show historical window averages (legacy model is time-agnostic). The selected visit time is advisory and is not used by the legacy model — hourly profiles are empirical summaries.';
+                    return 'Time period percentages show the model-specific window profile. For Poisson this is a probability; for RF composite this is an index; legacy responses use historical averages.';
+                  })()
+                }
               </div>
             </div>
           )}

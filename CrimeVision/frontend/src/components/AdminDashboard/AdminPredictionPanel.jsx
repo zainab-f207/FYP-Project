@@ -31,7 +31,7 @@ const RiskBadge = ({ level, pct }) => {
   const icon = RISK_ICONS[nl] || 'fa-circle';
   return (
     <span className={styles.riskBadge} style={{ background: color + '20', color, border: `1px solid ${color}40` }}>
-      <i className={`fas ${icon}`}></i> {actionLabel(nl)}{pct != null && <span> ({pct}%)</span>}
+      <i className={`fas ${icon}`}></i> {nl}{pct != null && <span> ({pct}%)</span>}
     </span>
   );
 };
@@ -113,6 +113,12 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
 
       {result && (
         <div className={styles.resultCard}>
+          {/** RF composite returns an index, not a direct Poisson probability. */}
+          {(() => {
+            const isRfComposite = result.model === 'rf_composite';
+            const displayLevel = normalizeRiskLevel(result.risk_level);
+            return (
+              <>
           <div className={styles.resultHeader}>
             <div className={styles.resultTitle}>
               <i className="fas fa-shield-alt"></i> Prediction Result
@@ -122,10 +128,15 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
 
           <div className={styles.resultMetrics}>
             <div className={styles.bigScore}>
+              {isRfComposite && (
+                <div className={styles.riskLevelHero} style={{ color: RISK_COLORS[displayLevel] || '#e2e8f0' }}>
+                  {displayLevel}
+                </div>
+              )}
               <div className={styles.bigScoreNum} style={{ color: RISK_COLORS[normalizeRiskLevel(result.risk_level)] }}>
                 {result.risk_percentage}<span>%</span>
               </div>
-              <div className={styles.bigScoreLabel}>Estimated Risk</div>
+              <div className={styles.bigScoreLabel}>{result.risk_percentage_label || (isRfComposite ? 'Risk Index' : 'Estimated Risk')}</div>
               <div className={styles.bigScoreBar}>
                 <div style={{ width: `${result.risk_percentage}%`, height: '100%', borderRadius: 4, background: RISK_COLORS[normalizeRiskLevel(result.risk_level)] }} />
               </div>
@@ -133,10 +144,12 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
 
             <div className={styles.metaGrid}>
               <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>Model Confidence</span>
+                <span className={styles.metaLabel}>{isRfComposite ? 'Reliability' : 'Model Confidence'}</span>
                 <strong>{Math.round((result.confidence || 0) * 100)}%</strong>
                 <span className={styles.metaExplain}>
-                  {result.is_estimated
+                  {isRfComposite
+                    ? (result.reliability_note || 'RF reliability is based on historical data coverage for this area and crime type.')
+                    : result.is_estimated
                     ? 'Estimated from regional patterns — limited direct observations for this area × crime combination'
                     : Math.round((result.confidence || 0) * 100) >= 85
                       ? 'High confidence — based on dense historical observations for this area × crime combination'
@@ -145,16 +158,29 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
                         : 'Lower confidence — sparse historical data; prediction uses regional base rates as fallback'}
                 </span>
               </div>
-              {result.probability != null && (
+              <div className={styles.metaItem}>
+                <span className={styles.metaLabel}>Model Type</span>
+                <strong>{result.model_label || result.model || 'Unknown'}</strong>
+                <span className={styles.metaExplain}>
+                  {result.risk_percentage_label || (isRfComposite ? 'Risk Index' : 'Risk Score')} is used for this prediction.
+                </span>
+              </div>
+              {!isRfComposite && result.probability != null && (
                 <div className={styles.metaItem}>
                   <span className={styles.metaLabel}>Poisson P(≥1)</span>
                   <strong>{(result.probability * 100).toFixed(1)}%</strong>
                 </div>
               )}
-              {result.lambda != null && (
+              {!isRfComposite && result.lambda != null && (
                 <div className={styles.metaItem}>
                   <span className={styles.metaLabel}>λ (Expected crimes)</span>
                   <strong>{typeof result.lambda === 'number' ? result.lambda.toFixed(4) : '—'}</strong>
+                </div>
+              )}
+              {isRfComposite && result.model_confidence != null && (
+                <div className={styles.metaItem}>
+                  <span className={styles.metaLabel}>RF Class Confidence</span>
+                  <strong>{Math.round((result.model_confidence || 0) * 100)}%</strong>
                 </div>
               )}
               {result.is_estimated && (
@@ -169,6 +195,13 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
                   <strong>{result.time_period}</strong>
                 </div>
               )}
+              {result.time_was_provided && result.time_used_by_model === false && (
+                <div className={styles.metaItem}>
+                  <span className={styles.metaLabel}>Visit Time</span>
+                  <strong style={{ color: '#f97316' }}>Not used by model</strong>
+                  <span className={styles.metaExplain}>Selected time is advisory for legacy predictions</span>
+                </div>
+              )}
               {result.area_trend && (
                 <div className={styles.metaItem}>
                   <span className={styles.metaLabel}>Area Trend (6m)</span>
@@ -179,6 +212,15 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
               )}
             </div>
           </div>
+
+          {result.comparability_note && (
+            <div className={styles.periodModelNote}>
+              <i className="fas fa-scale-balanced"></i> {result.comparability_note}
+            </div>
+          )}
+              </>
+            );
+          })()}
 
           {result.safest_upcoming_dates?.length > 0 && (
             <div className={styles.upcomingBlock}>
@@ -211,7 +253,19 @@ const ManualPrediction = ({ areas, crimeTypes }) => {
                 ))}
               </div>
               <div className={styles.periodModelNote}>
-                <i className="fas fa-circle-info"></i> Time period percentages show the average Poisson probability for each 4‑hour window. The overall prediction combines the Poisson baseline × ML adjustment × day-of-week × seasonal factors — so the final score may differ from any single time window.
+                <i className="fas fa-circle-info"></i> {
+                  (() => {
+                    const model = (result.model || '').toString().toLowerCase();
+                    const label = (result.model_label || '').toString().toLowerCase();
+                    const isRf = model === 'rf_composite';
+                    const isPoisson = model.includes('poisson') || label.includes('poisson');
+                    const isLegacy = model.includes('legacy') || label.includes('legacy');
+                    if (isRf) return 'Time period percentages show the RF composite Risk Index for each 4-hour window, using severity, hotspot rank, and time factors. The overall score may differ slightly from any single window.';
+                    if (isPoisson) return 'Time period percentages show the average Poisson probability for each 4-hour window. The overall prediction combines the Poisson baseline × ML adjustment × day-of-week × seasonal factors — so the final score may differ from any single time window.';
+                    if (isLegacy) return 'Time period percentages show historical window averages (legacy model is time-agnostic). The selected visit time is advisory and is not used by the legacy model — hourly profiles are empirical summaries.';
+                    return 'Time period percentages show the model-specific window profile. For Poisson this is a probability; for RF composite this is an index; legacy responses use historical averages.';
+                  })()
+                }
               </div>
             </div>
           )}

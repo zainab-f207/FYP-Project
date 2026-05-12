@@ -71,6 +71,9 @@ const NotificationsPanel = ({ token, fullView }) => {
           {displayed.map(note => {
             const type = note.type || 'info';
             const isUnread = !readIds.has(note.id);
+            const detailEntries = note.details && typeof note.details === 'object'
+              ? Object.entries(note.details).filter(([, value]) => value !== null && value !== undefined && value !== '')
+              : [];
             return (
               <li key={note.id} className={`${styles.notificationItem} ${styles[type] || ''} ${isUnread ? styles.unread : ''}`}>
                 <div className={styles.icon}>
@@ -79,6 +82,15 @@ const NotificationsPanel = ({ token, fullView }) => {
                 <div className={styles.content}>
                   <div className={styles.message}>{note.title || note.message}</div>
                   {note.message && note.title && <div className={styles.time}>{note.message}</div>}
+                  {detailEntries.length > 0 && (
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {detailEntries.map(([key, value]) => (
+                        <span key={key} style={{ fontSize: 11, color: '#cbd5e1', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 999, padding: '3px 8px' }}>
+                          {key.replace(/_/g, ' ')}: {String(value)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className={styles.time}>
                     <i className="far fa-clock"></i> {formatTime(note.timestamp || note.time)}
                   </div>

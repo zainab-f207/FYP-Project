@@ -125,7 +125,7 @@
 .riskBadge {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px; border-radius: 20px;
-  font-size: 0.78rem; font-weight: 700;
+  font-size: 0.84rem; font-weight: 800;
 }
 .momentumBadge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -136,6 +136,13 @@
 
 .resultMetrics { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
 .bigScore { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 100px; }
+.riskLevelHero {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
 .bigScoreNum { font-size: 2.4rem; font-weight: 800; line-height: 1; }
 .bigScoreNum span { font-size: 1rem; font-weight: 400; color: #94a3b8; }
 .bigScoreLabel { font-size: 0.7rem; color: #94a3b8; }

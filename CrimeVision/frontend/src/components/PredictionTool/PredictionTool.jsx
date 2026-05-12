@@ -105,6 +105,13 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
   const [precautions, setPrecautions] = useState([]);
   const [message, setMessage]         = useState('');
   const [confidence, setConfidence]   = useState(0);
+  const [predictionModel, setPredictionModel] = useState('');
+  const [riskMetricLabel, setRiskMetricLabel] = useState('Estimated Risk Probability');
+  const [reliabilityLabel, setReliabilityLabel] = useState('Prediction Reliability');
+  const [reliabilityNote, setReliabilityNote] = useState('Based on how much historical data exists for this area and crime type combination.');
+  const [modelConfidence, setModelConfidence] = useState(null);
+  const [modelLabel, setModelLabel] = useState('');
+  const [comparabilityNote, setComparabilityNote] = useState('');
   const [showDetails, setShowDetails] = useState(false);
 
   // Area Safety Profile state
@@ -120,6 +127,8 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
   const [riskiestHours, setRiskiestHours]         = useState([]);
   const [safestUpcoming, setSafestUpcoming]       = useState([]);
   const [hourlyProfile, setHourlyProfile]         = useState(null);
+  const [timeWasProvided, setTimeWasProvided]     = useState(false);
+  const [timeUsedByModel, setTimeUsedByModel]     = useState(true);
   const [visitComparison, setVisitComparison]     = useState([]);
   const [areaTrend, setAreaTrend]                 = useState(null);
   const [monthlyCrimeStats, setMonthlyCrimeStats] = useState([]);
@@ -229,6 +238,13 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
     setRiskPercentage('...'); setRiskLevel(''); setRiskClass('');
     setDescription(''); setPrecautions([]); setMessage('');
     setConfidence(0); setShowDetails(false);
+    setPredictionModel('');
+    setRiskMetricLabel('Estimated Risk Probability');
+    setReliabilityLabel('Prediction Reliability');
+    setReliabilityNote('Based on how much historical data exists for this area and crime type combination.');
+    setModelConfidence(null);
+    setModelLabel('');
+    setComparabilityNote('');
     resetInsights();
 
     try {
@@ -236,6 +252,7 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
 
       if (prediction && prediction.risk_level && prediction.risk_percentage !== undefined) {
         const lvl = prediction.risk_level;
+        const isRfComposite = prediction.model === 'rf_composite';
         let cls   = 'risk-medium';
         if (lvl === 'Low')  cls = 'risk-low';
         if (lvl === 'High') cls = 'risk-high';
@@ -246,6 +263,18 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
         setDescription(riskDescriptions[lvl]?.description || '');
         setPrecautions(riskDescriptions[lvl]?.precautions || []);
         setConfidence(prediction.confidence || 0);
+        setPredictionModel(prediction.model || '');
+        setModelLabel(prediction.model_label || prediction.model || '');
+        setRiskMetricLabel(prediction.risk_percentage_label || (isRfComposite ? 'Risk Index' : 'Estimated Risk Probability'));
+        setReliabilityLabel(isRfComposite ? 'Data Coverage (Area × Crime)' : 'Prediction Reliability');
+        setReliabilityNote(
+          prediction.reliability_note ||
+          (isRfComposite
+            ? 'Risk Index combines severity, area hotspot rank, time-of-day, and weekend factors.'
+            : 'Based on how much historical data exists for this area and crime type combination.')
+        );
+        setModelConfidence(prediction.model_confidence ?? null);
+        setComparabilityNote(prediction.comparability_note || '');
 
         if (prediction.time_period)            setTimePeriod(prediction.time_period);
         if (prediction.safest_days_of_week)    setSafestDays(prediction.safest_days_of_week);
@@ -255,6 +284,8 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
         if (prediction.riskiest_hours)         setRiskiestHours(prediction.riskiest_hours);
         if (prediction.safest_upcoming_dates)  setSafestUpcoming(prediction.safest_upcoming_dates);
         if (prediction.hourly_risk_profile)    setHourlyProfile(prediction.hourly_risk_profile);
+        setTimeWasProvided(Boolean(prediction.time_was_provided));
+        setTimeUsedByModel(prediction.time_used_by_model === undefined ? true : Boolean(prediction.time_used_by_model));
         if (prediction.visit_time_comparison)  setVisitComparison(prediction.visit_time_comparison);
         if (prediction.area_trend)             setAreaTrend(prediction.area_trend);
         if (prediction.dataset_stats)          setDatasetStats(prediction.dataset_stats);
@@ -277,6 +308,13 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
     setRiskPercentage(50); setRiskLevel('Medium Risk'); setRiskClass('risk-medium');
     setDescription(riskDescriptions['Medium'].description);
     setPrecautions(riskDescriptions['Medium'].precautions);
+    setPredictionModel('');
+    setRiskMetricLabel('Estimated Risk Probability');
+    setReliabilityLabel('Prediction Reliability');
+    setReliabilityNote('Based on how much historical data exists for this area and crime type combination.');
+    setModelConfidence(null);
+    setModelLabel('');
+    setComparabilityNote('');
     setConfidence(0.5); setShowDetails(true);
   };
 
@@ -535,6 +573,7 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
 
           <div className="risk-visualization">
             <div className="risk-meter">
+              <div className={`risk-band-hero ${riskClass}`}>{riskLevel ? riskLevel.split(' ')[0].toUpperCase() : 'RISK'}</div>
               <svg width="200" height="200" viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="54" fill="none" stroke="var(--light-bg)" strokeWidth="12" />
                 <circle
@@ -552,7 +591,7 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
                   {riskLevel ? riskLevel.split(' ')[0].toUpperCase() : 'RISK'}
                 </text>
               </svg>
-              <div className="risk-pct-label">Estimated Risk Probability</div>
+              <div className="risk-pct-label">{riskMetricLabel}</div>
               <div className={`risk-value ${riskClass}`}>
                 {riskPercentage}{riskPercentage !== '...' && '%'}
               </div>
@@ -597,12 +636,17 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
               </div>
 
               <div className="confidence-indicator">
-                <span className="confidence-label">Prediction Reliability: </span>
+                <span className="confidence-label">{reliabilityLabel}: </span>
                 <span className="confidence-value">{Math.round(confidence * 100)}%</span>
                 <div className="confidence-bar">
                   <div className="confidence-fill" style={{ width: `${confidence * 100}%` }} />
                 </div>
-                <p className="confidence-note">Based on how much historical data exists for this area and crime type combination.</p>
+                <p className="confidence-note">{reliabilityNote}</p>
+                {modelLabel && <p className="confidence-note">Model: {modelLabel} · Score: {riskMetricLabel}</p>}
+                {predictionModel === 'rf_composite' && modelConfidence != null && (
+                  <p className="confidence-note">RF Class Confidence: {Math.round(modelConfidence * 100)}%</p>
+                )}
+                {comparabilityNote && <p className="confidence-note">{comparabilityNote}</p>}
               </div>
 
               {/* ── Your Visit Time Risk ── */}
@@ -621,6 +665,11 @@ const PredictionTool = ({ selectedArea, selectedCrimeType }) => {
                     {' '}<strong>{PERIOD_CONTEXT[timePeriod]}</strong> hours in this area.
                     {hourlyProfile?.[timePeriod] != null && (
                       <>{' '}Historically, <strong>{hourlyProfile[timePeriod]}%</strong> of daily crime risk in this area falls during {timePeriod.toLowerCase()} hours ({PERIOD_HOURS[timePeriod]}).</>
+                    )}
+                    {timeWasProvided && timeUsedByModel === false && (
+                      <div style={{ marginTop: 8, color: '#f97316', fontSize: '0.9rem' }}>
+                        <i className="fas fa-circle-info"></i> Selected visit time was provided but is advisory — this legacy model does not use visit time when producing scores.
+                      </div>
                     )}
                   </p>
                 </div>

@@ -245,8 +245,8 @@
     padding: 0.4rem 0.8rem;
     border-radius: 20px;
     color: white;
-    font-weight: 700;
-    font-size: 0.75rem;
+  font-weight: 800;
+  font-size: 0.86rem;
     text-transform: uppercase;
 }
 
@@ -746,6 +746,14 @@
 .ringMeta {
   text-align: center;
   margin-top: 0.4rem;
+}
+
+.ringRiskLevel {
+  font-size: 1.08rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
 }
 
 .ringAreaName {

@@ -16,7 +16,7 @@ import OCRPanel from './OCRPanel';
 import AdminPredictionPanel from './AdminPredictionPanel';
 import AdminPasswordChangeReminder, { isPwChangeSnoozed } from '../Modals/AdminPasswordChangeReminder';
 import AdminProfileSettings from '../Modals/AdminProfileSettings';
-import UserManagement from '../SuperAdminDashboard/UserManagement';
+import AdminUserManagement from './AdminUserManagement';
 import SystemSettings from '../SuperAdminDashboard/SystemSettings';
 import SafeVisionLogo from '../common/SafeVisionLogo';
 
@@ -248,10 +248,10 @@ const AdminDashboard = () => {
     { id: 'analytics', icon: 'fas fa-chart-line', label: 'Analytics', permission: 'view_analytics' },
     { id: 'users', icon: 'fas fa-users', label: 'Users', permission: 'view_users' },
     { id: 'reports', icon: 'fas fa-file-alt', label: 'Reports', permission: 'view_crime_data' },
-    { id: 'ocr', icon: 'fas fa-file-image', label: 'FIR OCR', permission: 'view_crime_data' },
+    { id: 'ocr', icon: 'fas fa-file-image', label: 'FIR OCR', permission: 'manage_fir_ocr' },
     { id: 'approvals', icon: 'fas fa-clipboard-check', label: 'Approvals', permission: null },
     { id: 'predictions', icon: 'fas fa-brain', label: 'AI Predictions', permission: 'view_analytics' },
-    { id: 'alerts', icon: 'fas fa-exclamation-triangle', label: 'Alerts', permission: 'manage_alerts' },
+    { id: 'alerts', icon: 'fas fa-bell', label: 'Alerts', permission: null },
     { id: 'settings', icon: 'fas fa-cog', label: 'Settings', permission: 'manage_settings' },
   ];
 
@@ -439,7 +439,7 @@ const AdminDashboard = () => {
                     ))
                   )}
                 </div>
-                {hasPermission(user, 'manage_alerts') && (
+                {hasPermission(user, null) && (
                   <button
                     data-sv-notif-foot
                     onClick={() => { setNotifOpen(false); setActiveItem('alerts'); }}
@@ -564,7 +564,7 @@ const AdminDashboard = () => {
                 <i className="fas fa-file-alt"></i>
                 <span><strong>Reports</strong><small>Manage crime data</small></span>
               </a>
-              <a data-sv-quicklink role="button" tabIndex={0} onClick={() => hasPermission(user, 'view_crime_data') && setActiveItem('ocr')}>
+              <a data-sv-quicklink role="button" tabIndex={0} onClick={() => hasPermission(user, 'manage_fir_ocr') && setActiveItem('ocr')}>
                 <i className="fas fa-file-image"></i>
                 <span><strong>FIR OCR</strong><small>Scan & extract</small></span>
               </a>
@@ -761,7 +761,7 @@ const AdminDashboard = () => {
         )}
 
         {activeItem === 'analytics' && <AnalyticsPanel stats={stats} token={token} fullView />}
-        {activeItem === 'users' && <UserManagement token={token} />}
+        {activeItem === 'users' && <AdminUserManagement token={token} user={user} />}
         {activeItem === 'approvals' && (
           <>
             <PendingApprovalsPanel />

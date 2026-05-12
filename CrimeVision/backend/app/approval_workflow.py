@@ -278,6 +278,10 @@ SENSITIVE_ACTIONS = [
     "change_role_to_superadmin",
     "bulk_suspend",
     "fir_ocr_submission",
+    "suspend_user_admin",
+    "activate_user_admin",
+    "delete_user_admin",
+    "edit_user_admin",
 ]
 
 # Permission required for each action type (None = any admin may submit)
@@ -287,7 +291,11 @@ ACTION_PERMISSIONS = {
     "bulk_suspend": "manage_users",
     "change_role_to_admin": "manage_users",
     "change_role_to_superadmin": "manage_users",
-    "fir_ocr_submission": None,  # any admin can submit FIR for approval
+    "fir_ocr_submission": "manage_fir_ocr",
+    "suspend_user_admin": "manage_users",
+    "activate_user_admin": "manage_users",
+    "delete_user_admin": "manage_users",
+    "edit_user_admin": "manage_users",
 }
 
 
@@ -348,11 +356,16 @@ def get_pending_approvals(limit: int = 100) -> List[Dict[str, Any]]:
                LIMIT %s""",
             (limit,),
         )
-        id_rows = cursor.fetchall()
+        id_rows = cast(List[Dict[str, Any]], cursor.fetchall() or [])
         if not id_rows:
             cursor.close()
             return []
-        ids = [r["id"] for r in id_rows]
+        ids: List[int] = []
+        for row in id_rows:
+            raw_id = row.get("id")
+            if raw_id is None:
+                continue
+            ids.append(cast(int, raw_id))
         # Step 2: fetch full rows by primary key (no sort needed)
         placeholders = ",".join(["%s"] * len(ids))
         cursor.execute(
@@ -413,11 +426,16 @@ def get_approval_requests_for_admin(admin_username: str, limit: int = 50) -> Lis
                LIMIT %s""",
             (admin_username, limit),
         )
-        id_rows = cursor.fetchall()
+        id_rows = cast(List[Dict[str, Any]], cursor.fetchall() or [])
         if not id_rows:
             cursor.close()
             return []
-        ids = [r["id"] for r in id_rows]
+        ids: List[int] = []
+        for row in id_rows:
+            raw_id = row.get("id")
+            if raw_id is None:
+                continue
+            ids.append(cast(int, raw_id))
         # Step 2: fetch full rows by primary key (no sort needed)
         placeholders = ",".join(["%s"] * len(ids))
         cursor.execute(
@@ -612,6 +630,47 @@ def _execute_approved_action(req: Dict[str, Any], cursor, conn) -> Dict[str, Any
 
         elif action == "fir_ocr_submission":
             return _execute_fir_submission(request_data, cursor, conn)
+
+        elif action == "suspend_user_admin":
+            user_id = req.get("target_id")
+            if user_id:
+                cursor.execute("UPDATE users_info SET role = 'inactive' WHERE id = %s", (user_id,))
+                conn.commit()
+                return {"success": True, "message": f"User {user_id} suspended"}
+
+        elif action == "activate_user_admin":
+            user_id = req.get("target_id")
+            if user_id:
+                cursor.execute("UPDATE users_info SET role = 'user' WHERE id = %s", (user_id,))
+                conn.commit()
+                return {"success": True, "message": f"User {user_id} activated"}
+
+        elif action == "delete_user_admin":
+            user_id = req.get("target_id")
+            if user_id:
+                cursor.execute("DELETE FROM users_info WHERE id = %s", (user_id,))
+                conn.commit()
+                return {"success": True, "message": f"User {user_id} deleted"}
+
+        elif action == "edit_user_admin":
+            user_id = req.get("target_id")
+            edits = request_data.get("edits", {})
+            if user_id and edits:
+                # Build dynamic UPDATE query
+                set_parts = []
+                values = []
+                for key, value in edits.items():
+                    if key not in ["id", "created_at", "role"]:  # Don't allow editing certain fields
+                        set_parts.append(f"{key} = %s")
+                        values.append(value)
+                
+                if set_parts:
+                    values.append(user_id)
+                    update_query = f"UPDATE users_info SET {', '.join(set_parts)} WHERE id = %s"
+                    cursor.execute(update_query, values)
+                    conn.commit()
+                    return {"success": True, "message": f"User {user_id} updated"}
+            return {"success": False, "message": "No edits provided"}
 
         return {"success": False, "message": f"Unknown action: {action}"}
 

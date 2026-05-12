@@ -32,6 +32,7 @@ export const PERMISSION_CATEGORIES = [
       { value: 'manage_crime_data', label: 'Manage Crime Data', desc: 'Create, edit and organize crime records' },
       { value: 'verify_crime_reports', label: 'Verify Crime Reports', desc: 'Review and approve submitted crime reports' },
       { value: 'approve_firs', label: 'Approve FIR Reports', desc: 'Review and approve or reject submitted FIR applications' },
+      { value: 'manage_fir_ocr', label: 'FIR OCR Submission', desc: 'Upload FIR images, extract data and submit FIRs for approval' },
       { value: 'export_crime_data', label: 'Export Crime Data', desc: 'Download crime data in various formats (CSV, PDF)' },
     ],
   },
@@ -71,14 +72,14 @@ export const PERMISSION_CATEGORIES = [
 ];
 
 export const DEPARTMENT_PERMISSIONS = {
-  'Law Enforcement Operations': ['view_users', 'view_crime_data', 'verify_crime_reports', 'approve_firs', 'manage_crime_data', 'view_analytics', 'view_heatmaps', 'manage_alerts', 'emergency_dispatch'],
+  'Law Enforcement Operations': ['view_users', 'view_crime_data', 'verify_crime_reports', 'manage_crime_data', 'view_analytics', 'view_heatmaps', 'manage_fir_ocr'],
   'Crime Analytics & Intelligence': ['view_crime_data', 'export_crime_data', 'view_analytics', 'access_predictions', 'generate_reports', 'manage_reports', 'view_heatmaps', 'view_audit_logs'],
-  'Emergency Response & Dispatch': ['view_crime_data', 'view_heatmaps', 'manage_alerts', 'emergency_dispatch', 'priority_alerts', 'manage_emergency_contacts'],
+  'Emergency Response & Dispatch': ['view_crime_data', 'view_heatmaps'],
   'IT & Cybersecurity': ['view_users', 'manage_settings', 'view_audit_logs', 'manage_law_sections'],
-  'Public Safety Communications': ['view_crime_data', 'view_analytics', 'view_heatmaps', 'manage_alerts', 'priority_alerts', 'generate_reports'],
-  'Forensics & Evidence Management': ['view_crime_data', 'manage_crime_data', 'verify_crime_reports', 'approve_firs', 'export_crime_data', 'generate_reports'],
+  'Public Safety Communications': ['view_crime_data', 'view_analytics', 'view_heatmaps', 'generate_reports'],
+  'Forensics & Evidence Management': ['view_crime_data', 'manage_crime_data', 'verify_crime_reports', 'export_crime_data', 'generate_reports', 'manage_fir_ocr'],
   'Strategic Planning & Policy': ['view_users', 'view_crime_data', 'view_analytics', 'access_predictions', 'generate_reports', 'manage_reports', 'view_heatmaps', 'view_audit_logs'],
-  'Community Policing & Outreach': ['view_users', 'view_crime_data', 'view_analytics', 'view_heatmaps', 'manage_alerts'],
+  'Community Policing & Outreach': ['view_users', 'view_crime_data', 'view_analytics', 'view_heatmaps'],
 };
 
 export const ALL_PERMISSION_VALUES = PERMISSION_CATEGORIES.flatMap((c) => c.permissions.map((p) => p.value));

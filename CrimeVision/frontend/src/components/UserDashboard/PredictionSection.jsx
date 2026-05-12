@@ -173,9 +173,18 @@ const PredictionSection = ({ onPredictionComplete, initialArea = null }) => {
         : null;
 
       const normalizedPrediction = {
+        model: prediction?.model || 'unknown',
+        model_label: prediction?.model_label || null,
         risk_level: prediction?.risk_level || prediction?.risk || 'Medium',
         risk_percentage: prediction?.risk_percentage !== undefined ? prediction.risk_percentage : 50,
         confidence: prediction?.confidence || 0.8,
+        model_confidence: prediction?.model_confidence,
+        reliability_basis: prediction?.reliability_basis || null,
+        reliability_note: prediction?.reliability_note || null,
+        comparability_note: prediction?.comparability_note || null,
+        effective_hour: prediction?.effective_hour,
+        time_was_provided: prediction?.time_was_provided,
+        time_used_by_model: prediction?.time_used_by_model,
         message: prediction?.message || 'Prediction completed',
         // Poisson advisory fields
         probability:           prediction?.probability,
@@ -198,9 +207,19 @@ const PredictionSection = ({ onPredictionComplete, initialArea = null }) => {
         area: areaParam,
         crimeType: crimeTypeParam,
         date: dateParam,
+        model: normalizedPrediction.model,
+        modelLabel: normalizedPrediction.model_label,
+        riskPercentageLabel: prediction?.risk_percentage_label || null,
         riskLevel: normalizedPrediction.risk_level,
         riskPercentage: normalizedPrediction.risk_percentage,
         confidence: normalizedPrediction.confidence,
+        modelConfidence: normalizedPrediction.model_confidence,
+        reliabilityBasis: normalizedPrediction.reliability_basis,
+        reliabilityNote: normalizedPrediction.reliability_note,
+        comparabilityNote: normalizedPrediction.comparability_note,
+        effectiveHour: normalizedPrediction.effective_hour,
+        timeWasProvided: normalizedPrediction.time_was_provided,
+        timeUsedByModel: normalizedPrediction.time_used_by_model,
         coordinates: formattedCoordinates,
         // Advisory fields
         probability:           normalizedPrediction.probability,
@@ -636,6 +655,21 @@ const PredictionSection = ({ onPredictionComplete, initialArea = null }) => {
     const hasCoords     = !!lastPrediction.coordinates;
     const riskPct       = parseFloat(lastPrediction.riskPercentage) || 0;
     const riskColor     = riskPct < 20 ? '#22c55e' : riskPct < 60 ? '#f59e0b' : '#dc2626';
+    const reliabilityPct = Math.round((parseFloat(lastPrediction.confidence) || 0) * 100);
+    const reliabilityBasis = lastPrediction.reliabilityBasis || 'generic';
+    const reliabilityLabel = reliabilityBasis === 'data_volume'
+      ? 'Data Coverage (Area × Crime)'
+      : reliabilityBasis === 'legacy_model_prob'
+        ? 'Model Confidence (Legacy)'
+        : reliabilityBasis === 'fallback_default'
+          ? 'Fallback Reliability'
+          : 'Prediction Reliability';
+    const reliabilityNote = lastPrediction.reliabilityNote
+      || (reliabilityBasis === 'data_volume'
+        ? 'Coverage score based on historical FIR volume for this area and crime type.'
+        : 'Confidence is estimated from historical model behavior.');
+    const isRFComposite = lastPrediction.model === 'rf_composite';
+    const metricLabel = lastPrediction.riskPercentageLabel || (isRFComposite ? 'RISK INDEX' : 'EST. RISK');
     const r = 44, circ  = +(2 * Math.PI * r).toFixed(1);
     const dashOff       = +(circ - (Math.min(riskPct, 100) / 100) * circ).toFixed(1);
     const fmtTime       = (t) => { if (!t) return ''; const [h, m] = t.split(':').map(Number); if (isNaN(h)) return t; return `${h % 12 || 12}:${String(m || 0).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`; };
@@ -651,7 +685,7 @@ const PredictionSection = ({ onPredictionComplete, initialArea = null }) => {
               ? <button className={styles.mapViewBtn} onClick={handleViewOnMap}><i className="fas fa-map-marked-alt"></i> View on Map</button>
               : <button className={`${styles.mapViewBtn} ${styles.disabled}`} disabled title="No geographic data"><i className="fas fa-map-marked-alt"></i> Map Unavailable</button>
             }
-            <div className={styles.riskBadge} style={{ backgroundColor: riskColor }}>{riskInfo.icon} {lastPrediction.riskLevel} Risk</div>
+            <div className={styles.riskBadge} style={{ backgroundColor: riskColor }}>{riskInfo.icon} {lastPrediction.riskLevel}</div>
           </div>
         </div>
 
@@ -668,9 +702,10 @@ const PredictionSection = ({ onPredictionComplete, initialArea = null }) => {
                 style={{ transition: 'stroke-dashoffset 1.2s ease, stroke 0.4s' }}
               />
               <text x="60" y="54" textAnchor="middle" fontSize="21" fill="white" fontWeight="800">{riskPct}%</text>
-              <text x="60" y="69" textAnchor="middle" fontSize="7.5" fill="rgba(255,255,255,0.42)" fontWeight="600" letterSpacing="1.2">EST. RISK</text>
+              <text x="60" y="69" textAnchor="middle" fontSize="7.5" fill="rgba(255,255,255,0.42)" fontWeight="600" letterSpacing="1.2">{metricLabel}</text>
             </svg>
             <div className={styles.ringMeta}>
+              <div className={styles.ringRiskLevel} style={{ color: riskColor }}>{lastPrediction.riskLevel}</div>
               <div className={styles.ringAreaName}>{formatAreaName(lastPrediction.area)}</div>
               {lastPrediction.areaTrend && (
                 <div className={`${styles.trendBadge} ${
@@ -688,13 +723,24 @@ const PredictionSection = ({ onPredictionComplete, initialArea = null }) => {
           <div className={styles.statsCol}>
             <div className={styles.statBlock}>
               <div className={styles.statHeader}>
-                <span className={styles.statLabel}>Prediction Reliability</span>
-                <span className={styles.statValue} style={{ color: riskColor }}>{Math.round(lastPrediction.confidence * 100)}%</span>
+                <span className={styles.statLabel}>{reliabilityLabel}</span>
+                <span className={styles.statValue} style={{ color: riskColor }}>{reliabilityPct}%</span>
               </div>
               <div className={styles.statBarWrap}>
-                <div className={styles.statBar} style={{ width: `${Math.round(lastPrediction.confidence * 100)}%`, background: riskColor }}/>
+                <div className={styles.statBar} style={{ width: `${reliabilityPct}%`, background: riskColor }}/>
               </div>
-              <p className={styles.statNote}>Based on historical data volume for this area and crime type.</p>
+              <p className={styles.statNote}>{reliabilityNote}</p>
+              {isRFComposite && (
+                <p className={styles.statNote}>
+                  RF result is a composite risk score, not a direct probability of an incident.
+                </p>
+              )}
+              {lastPrediction.comparabilityNote && (
+                <p className={styles.statNote}>{lastPrediction.comparabilityNote}</p>
+              )}
+              {isRFComposite && lastPrediction.modelConfidence != null && (
+                <p className={styles.statNote}>RF Class Confidence: {Math.round(lastPrediction.modelConfidence * 100)}%</p>
+              )}
             </div>
 
             <div className={styles.contextChips}>
@@ -722,8 +768,15 @@ const PredictionSection = ({ onPredictionComplete, initialArea = null }) => {
           const activityLevel  = periodShare == null ? '' : periodShare < 20 ? 'lower-activity' : periodShare < 40 ? 'moderate-activity' : 'higher-activity';
           return (
             <>
-              {/* Visit time risk card */}
-              <div className={styles.visitTimeRiskCard} style={{ borderLeftColor: riskColor }}>
+                    {/* Visit time advisory for legacy model */}
+                    {lastPrediction.timeWasProvided && lastPrediction.timeUsedByModel === false && (
+                      <div className={styles.visitTimeAdvisory}>
+                        <i className="fas fa-circle-info"></i> Selected visit time was provided but not used by this legacy model — it is advisory only.
+                      </div>
+                    )}
+
+                    {/* Visit time risk card */}
+                    <div className={styles.visitTimeRiskCard} style={{ borderLeftColor: riskColor }}>
                 <div className={styles.visitTimeRiskHeader}>
                   <span className={styles.visitTimeRiskIconBox}>{PERIOD_ICONS[lastPrediction.timePeriod]}</span>
                   <div className={styles.visitTimeRiskTitleCol}>

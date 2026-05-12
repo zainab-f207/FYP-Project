@@ -18,6 +18,12 @@ const statusConfig = {
   rejected: { icon: 'fas fa-times-circle', color: '#ff6b6b', label: 'Rejected' },
 };
 
+const getApprovalCategory = (actionType) => (
+  actionType === 'fir_ocr_submission'
+    ? { label: 'FIR Approvals', color: '#8b5cf6' }
+    : { label: 'Admin Approvals', color: '#2d7fb8' }
+);
+
 const ApprovalRequests = () => {
   const { token } = useAuth();
   const [requests, setRequests] = useState([]);
@@ -115,12 +121,16 @@ const ApprovalRequests = () => {
         ) : (
           filteredRequests.map((req) => {
             const status = statusConfig[req.status] || statusConfig.pending;
+            const category = getApprovalCategory(req.action_type);
             return (
               <div key={req.id} className={`${styles.requestCard} ${styles[`status_${req.status}`]}`}>
                 <div className={styles.requestTop}>
                   <div className={styles.actionBadge}>
                     <i className="fas fa-gavel"></i>
                     {actionLabels[req.action_type] || req.action_type}
+                  </div>
+                  <div className={styles.statusBadge} style={{ color: category.color, borderColor: category.color, background: `${category.color}15` }}>
+                    {category.label}
                   </div>
                   <div className={styles.statusBadge} style={{ color: status.color, borderColor: status.color }}>
                     <i className={status.icon}></i> {status.label}

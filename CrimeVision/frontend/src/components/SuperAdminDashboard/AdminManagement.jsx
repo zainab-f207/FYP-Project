@@ -37,7 +37,6 @@ import {
 import dayjs from 'dayjs';
 import apiService from '../../services/apiService_updated';
 import usePaginatedResource from './hooks/usePaginatedResource';
-import { USER_BULK_ACTIONS, USER_PERMISSIONS, USER_ROLES } from './constants/permissions';
 import {
   DEPARTMENTS,
   DEPARTMENT_PERMISSIONS,
@@ -47,6 +46,18 @@ import styles from './SuperAdminDashboard.module.css';
 
 const { Text } = Typography;
 const { confirm } = Modal;
+const ADMIN_ROLE_OPTIONS = [
+  { label: 'User', value: 'user' },
+  { label: 'Admin', value: 'admin' },
+  { label: 'Super Admin', value: 'superadmin' },
+  { label: 'Inactive', value: 'inactive' },
+];
+
+const normalizeAdminRole = (role) => {
+  const value = String(role || '').trim().toLowerCase();
+  if (value === 'super_admin' || value === 'super admin') return 'superadmin';
+  return value;
+};
 
 /**
  * @typedef {Object} AdminRecord
@@ -113,13 +124,15 @@ const AdminManagement = ({ token }) => {
   };
 
   const handleEdit = (admin) => {
+    const currentRole = normalizeAdminRole(admin.role) || 'admin';
     setEditModal({ visible: true, admin });
+    editForm.resetFields();
     editForm.setFieldsValue({
       username: admin.username || '',
       firstName: admin.firstName || '',
       lastName: admin.lastName || '',
       email: admin.email || '',
-      role: admin.role || '',
+      role: currentRole,
       department: admin.department || '',
       password: '',
       permissions: Array.isArray(admin.permissions) ? admin.permissions : [],
@@ -128,14 +141,21 @@ const AdminManagement = ({ token }) => {
 
   const handleEditSubmit = async (values) => {
     try {
+      const currentAdmin = editModal.admin || {};
+      const normalizedRole = normalizeAdminRole(values.role) || normalizeAdminRole(currentAdmin.role) || 'admin';
+      
+      // Ensure we don't accidentally wipe permissions/department if they are missing from values
+      // (though they should be present if they are form fields)
       const payload = {
-        firstName: values.firstName,
-        lastName: values.lastName,
-        username: values.username,
-        email: values.email,
-        role: values.role,
-        department: values.department,
-        permissions: values.permissions || [],
+        firstName: values.firstName !== undefined ? values.firstName : currentAdmin.firstName,
+        lastName: values.lastName !== undefined ? values.lastName : currentAdmin.lastName,
+        username: values.username !== undefined ? values.username : currentAdmin.username,
+        email: values.email !== undefined ? values.email : currentAdmin.email,
+        role: normalizedRole,
+        department: values.department || currentAdmin.department || '',
+        permissions: (Array.isArray(values.permissions) && values.permissions.length > 0) 
+          ? values.permissions 
+          : (Array.isArray(currentAdmin.permissions) ? currentAdmin.permissions : []),
       };
       if (values.password) payload.password = values.password;
 
@@ -222,10 +242,10 @@ const AdminManagement = ({ token }) => {
         dataIndex: 'role',
         key: 'role',
         width: 100,
-        filters: USER_ROLES.map((role) => ({ text: role.label, value: role.value })),
+        filters: ADMIN_ROLE_OPTIONS.map((role) => ({ text: role.label, value: role.value })),
         render: (role) => {
-          const effective = (role && String(role).trim()) || 'admin';
-          const isSuper = effective === 'superadmin' || effective === 'super_admin';
+          const effective = normalizeAdminRole(role) || 'admin';
+          const isSuper = effective === 'superadmin';
           return <Tag color={isSuper ? 'magenta' : 'geekblue'}>{effective.toUpperCase()}</Tag>;
         },
       },
@@ -329,7 +349,7 @@ const AdminManagement = ({ token }) => {
               style={{ width: 160 }}
               classNames={{ popup: { root: 'dark-select-dropdown' } }}
             >
-              {USER_ROLES.map((role) => (
+              {ADMIN_ROLE_OPTIONS.map((role) => (
                 <Select.Option key={role.value} value={role.value}>
                   {role.label}
                 </Select.Option>
@@ -498,7 +518,7 @@ const AdminManagement = ({ token }) => {
           form={editForm}
           layout="vertical"
           onFinish={handleEditSubmit}
-          initialValues={{ permissions: [] }}
+          initialValues={{ permissions: [], role: 'admin' }}
         >
           <Form.Item dependencies={['department']} noStyle>
             {() => {
@@ -559,7 +579,7 @@ const AdminManagement = ({ token }) => {
                               rules={[{ required: true, message: 'Required' }]}
                             >
                               <Select classNames={{ popup: { root: 'dark-select-dropdown' } }} style={{ background: 'transparent' }}>
-                                {USER_ROLES.map((role) => (
+                                  {ADMIN_ROLE_OPTIONS.map((role) => (
                                   <Select.Option key={role.value} value={role.value}>
                                     {role.label}
                                   </Select.Option>

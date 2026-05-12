@@ -60,6 +60,27 @@ def _crime_user_category(crime_type: Optional[str]) -> str:
     return "Other"
 
 
+def _align_rf_risk_pct_with_label(risk_label: str, raw_pct: int) -> int:
+    """Keep RF composite risk index coherent with the RF class label.
+
+    The RF model predicts a categorical label (Low/Medium/High), while the
+    composite score generates a continuous index. Clamp the index into the
+    expected band for the predicted label so UI text and percentage do not
+    contradict each other (for example, "Low" paired with 70%).
+    """
+    rp = int(max(1, min(99, raw_pct)))
+    label = str(risk_label or "").strip().lower()
+    if label == "low":
+        return min(rp, 39)
+    if label == "medium":
+        return min(max(rp, 40), 69)
+    if label == "high":
+        return max(rp, 70)
+    if label == "critical":
+        return max(rp, 85)
+    return rp
+
+
 _CATEGORY_SEVERITY_WEIGHT = {
     "Theft & Robbery": 2,
     "Fraud": 3,
@@ -2076,9 +2097,14 @@ def predict_risk(request: PredictRiskRequest):
     if _crm_model and _crm_scaler and _crm_artifacts:
         logger.info("🟡 Trying SECONDARY model: Random Forest + composite risk score")
         try:
-            date_with_time = date_part + ' ' + datetime.now().strftime('%H:%M:%S')
+            # IMPORTANT: RF path should respect the user-selected visit time.
+            # If no time is provided, use a neutral midday default rather than
+            # server "now" so "with time" vs "without time" behaves predictably.
+            rf_hour = req_hour if req_hour is not None else 12
+            date_with_time = f"{date_part} {rf_hour:02d}:00:00"
             row = {
                 'crime_date': date_with_time,
+                'crime_hour': rf_hour,
                 'area':       area,
                 'crime_type': crime_type,
                 'latitude':   float(getattr(request, 'latitude',  31.5)),
@@ -2092,21 +2118,287 @@ def predict_risk(request: PredictRiskRequest):
             )
             X_scaled   = _crm_scaler.transform(X_new)
             risk_label = str(_crm_model.predict(X_scaled)[0])
-            confidence = float(max(_crm_model.predict_proba(X_scaled)[0]))
-            raw_score  = _crm_raw_score(_df.iloc[0])
-            risk_pct   = max(1, min(99, int(round(raw_score * 100))))
+            pred_proba = _crm_model.predict_proba(X_scaled)[0]
+            model_confidence = float(max(pred_proba))
+
+            # Frontend shows this as "Prediction Reliability". Using pure class
+            # probability can look overconfident for heuristic-label training.
+            # Instead, tie reliability to historical data volume for this area.
+            area_freq_map = _crm_artifacts.get('area_freq_map', {})
+            n_train = int(_crm_artifacts.get('n_training_samples', 0) or 0)
+            area_freq = float(area_freq_map.get(area, 0.0) or 0.0)
+            est_samples = int(round(area_freq * n_train)) if n_train > 0 else 0
+            if est_samples >= 200:
+                confidence = 0.98
+            elif est_samples >= 80:
+                confidence = 0.92
+            elif est_samples >= 30:
+                confidence = 0.84
+            elif est_samples >= 10:
+                confidence = 0.74
+            else:
+                confidence = 0.62
+
+            raw_score = _crm_raw_score(_df.iloc[0])
+            raw_pct = max(1, min(99, int(round(raw_score * 100))))
+            risk_pct = _align_rf_risk_pct_with_label(risk_label, raw_pct)
+
+            def _risk_period_from_hour(h: int) -> str:
+                if 5 <= h <= 11:
+                    return "Morning"
+                if 12 <= h <= 16:
+                    return "Afternoon"
+                if 17 <= h <= 20:
+                    return "Evening"
+                return "Night"
+
+            def _hour_label(h: int) -> str:
+                ampm = "AM" if h < 12 else "PM"
+                return f"{h % 12 or 12}:00 {ampm}"
+
+            def _predict_rf_pct_for(date_str: str, hour_val: int):
+                row_i = {
+                    'crime_date': f"{date_str} {hour_val:02d}:00:00",
+                    'crime_hour': hour_val,
+                    'area': area,
+                    'crime_type': crime_type,
+                    'latitude': float(getattr(request, 'latitude', 31.5)),
+                    'longitude': float(getattr(request, 'longitude', 74.3)),
+                }
+                X_i, df_i = engineer_features(
+                    pd.DataFrame([row_i]),
+                    combined_severity_map=_crm_artifacts['combined_severity_map'],
+                    area_freq_map=_crm_artifacts['area_freq_map'],
+                    area_freq_median=_crm_artifacts['area_freq_median'],
+                )
+                X_i_scaled = _crm_scaler.transform(X_i)
+                lbl_i = str(_crm_model.predict(X_i_scaled)[0])
+                rs_i = _crm_raw_score(df_i.iloc[0])
+                rp_i = max(1, min(99, int(round(rs_i * 100))))
+                return lbl_i, _align_rf_risk_pct_with_label(lbl_i, rp_i)
+
+            # Time-period profile from RF index (period averages)
+            period_hours = {
+                "Morning": [6, 8, 10],
+                "Afternoon": [12, 14, 16],
+                "Evening": [17, 19, 20],
+                "Night": [22, 1, 3],
+            }
+            hourly_risk_profile = {}
+            for _period, _hours in period_hours.items():
+                _vals = []
+                for _h in _hours:
+                    _, _p = _predict_rf_pct_for(date_part, _h)
+                    _vals.append(_p)
+                hourly_risk_profile[_period] = int(round(sum(_vals) / max(len(_vals), 1)))
+
+            # Simple hour picks for safest/riskiest badges on user dashboard
+            probe_hours = [0, 3, 6, 9, 12, 15, 18, 21]
+            hour_rows = []
+            for _h in probe_hours:
+                _, _p = _predict_rf_pct_for(date_part, _h)
+                hour_rows.append({"hour": _h, "label": _hour_label(_h), "risk_percentage": _p})
+            hour_rows_sorted = sorted(hour_rows, key=lambda x: x['risk_percentage'])
+            safest_hours = [
+                {"hour": h['hour'], "label": h['label'], "relative_risk": h['risk_percentage']}
+                for h in hour_rows_sorted[:3]
+            ]
+            riskiest_hours = [
+                {"hour": h['hour'], "label": h['label'], "relative_risk": h['risk_percentage']}
+                for h in sorted(hour_rows_sorted[-3:], key=lambda x: x['risk_percentage'], reverse=True)
+            ]
+
+            # Safest upcoming dates in next 30 days based on RF index
+            safest_upcoming_dates = []
+            base_dt = datetime.strptime(date_part, '%Y-%m-%d')
+            upcoming_rows = []
+            for _d in range(1, 31):
+                _fd = base_dt + timedelta(days=_d)
+                _fd_str = _fd.strftime('%Y-%m-%d')
+                _lbl, _pct = _predict_rf_pct_for(_fd_str, rf_hour)
+                upcoming_rows.append({
+                    "date": _fd_str,
+                    "day": _fd.strftime('%a'),
+                    "risk_level": _lbl,
+                    "risk_percentage": _pct,
+                })
+            safest_upcoming_dates = sorted(upcoming_rows, key=lambda x: x['risk_percentage'])[:3]
+
+            # 7-day forecast
+            seven_day_forecast = []
+            for _d in range(1, 8):
+                _fd = base_dt + timedelta(days=_d)
+                _fd_str = _fd.strftime('%Y-%m-%d')
+                _lbl, _pct = _predict_rf_pct_for(_fd_str, rf_hour)
+                seven_day_forecast.append({
+                    "date": _fd_str,
+                    "day": _fd.strftime('%a'),
+                    "risk_level": _lbl,
+                    "risk_percentage": _pct,
+                })
+
+            # Visit-time comparison for UI cards
+            visit_time_comparison = []
+            period_probe_hour = {"Morning": 9, "Afternoon": 14, "Evening": 19, "Night": 1}
+            for _pname, _ph in period_probe_hour.items():
+                _, _pp = _predict_rf_pct_for(date_part, _ph)
+                visit_time_comparison.append({
+                    "period": _pname,
+                    "label": f"{_pname} ({_hour_label(_ph)})",
+                    "risk_percentage": _pp,
+                })
+
+            # Lightweight historical context from DB (same fields used by dashboards)
+            area_trend = None
+            historical_frequency = None
+            historical_comparison = None
+            try:
+                _conn = get_db_connection()
+                if _conn:
+                    _cur = _conn.cursor(dictionary=True)
+                    _cur.execute(
+                        """
+                        SELECT
+                            SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) AS recent_count,
+                            SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                                       AND crime_date < DATE_SUB(CURDATE(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) AS prior_count
+                        FROM crimes
+                        WHERE area = %s
+                        """,
+                        (area,),
+                    )
+                    _tr = _cur.fetchone() or {}
+                    _recent = int(_tr.get('recent_count') or 0)
+                    _prior = int(_tr.get('prior_count') or 0)
+                    if _prior > 0:
+                        _chg = round((_recent - _prior) / _prior * 100, 1)
+                        _dir = "increasing" if _chg >= 10 else "decreasing" if _chg <= -10 else "stable"
+                    elif _recent > 0:
+                        _chg = 100.0
+                        _dir = "increasing"
+                    else:
+                        _chg = 0.0
+                        _dir = "stable"
+                    area_trend = {
+                        "direction": _dir,
+                        "change_pct": _chg,
+                        "recent_count": _recent,
+                        "prior_count": _prior,
+                    }
+
+                    _cur.execute(
+                        """
+                        SELECT
+                            SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) THEN 1 ELSE 0 END) AS last_12m,
+                            SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH) THEN 1 ELSE 0 END) AS last_3m
+                        FROM crimes
+                        WHERE area = %s AND crime_type = %s
+                        """,
+                        (area, crime_type),
+                    )
+                    _hf = _cur.fetchone() or {}
+                    _cur.execute(
+                        """
+                        SELECT ROUND(COUNT(*) / NULLIF(COUNT(DISTINCT area), 0), 1) AS city_avg
+                        FROM crimes
+                        WHERE crime_type = %s AND crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                        """,
+                        (crime_type,),
+                    )
+                    _city = _cur.fetchone() or {}
+                    historical_frequency = {
+                        "last_12m": int(_hf.get('last_12m') or 0),
+                        "last_3m": int(_hf.get('last_3m') or 0),
+                        "city_avg": float(_city.get('city_avg') or 0),
+                    }
+
+                    _cur.execute(
+                        """
+                        SELECT COUNT(DISTINCT DATE(crime_date)) AS days_with_crime
+                        FROM crimes
+                        WHERE area = %s AND crime_type = %s
+                          AND crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                        """,
+                        (area, crime_type),
+                    )
+                    _hc = _cur.fetchone() or {}
+                    _days = int(_hc.get('days_with_crime') or 0)
+                    _hist_avg = round((_days / 365.0) * 100, 2)
+                    _diff = round(risk_pct - _hist_avg, 2)
+                    _diff_pct = round((_diff / max(_hist_avg, 0.01)) * 100, 1)
+                    historical_comparison = {
+                        "historical_avg": _hist_avg,
+                        "current_predicted": risk_pct,
+                        "diff": _diff,
+                        "diff_pct": _diff_pct,
+                        "direction": 'higher' if _diff_pct > 5 else 'lower' if _diff_pct < -5 else 'normal',
+                        "days_with_crime_12m": _days,
+                    }
+
+                    _cur.close()
+                    _conn.close()
+            except Exception as hist_exc:
+                logger.warning("RF historical context query failed: %s", hist_exc)
+
+            # Human-readable risk drivers from RF feature components
+            _row0 = _df.iloc[0]
+            sev = float(_row0.get('crime_severity', 0.0))
+            area_pct = float(_row0.get('area_freq_percentile', 50.0))
+            drivers = []
+            if sev >= 8:
+                drivers.append("Selected crime type has high severity in historical records")
+            elif sev >= 6:
+                drivers.append("Selected crime type has moderate-to-high severity profile")
+            else:
+                drivers.append("Selected crime type has comparatively lower severity profile")
+
+            if area_pct >= 75:
+                drivers.append("Area is in a higher historical hotspot percentile")
+            elif area_pct <= 30:
+                drivers.append("Area has a lower historical hotspot footprint")
+            else:
+                drivers.append("Area sits near the mid-range of historical hotspot density")
+
+            if rf_hour in [22, 23, 0, 1, 2, 3, 4]:
+                drivers.append("Selected hour falls in a higher-risk late-night window")
+            elif rf_hour in [17, 18, 19, 20, 21]:
+                drivers.append("Selected hour is in evening period with elevated activity")
+            else:
+                drivers.append("Selected hour is outside peak historical risk windows")
+
+            if datetime.strptime(date_part, '%Y-%m-%d').weekday() >= 5:
+                drivers.append("Weekend timing contributes a small upward risk adjustment")
+
+            time_period = _risk_period_from_hour(rf_hour)
 
             logger.info(
                 "✅ RF+COMPOSITE prediction served: area=%s crime=%s → %s %d%% (conf=%.2f)",
                 area, crime_type, risk_label, risk_pct, confidence,
             )
             return {
-                "model":           "rf_composite",
-                "model_label":     "Random Forest + Composite Risk Score",
-                "risk_level":      risk_label,
-                "risk_percentage": risk_pct,
-                "confidence":      confidence,
-                "is_estimated":    area not in _crm_artifacts.get('area_freq_map', {}),
+                "model":            "rf_composite",
+                "model_label":      "Random Forest + Composite Risk Score",
+                "risk_level":       risk_label,
+                "risk_percentage":  risk_pct,
+                "risk_percentage_label": "Risk Index",
+                "confidence":       confidence,
+                "model_confidence": model_confidence,
+                "reliability_basis": "data_volume",
+                "reliability_note":  "Risk Index is a composite score based on severity, location hotspot rank, and time.",
+                "effective_hour":   rf_hour,
+                "time_period":      time_period,
+                "hourly_risk_profile": hourly_risk_profile,
+                "safest_hours":     safest_hours,
+                "riskiest_hours":   riskiest_hours,
+                "safest_upcoming_dates": safest_upcoming_dates,
+                "seven_day_forecast": seven_day_forecast,
+                "visit_time_comparison": visit_time_comparison,
+                "area_trend":       area_trend,
+                "historical_frequency": historical_frequency,
+                "historical_comparison": historical_comparison,
+                "risk_drivers":     drivers,
+                "time_was_provided": req_hour is not None,
+                "is_estimated":     area not in _crm_artifacts.get('area_freq_map', {}),
             }
 
         except Exception as exc:
@@ -2142,7 +2434,12 @@ def predict_risk(request: PredictRiskRequest):
             return {"model": "default_medium",
                     "model_label": "Default Fallback (Medium, no training match)",
                     "risk_level": "Medium", "risk_percentage": 50,
-                    "confidence": 0.5, "is_estimated": True,
+                    "risk_percentage_label": "Default Risk Score",
+                    "confidence": 0.5,
+                    "reliability_basis": "fallback_default",
+                    "reliability_note": "Input could not be matched to trained categories; returned conservative default.",
+                    "comparability_note": "Default fallback score is not directly comparable with RF Composite Risk Index or Poisson probability.",
+                    "is_estimated": True,
                     "message": "Could not match inputs to training data"}
 
         area_enc       = int(le_area.transform([matched_area])[0])
@@ -2157,13 +2454,222 @@ def predict_risk(request: PredictRiskRequest):
         risk_level     = str(le_risk.inverse_transform([pred])[0]).capitalize()
         risk_percentage = calculate_risk_percentage(risk_level, pred_proba.tolist(), le_risk)
         confidence     = float(max(pred_proba))
+
+        def _period_from_hour(h: Optional[int]) -> Optional[str]:
+            if h is None:
+                return None
+            if 5 <= h <= 11:
+                return "Morning"
+            if 12 <= h <= 16:
+                return "Afternoon"
+            if 17 <= h <= 20:
+                return "Evening"
+            return "Night"
+
+        def _legacy_predict_for_date(dt_obj: datetime):
+            _y, _m, _d = dt_obj.year, dt_obj.month, dt_obj.day
+            _wd = dt_obj.weekday()
+            _doy = dt_obj.timetuple().tm_yday
+            _wknd = 1 if _wd in [5, 6] else 0
+            _df = pd.DataFrame(
+                [[area_enc, crime_type_enc, _y, _m, _d, _wd, _doy, _wknd]],
+                columns=['area_enc', 'crime_type_enc', 'year', 'month', 'day', 'weekday', 'day_of_year', 'is_weekend']
+            ).astype(int)
+            _pred = model.predict(_df)[0]
+            _proba = model.predict_proba(_df)[0]
+            _lvl = str(le_risk.inverse_transform([_pred])[0]).capitalize()
+            _pct = calculate_risk_percentage(_lvl, _proba.tolist(), le_risk)
+            return _lvl, _pct
+
+        # Future-day projections using legacy date-sensitive features.
+        base_dt = datetime.strptime(date_part, '%Y-%m-%d')
+        seven_day_forecast = []
+        upcoming_30 = []
+        for _delta in range(1, 31):
+            _fd = base_dt + timedelta(days=_delta)
+            _lvl, _pct = _legacy_predict_for_date(_fd)
+            _row = {
+                "date": _fd.strftime('%Y-%m-%d'),
+                "day": _fd.strftime('%a'),
+                "risk_level": _lvl,
+                "risk_percentage": _pct,
+            }
+            upcoming_30.append(_row)
+            if _delta <= 7:
+                seven_day_forecast.append(_row)
+        safest_upcoming_dates = sorted(upcoming_30, key=lambda x: x['risk_percentage'])[:3]
+
+        # Historical context blocks to populate dashboard cards.
+        area_trend = None
+        historical_frequency = None
+        historical_comparison = None
+        hourly_risk_profile = None
+        visit_time_comparison = None
+        risk_drivers = []
+        try:
+            from app.crime_risk_model.utils.helpers import _parse_hour as _parse_crime_hour
+
+            _conn = get_db_connection()
+            if _conn:
+                _cur = _conn.cursor(dictionary=True)
+
+                _cur.execute(
+                    """
+                    SELECT
+                        SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) AS recent_count,
+                        SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                                   AND crime_date < DATE_SUB(CURDATE(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) AS prior_count
+                    FROM crimes
+                    WHERE area = %s
+                    """,
+                    (area,),
+                )
+                _tr = _cur.fetchone() or {}
+                _recent = int(_tr.get('recent_count') or 0)
+                _prior = int(_tr.get('prior_count') or 0)
+                if _prior > 0:
+                    _chg = round((_recent - _prior) / _prior * 100, 1)
+                    _dir = "increasing" if _chg >= 10 else "decreasing" if _chg <= -10 else "stable"
+                elif _recent > 0:
+                    _chg = 100.0
+                    _dir = "increasing"
+                else:
+                    _chg = 0.0
+                    _dir = "stable"
+                area_trend = {
+                    "direction": _dir,
+                    "change_pct": _chg,
+                    "recent_count": _recent,
+                    "prior_count": _prior,
+                }
+
+                _cur.execute(
+                    """
+                    SELECT
+                        SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) THEN 1 ELSE 0 END) AS last_12m,
+                        SUM(CASE WHEN crime_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH) THEN 1 ELSE 0 END) AS last_3m
+                    FROM crimes
+                    WHERE area = %s AND crime_type = %s
+                    """,
+                    (area, crime_type),
+                )
+                _hf = _cur.fetchone() or {}
+                _cur.execute(
+                    """
+                    SELECT ROUND(COUNT(*) / NULLIF(COUNT(DISTINCT area), 0), 1) AS city_avg
+                    FROM crimes
+                    WHERE crime_type = %s AND crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                    """,
+                    (crime_type,),
+                )
+                _city = _cur.fetchone() or {}
+                historical_frequency = {
+                    "last_12m": int(_hf.get('last_12m') or 0),
+                    "last_3m": int(_hf.get('last_3m') or 0),
+                    "city_avg": float(_city.get('city_avg') or 0),
+                }
+
+                _cur.execute(
+                    """
+                    SELECT COUNT(DISTINCT DATE(crime_date)) AS days_with_crime
+                    FROM crimes
+                    WHERE area = %s AND crime_type = %s
+                      AND crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                    """,
+                    (area, crime_type),
+                )
+                _hc = _cur.fetchone() or {}
+                _days = int(_hc.get('days_with_crime') or 0)
+                _hist_avg = round((_days / 365.0) * 100, 2)
+                _diff = round(risk_percentage - _hist_avg, 2)
+                _diff_pct = round((_diff / max(_hist_avg, 0.01)) * 100, 1)
+                historical_comparison = {
+                    "historical_avg": _hist_avg,
+                    "current_predicted": risk_percentage,
+                    "diff": _diff,
+                    "diff_pct": _diff_pct,
+                    "direction": 'higher' if _diff_pct > 5 else 'lower' if _diff_pct < -5 else 'normal',
+                    "days_with_crime_12m": _days,
+                }
+
+                # Hourly/profile context from empirical history (legacy model itself is time-agnostic).
+                _cur.execute(
+                    """
+                    SELECT crime_time
+                    FROM crimes
+                    WHERE area = %s AND crime_type = %s
+                      AND crime_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                    """,
+                    (area, crime_type),
+                )
+                _time_rows = _cur.fetchall() or []
+                _counts = {"Morning": 0, "Afternoon": 0, "Evening": 0, "Night": 0}
+                _total_t = 0
+                for _r in _time_rows:
+                    _h = _parse_crime_hour((_r or {}).get('crime_time'))
+                    if _h < 0:
+                        continue
+                    _period = _period_from_hour(_h)
+                    if _period:
+                        _counts[_period] += 1
+                        _total_t += 1
+                if _total_t > 0:
+                    hourly_risk_profile = {k: int(round((v / _total_t) * 100)) for k, v in _counts.items()}
+                    _probe = {"Morning": 9, "Afternoon": 14, "Evening": 19, "Night": 1}
+                    visit_time_comparison = [
+                        {
+                            "period": k,
+                            "label": f"{k} ({(_probe[k] % 12) or 12}:00 {'AM' if _probe[k] < 12 else 'PM'})",
+                            "risk_percentage": hourly_risk_profile[k],
+                        }
+                        for k in ["Morning", "Afternoon", "Evening", "Night"]
+                    ]
+
+                _cur.close()
+                _conn.close()
+        except Exception as _legacy_ctx_exc:
+            logger.warning("legacy analytics context build failed: %s", _legacy_ctx_exc)
+
+        # Legacy explanatory drivers.
+        if matched_area.lower() != area.lower():
+            risk_drivers.append(f"Area matched to closest trained category: {matched_area}")
+        if matched_crime.lower() != crime_type.lower():
+            risk_drivers.append(f"Crime type matched to closest trained category: {matched_crime}")
+        if confidence < 0.5:
+            risk_drivers.append("Low class separation in legacy model probabilities")
+        elif confidence < 0.7:
+            risk_drivers.append("Moderate class separation in legacy model probabilities")
+        else:
+            risk_drivers.append("Strong class separation in legacy model probabilities")
+        if req_hour is not None:
+            risk_drivers.append("Selected visit time is advisory only in legacy mode (not a model feature)")
+        if is_weekend:
+            risk_drivers.append("Requested date is a weekend day")
+
+        time_period = _period_from_hour(req_hour) if req_hour is not None else None
         logger.info(
             "✅ LEGACY-RF prediction served: area=%s (matched=%s) crime=%s (matched=%s) → %s %d%% (conf=%.2f)",
             area, matched_area, crime_type, matched_crime, risk_level, risk_percentage, confidence,
         )
         return {"model": "legacy_rf",
                 "model_label": "Legacy Random Forest (label-encoder)",
-                "risk_level": risk_level, "risk_percentage": risk_percentage, "confidence": confidence}
+                "risk_level": risk_level, "risk_percentage": risk_percentage,
+            "risk_percentage_label": "Legacy Risk Score",
+                "confidence": confidence,
+                "reliability_basis": "legacy_model_prob",
+                "reliability_note": "Legacy confidence is class probability and may not reflect data coverage; visit time is not used.",
+            "comparability_note": "Legacy score is class-range mapped and not directly comparable with RF Composite Risk Index or Poisson probability.",
+                "time_period": time_period,
+                "area_trend": area_trend,
+                "historical_frequency": historical_frequency,
+                "historical_comparison": historical_comparison,
+                "hourly_risk_profile": hourly_risk_profile,
+                "visit_time_comparison": visit_time_comparison,
+                "safest_upcoming_dates": safest_upcoming_dates,
+                "seven_day_forecast": seven_day_forecast,
+                "risk_drivers": risk_drivers,
+                "time_was_provided": req_hour is not None,
+                "time_used_by_model": False}
 
     except HTTPException:
         raise

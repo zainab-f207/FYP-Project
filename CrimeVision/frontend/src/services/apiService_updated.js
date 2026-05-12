@@ -1596,6 +1596,29 @@ const apiService = {
     }
   },
 
+  async submitUserActionForApproval(token, actionData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/user-action-approval`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(actionData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to submit action for approval');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error submitting user action for approval:', error);
+      throw error;
+    }
+  },
+
   async getCrimes(filters = {}) {
     try {
       const response = await fetch(`${API_BASE_URL}/api/crimes${buildQueryString(filters)}`);
@@ -2256,6 +2279,7 @@ const apiService = {
           title: notification.title,
           message: notification.message,
           timestamp: notification.timestamp,
+          details: notification.details || null,
           urgent: notification.type === 'warning' || notification.type === 'error' || notification.urgent,
         }))
         : [];

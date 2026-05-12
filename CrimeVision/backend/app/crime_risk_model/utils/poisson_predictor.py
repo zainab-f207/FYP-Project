@@ -358,8 +358,16 @@ def predict(artifacts: dict, area: str, crime_type: str,
     # When no hour data exists we fall back to 1.0 (neutral).
     # _HOUR_AMP power amplifies the raw smoothed multipliers so time selection
     # produces a meaningfully visible change in the predicted risk percentage.
-    _raw_hmult = float(hour_m.get(str(hour), 1.0)) if (hour is not None and hour_m) else 1.0
-    hour_mult  = (_raw_hmult ** _HOUR_AMP) if (hour is not None and hour_m) else 1.0
+    # Stored hour multipliers in artifacts are normalized as (smoothed_fraction / (1/24)),
+    # i.e. roughly = 24 * fraction_of_day. To convert back to a per-hour fraction
+    # we divide by 24. Apply the amplification exponent to the fraction so that
+    # selecting a particular hour meaningfully changes the hourly λ while keeping
+    # units consistent (base_lambda is crimes per day).
+    if hour is not None and hour_m:
+        _raw_hmult = float(hour_m.get(str(hour), 1.0))
+        hour_mult = (max(_raw_hmult, 1e-9) ** _HOUR_AMP) / 24.0
+    else:
+        hour_mult = 1.0
 
     lam = base_lambda * dow_mult * month_mult * hour_mult
 
@@ -369,11 +377,12 @@ def predict(artifacts: dict, area: str, crime_type: str,
 
     # ── Risk level thresholds ───────────────────────────────────────────────────
     # 0–25% → Low, 25–50% → Medium, 51–80% → High, 81–100% → Critical
-    if probability > 0.80:
+    # Explicit inclusive upper-edge thresholds to match displayed risk buckets
+    if probability >= 0.80:
         risk_level = 'Critical'
-    elif probability > 0.50:
+    elif probability >= 0.50:
         risk_level = 'High'
-    elif probability > 0.25:
+    elif probability >= 0.25:
         risk_level = 'Medium'
     else:
         risk_level = 'Low'
@@ -409,21 +418,22 @@ def predict(artifacts: dict, area: str, crime_type: str,
         ]
 
         # Time-of-day risk profile (grouped by period)
-        period_buckets: dict = {"Morning": [], "Afternoon": [], "Evening": [], "Night": []}
+        period_lambdas: dict = {"Morning": [], "Afternoon": [], "Evening": [], "Night": []}
         for h, mult in hour_risks:
-            lam_h = base_lambda * dow_mult * month_mult * (mult ** _HOUR_AMP)
-            p_h   = round((1.0 - math.exp(-max(lam_h, 1e-9))) * 100, 2)
+            h_mult = (max(float(mult), 1e-9) ** _HOUR_AMP) / 24.0
+            lam_h  = base_lambda * dow_mult * month_mult * h_mult
             if 5 <= h <= 11:
-                period_buckets["Morning"].append(p_h)
+                period_lambdas["Morning"].append(lam_h)
             elif 12 <= h <= 16:
-                period_buckets["Afternoon"].append(p_h)
+                period_lambdas["Afternoon"].append(lam_h)
             elif 17 <= h <= 20:
-                period_buckets["Evening"].append(p_h)
+                period_lambdas["Evening"].append(lam_h)
             else:
-                period_buckets["Night"].append(p_h)
+                period_lambdas["Night"].append(lam_h)
+
         hourly_risk_profile = {
-            k: round(sum(v) / len(v), 1)
-            for k, v in period_buckets.items() if v
+            k: round((1.0 - math.exp(-max(sum(v), 1e-9))) * 100, 1)
+            for k, v in period_lambdas.items() if v
         }
 
         # Visit-time comparison: representative hours
@@ -434,8 +444,9 @@ def predict(artifacts: dict, area: str, crime_type: str,
             (23, "11:00 PM", "Night"),
         ]
         for vh, vlabel, vperiod in _visit_hours:
-            vm    = float(hour_m.get(str(vh), 1.0))
-            vlam  = base_lambda * dow_mult * month_mult * (vm ** _HOUR_AMP)
+            vm_raw = float(hour_m.get(str(vh), 1.0))
+            vm_mult = (max(vm_raw, 1e-9) ** _HOUR_AMP) / 24.0
+            vlam  = base_lambda * dow_mult * month_mult * vm_mult
             vprob = round((1.0 - math.exp(-max(vlam, 1e-9))) * 100, 2)
             visit_time_comparison.append({
                 "hour": vh, "label": vlabel, "period": vperiod,
@@ -457,10 +468,16 @@ def predict(artifacts: dict, area: str, crime_type: str,
         fd       = dt + timedelta(days=delta)
         fd_dow   = fd.weekday()
         fd_month = fd.month
+        if hour is not None and hour_m:
+            raw_h = float(hour_m.get(str(hour), 1.0))
+            fd_hour_factor = (max(raw_h, 1e-9) ** _HOUR_AMP) / 24.0
+        else:
+            fd_hour_factor = 1.0
+
         fd_lam   = (base_lambda
                     * float(dow_m.get(str(fd_dow),   1.0))
                     * float(month_m.get(str(fd_month), 1.0))
-                    * (float(hour_m.get(str(hour), 1.0)) if (hour is not None and hour_m) else 1.0))
+                    * fd_hour_factor)
         fd_prob  = 1.0 - math.exp(-max(fd_lam, 1e-9))
         upcoming.append((fd.strftime('%Y-%m-%d'), DAY_NAMES[fd_dow], round(fd_prob * 100, 2)))
 
@@ -497,7 +514,7 @@ def predict(artifacts: dict, area: str, crime_type: str,
 
 # ── Batch safety analysis for one area across all crime types ─────────────────
 
-def area_safety_profile(artifacts: dict, area: str, date_str: str) -> dict:
+def area_safety_profile(artifacts: dict, area: str, date_str: str, hour: int = None) -> dict:
     """
     For a given area and date, compute risk for ALL known crime types in that area.
     Returns overall risk + breakdown.  Used by the area details panel.
@@ -512,7 +529,7 @@ def area_safety_profile(artifacts: dict, area: str, date_str: str) -> dict:
 
     results = []
     for ct in key_ct_low_list:
-        r = predict(artifacts, area, ct, date_str)
+        r = predict(artifacts, area, ct, date_str, hour=hour)
         results.append({'crime_type': ct, **r})
 
     if not results:

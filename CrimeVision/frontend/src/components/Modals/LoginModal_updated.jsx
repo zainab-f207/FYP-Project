@@ -294,6 +294,9 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
   const { login, register, googleLogin, googleRegister, isAuthenticated, completeOtpLogin } = useAuth();
   const navigate = useNavigate();
   const formRef = useRef(null);
+  const currentEmail = String(formData.email || '').trim().toLowerCase();
+  const lockedEmail = String(rateLimitInfo?.email || '').trim().toLowerCase();
+  const isRateLimitedForCurrentEmail = Boolean(rateLimitInfo?.locked && lockedEmail && lockedEmail === currentEmail);
 
   // Notifications handled globally via NotificationProvider
 
@@ -325,7 +328,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
 
   // Rate limit countdown timer
   useEffect(() => {
-    if (rateLimitInfo && rateLimitInfo.locked && rateLimitInfo.retryAfter > 0) {
+    if (isRateLimitedForCurrentEmail && rateLimitInfo.retryAfter > 0) {
       rateLimitTimerRef.current = setInterval(() => {
         setRateLimitInfo((prev) => {
           if (!prev || prev.retryAfter <= 1) {
@@ -337,7 +340,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
       }, 1000);
       return () => clearInterval(rateLimitTimerRef.current);
     }
-  }, [rateLimitInfo?.locked]);
+  }, [isRateLimitedForCurrentEmail, rateLimitInfo?.retryAfter]);
 
   // OTP countdown timer (5 minutes)
   useEffect(() => {
@@ -768,7 +771,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
           // Account locked due to too many failed attempts
           console.log('🔒 Account rate limited');
           const retrySeconds = result.retryAfter || 1800;
-          setRateLimitInfo({ locked: true, retryAfter: retrySeconds, message: result.error });
+          setRateLimitInfo({ locked: true, retryAfter: retrySeconds, message: result.error, email: currentEmail });
           setErrors({ general: result.error });
           notif.error('Account Locked', result.error || 'Too many failed attempts. Please try again later.');
         } else if (result.requires_email_otp) {
@@ -862,7 +865,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
       // Handle rate limiting errors thrown as exceptions
       if (error.status === 429) {
         const retrySeconds = error.retryAfter || 1800;
-        setRateLimitInfo({ locked: true, retryAfter: retrySeconds, message: errorMessage });
+        setRateLimitInfo({ locked: true, retryAfter: retrySeconds, message: errorMessage, email: currentEmail });
         setErrors({ general: errorMessage });
         notif.error('Account Locked', errorMessage);
       } else if (errorMessage.includes('verify your email')) {
@@ -1505,7 +1508,7 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
         </div>
 
         {/* Rate Limit Lockout Banner */}
-        {rateLimitInfo && rateLimitInfo.locked && (
+        {isRateLimitedForCurrentEmail && (
           <div className="rate-limit-banner">
             <div className="rate-limit-icon">
               <i className="fas fa-lock"></i>
@@ -1557,14 +1560,14 @@ const LoginModal = ({ isOpen, closeModal, onForgotPassword }) => {
         <button
           type="submit"
           className={`auth-button ${loading ? 'loading' : ''}`}
-          disabled={loading || (rateLimitInfo && rateLimitInfo.locked)}
+          disabled={loading || isRateLimitedForCurrentEmail}
         >
           {loading ? (
             <>
               <div className="spinner"></div>
               {isLogin ? "Signing In..." : "Creating Account..."}
             </>
-          ) : rateLimitInfo?.locked ? (
+          ) : isRateLimitedForCurrentEmail ? (
             <>
               <i className="fas fa-lock"></i> Account Locked
             </>
