@@ -35,12 +35,41 @@ CrimeVision/OCRModel/.venv/
 !.env.example
 !**/.env.example
 
+# ===== Ignore VAPID keys and sensitive JSON configs =====
+vapid.json
+**/vapid.json
+
 
 
 # ===== Ignore Datasets =====
 CrimeVision\data
 CrimeVision\backend\app\crime_risk_model\data
 CrimeVision\OCRModel\app\data
+
+# ===== Ignore CSV files (data files) =====
+*.csv
+CrimeVision/data/*.csv
+
+# ===== Ignore migration and test files =====
+**/db_migrations*.sql
+**/verify_*.py
+**/fix_*.py
+**/test_*.py
+**/testing_*.py
+**/cleanup_*.py
+**/clear_*.py
+**/copy_*.py
+**/export_*.py
+**/import_*.py
+**/migrate_*.py
+**/rebackfill_*.py
+**/quick_setup.py
+**/generate_vapid*.py
+**/reassign_*.py
+**/seed_*.py
+**/run_migrations.py
+**/emergency_calls_table.sql
+**/patrol_requests_table.sql
 
 # ===== Ignore runtime user uploads (profile photos) =====
 CrimeVision/backend/app/profile_photos/*
