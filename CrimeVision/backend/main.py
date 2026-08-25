@@ -1593,15 +1593,18 @@ async def on_startup():
 
         # ---- Start ModelWatcher (auto-retrain when new crimes/areas arrive) ----
         try:
-            from model_watcher import get_watcher as _gw
-            _gw().start()
-            print("✅ ModelWatcher started — auto-retrain enabled")
-            print("🔄 Running initial model check for new data...")
-            try:
-                _gw()._db_check()
-                print("✅ Initial model check completed")
-            except Exception as _initial_check_err:
-                print(f"⚠️  Initial model check error (non-fatal): {_initial_check_err}")
+            if os.environ.get("ENABLE_AUTO_RETRAIN", "0") == "1":
+                from model_watcher import get_watcher as _gw
+                _gw().start()
+                print("✅ ModelWatcher started — auto-retrain enabled")
+                print("🔄 Running initial model check for new data...")
+                try:
+                    _gw()._db_check()
+                    print("✅ Initial model check completed")
+                except Exception as _initial_check_err:
+                    print(f"⚠️  Initial model check error (non-fatal): {_initial_check_err}")
+            else:
+                print("ℹ️  ModelWatcher auto-retrain disabled (set ENABLE_AUTO_RETRAIN=1 to enable).")
         except Exception as _mwe:
             print(f"⚠️  ModelWatcher not started (non-fatal): {_mwe}")
 
