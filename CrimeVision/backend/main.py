@@ -1556,80 +1556,88 @@ def test_scheduler_job():
 # Call this function during startup
 @app.on_event("startup")
 async def on_startup():
-    """Prepare database schema when the application starts."""
-    try:
-        initialize_schema()
-        ensure_browser_notifications_tables()
-        ensure_alert_subscriptions_table()
-        ensure_alerts_tables_schema()
-        print("✅ Database schema initialized successfully")
+    """Bind port immediately, then kick off heavy init in the background."""
+    import asyncio
 
-        # Start background monitoring
-        start_background_monitoring()
-        print("✅ Background monitoring started")
-
-        # ---- Sync PPC/law-section severity scores into severity_map.json ----
+    async def _background_init():
+        """All heavy initialization runs here, after the port is already open."""
         try:
-            import sys as _sys, os as _os
-            _crm_utils = _os.path.normpath(
-                _os.path.join(_os.path.dirname(__file__), 'app', 'crime_risk_model', 'utils')
-            )
-            if _crm_utils not in _sys.path:
-                _sys.path.insert(0, _crm_utils)
-            from severity_sync import sync_severity_from_db as _sev_sync
-            _summary = _sev_sync()
-            print(f"✅ severity_sync: +{_summary['added']} new, {_summary['updated']} updated, {_summary['unchanged']} unchanged")
-        except Exception as _se:
-            print(f"⚠️  severity_sync skipped (non-fatal): {_se}")
+            initialize_schema()
+            ensure_browser_notifications_tables()
+            ensure_alert_subscriptions_table()
+            ensure_alerts_tables_schema()
+            print("✅ Database schema initialized successfully")
 
-        # ---- Load areas table into OCR geocoding cache (DB text-match) ----
-        try:
-            _areas_conn = get_db_connection()
-            _ocr_load_areas(_areas_conn)
-            _areas_conn.close()
-            print("✅ OCR geocoding areas table loaded")
-        except Exception as _area_err:
-            print(f"⚠️  OCR geocoding areas table not loaded (non-fatal): {_area_err}")
+            # Start background monitoring
+            start_background_monitoring()
+            print("✅ Background monitoring started")
 
-        # ---- Start ModelWatcher (auto-retrain when new crimes/areas arrive) ----
-        try:
-            if os.environ.get("ENABLE_AUTO_RETRAIN", "0") == "1":
-                from model_watcher import get_watcher as _gw
-                _gw().start()
-                print("✅ ModelWatcher started — auto-retrain enabled")
-                print("🔄 Running initial model check for new data...")
-                try:
-                    _gw()._db_check()
-                    print("✅ Initial model check completed")
-                except Exception as _initial_check_err:
-                    print(f"⚠️  Initial model check error (non-fatal): {_initial_check_err}")
+            # ---- Sync PPC/law-section severity scores into severity_map.json ----
+            try:
+                import sys as _sys, os as _os
+                _crm_utils = _os.path.normpath(
+                    _os.path.join(_os.path.dirname(__file__), 'app', 'crime_risk_model', 'utils')
+                )
+                if _crm_utils not in _sys.path:
+                    _sys.path.insert(0, _crm_utils)
+                from severity_sync import sync_severity_from_db as _sev_sync
+                _summary = _sev_sync()
+                print(f"✅ severity_sync: +{_summary['added']} new, {_summary['updated']} updated, {_summary['unchanged']} unchanged")
+            except Exception as _se:
+                print(f"⚠️  severity_sync skipped (non-fatal): {_se}")
+
+            # ---- Load areas table into OCR geocoding cache (DB text-match) ----
+            try:
+                _areas_conn = get_db_connection()
+                _ocr_load_areas(_areas_conn)
+                _areas_conn.close()
+                print("✅ OCR geocoding areas table loaded")
+            except Exception as _area_err:
+                print(f"⚠️  OCR geocoding areas table not loaded (non-fatal): {_area_err}")
+
+            # ---- Start ModelWatcher (auto-retrain when new crimes/areas arrive) ----
+            try:
+                if os.environ.get("ENABLE_AUTO_RETRAIN", "0") == "1":
+                    from model_watcher import get_watcher as _gw
+                    _gw().start()
+                    print("✅ ModelWatcher started — auto-retrain enabled")
+                    try:
+                        _gw()._db_check()
+                        print("✅ Initial model check completed")
+                    except Exception as _initial_check_err:
+                        print(f"⚠️  Initial model check error (non-fatal): {_initial_check_err}")
+                else:
+                    print("ℹ️  ModelWatcher auto-retrain disabled (set ENABLE_AUTO_RETRAIN=1 to enable).")
+            except Exception as _mwe:
+                print(f"⚠️  ModelWatcher not started (non-fatal): {_mwe}")
+
+            # Test the scheduler immediately
+            scheduler.print_jobs()
+
+            # Run initial monitoring check (configurable)
+            try:
+                from app.routes.admin import get_setting, SYSTEM_SETTINGS_DEFAULTS
+                default_run_initial = str(SYSTEM_SETTINGS_DEFAULTS.get("run_initial_monitor_on_startup", {}).get("value", "true")).lower()
+                run_initial_raw = get_setting("run_initial_monitor_on_startup")
+                run_initial = str(run_initial_raw if run_initial_raw is not None else default_run_initial).lower() == "true"
+            except Exception:
+                run_initial = True
+
+            if run_initial:
+                print("🔄 Running initial saved locations monitoring...")
+                await monitor_saved_locations()
+                print("✅ Initial saved locations monitoring completed")
             else:
-                print("ℹ️  ModelWatcher auto-retrain disabled (set ENABLE_AUTO_RETRAIN=1 to enable).")
-        except Exception as _mwe:
-            print(f"⚠️  ModelWatcher not started (non-fatal): {_mwe}")
+                print("ℹ️ Initial saved locations monitoring skipped by system setting")
 
-        # Test the scheduler immediately
-        scheduler.print_jobs()
+        except Exception as exc:
+            logger.error("Background startup initialization failed", exc_info=exc)
+            print(f"❌ Background initialization error: {exc}")
 
-        # Run initial monitoring check (configurable)
-        try:
-            from app.routes.admin import get_setting, SYSTEM_SETTINGS_DEFAULTS
-            default_run_initial = str(SYSTEM_SETTINGS_DEFAULTS.get("run_initial_monitor_on_startup", {}).get("value", "true")).lower()
-            run_initial_raw = get_setting("run_initial_monitor_on_startup")
-            run_initial = str(run_initial_raw if run_initial_raw is not None else default_run_initial).lower() == "true"
-        except Exception:
-            run_initial = True
+    # Schedule heavy work to run after the server is already listening
+    asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(_background_init()))
 
-        if run_initial:
-            print("🔄 Running initial saved locations monitoring...")
-            await monitor_saved_locations()
-            print("✅ Initial saved locations monitoring completed")
-        else:
-            print("ℹ️ Initial saved locations monitoring skipped by system setting")
 
-    except Exception as exc:
-        logger.error("Startup schema initialization failed", exc_info=exc)
-        print(f"❌ Database initialization error: {exc}")
 
 @app.post("/analyze_route_safety", response_model=SafetyResponse)
 async def analyze_route_safety(route: RouteData):
