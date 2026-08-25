@@ -186,14 +186,16 @@ async def force_cors_middleware(request: Request, call_next):
     
     # Add CORS headers to every response
     origin = request.headers.get("origin")
-    if origin in [
+    allowed_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://192.168.0.104:5173",
         "http://192.168.56.1:5173",
-    ]:
+        "https://safevision.vercel.app"
+    ]
+    if origin in allowed_origins:
         response.headers["Access-Control-Allow-Origin"] = origin
     else:
         response.headers["Access-Control-Allow-Origin"] = "*"
