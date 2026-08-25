@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import styles from './SuperAdminReportsPanel.module.css';
 
 const PAGE_SIZE = 50;

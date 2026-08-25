@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext_updated';
+﻿import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LoadingSpinner,
@@ -19,7 +19,7 @@ import ProfileModal from './ProfileModal';
 import SafeVisionLogo from '../common/SafeVisionLogo';
 import BrowserNotifications from './BrowserNotifications';
 import SafetyScoreExplainer from './SafetyScoreExplainer';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 
 const getProfileImageUrl = (profilePicture) => {
   if (!profilePicture) return null;

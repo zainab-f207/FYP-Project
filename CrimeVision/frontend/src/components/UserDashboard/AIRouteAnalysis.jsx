@@ -1,10 +1,10 @@
-// AI Route Analysis & Comparison System - COMPLETE VERSION
+﻿// AI Route Analysis & Comparison System - COMPLETE VERSION
 // Features: Manual placement, draggable markers, multiple routes, popups
 
 import React, { useState, useEffect, useRef } from "react";
 import styles from "./AIRouteAnalysis.module.css";
 import AIRouteMap from "./AIRouteMap";
-import apiService from "../../services/apiService_updated";
+import apiService from "../../services/apiService";
 
 const AIRouteAnalysis = ({ userLocation, initialDestination = null }) => {
   const [startLocation, setStartLocation] = useState("");

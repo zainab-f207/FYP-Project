@@ -1,7 +1,7 @@
-// src/components/UserDashboard/BrowserNotifications.jsx
+﻿// src/components/UserDashboard/BrowserNotifications.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../contexts/AuthContext_updated';
-import apiService from '../../services/apiService_updated';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/apiService';
 import styles from './BrowserNotifications.module.css';
 
 const BrowserNotifications = () => {

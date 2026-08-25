@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import styles from './PredictionMapView.module.css';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import RealPredictionMap from './RealPredictionMap';
 
 const PredictionMapView = ({ prediction, onBack }) => {

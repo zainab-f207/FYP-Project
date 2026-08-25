@@ -1,4 +1,4 @@
-"""Database connection helpers and schema initialization routines."""
+﻿"""Database connection helpers and schema initialization routines."""
 from __future__ import annotations
 
 import json
@@ -98,20 +98,20 @@ def ensure_users_table(conn) -> None:
             "ALTER TABLE users_info ADD COLUMN is_logged_in BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users_info ADD COLUMN last_login TIMESTAMP NULL",
             "ALTER TABLE users_info ADD COLUMN last_activity_at DATETIME NULL",
-            # Verification + email verification — used by auth_updated.py.
+            # Verification + email verification — used by auth.py.
             "ALTER TABLE users_info ADD COLUMN is_verified BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users_info ADD COLUMN email_verified BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users_info ADD COLUMN email_verification_token VARCHAR(255) DEFAULT NULL",
             "ALTER TABLE users_info ADD COLUMN token_expires_at TIMESTAMP NULL",
-            # Password reset flow — used by password_reset_fixed.py.
+            # Password reset flow — used by password_reset.py.
             "ALTER TABLE users_info ADD COLUMN password_reset_token VARCHAR(255) DEFAULT NULL",
             "ALTER TABLE users_info ADD COLUMN reset_token_expires_at TIMESTAMP NULL",
             # 2FA (TOTP) — used by two_factor.py and auth flows.
             "ALTER TABLE users_info ADD COLUMN two_factor_secret VARCHAR(32) DEFAULT NULL",
             "ALTER TABLE users_info ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE",
-            # Brute-force protection counter (auth_updated.py).
+            # Brute-force protection counter (auth.py).
             "ALTER TABLE users_info ADD COLUMN failed_attempts INT DEFAULT 0",
-            # Google OAuth integration (auth_updated.py:442/452/474/509/528).
+            # Google OAuth integration (auth.py:442/452/474/509/528).
             "ALTER TABLE users_info ADD COLUMN google_id VARCHAR(255) DEFAULT NULL",
             # Notification + alert preference JSON blobs.
             "ALTER TABLE users_info ADD COLUMN alert_preferences JSON DEFAULT NULL",

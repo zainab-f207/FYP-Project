@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+﻿from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 import asyncio
 from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict, Any, cast
@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timedelta
 
 from app.core.database import get_db_connection, log_user_activity
-from app.auth_updated import get_password_hash
+from app.auth import get_password_hash
 from app.utils.validation import generate_username
 from app.dependencies import get_username_from_token
 from app.models.schemas import AdminRegister, AdminResponse, AlertCreate

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import { useSystemSettings } from '../../contexts/SystemSettingsContext';
 import './ResetPasswordModal.css';
 

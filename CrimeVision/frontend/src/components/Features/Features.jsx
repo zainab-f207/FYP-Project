@@ -1,7 +1,7 @@
-// src/components/Features/Features.js
+﻿// src/components/Features/Features.js
 import React, { useRef, useEffect, useState } from 'react';
 import './Features.css';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 
 const Features = () => {
   const [visibleSections, setVisibleSections] = useState({});

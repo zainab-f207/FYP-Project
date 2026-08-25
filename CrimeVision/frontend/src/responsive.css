@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
  * SafeVision — Global Mobile Responsive Layer
  * ============================================================
  * Single import that makes the entire application mobile-perfect.
@@ -1427,7 +1427,7 @@ body.no-scroll {
   }
 
   /* CRITICAL FIX: kill the legacy backdrop ::after overlay.
-     Original CrimeMapInterface_updated.css adds a pseudo-element with
+     Original CrimeMapInterface.css adds a pseudo-element with
      pointer-events:auto at z-index 1001 covering the full panel — this
      was intercepting clicks on the top half of the items. Neutralize it. */
   .control-panel::after,

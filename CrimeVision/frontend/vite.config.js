@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+﻿import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
@@ -35,8 +35,8 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          auth: ['./src/contexts/AuthContext_updated'],
-          utils: ['./src/services/apiService_updated']
+          auth: ['./src/contexts/AuthContext'],
+          utils: ['./src/services/apiService']
         }
       }
     }

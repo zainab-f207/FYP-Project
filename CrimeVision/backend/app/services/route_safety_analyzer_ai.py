@@ -509,3 +509,14 @@ class AIRouteSafetyAnalyzer:
             }
         }
 
+
+# Singleton instance
+_analyzer_instance = None
+
+def get_ai_analyzer() -> AIRouteSafetyAnalyzer:
+    global _analyzer_instance
+    if _analyzer_instance is None:
+        _analyzer_instance = AIRouteSafetyAnalyzer()
+    return _analyzer_instance
+
+

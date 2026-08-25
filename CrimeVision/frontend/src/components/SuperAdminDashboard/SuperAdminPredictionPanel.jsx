@@ -1,8 +1,8 @@
-// SuperAdminPredictionPanel.jsx — Command-level predictive intelligence for SuperAdmin
+﻿// SuperAdminPredictionPanel.jsx — Command-level predictive intelligence for SuperAdmin
 import React, { useState, useEffect, useRef } from 'react';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import { SYSTEM_SETTINGS_DEFAULTS, useSystemSettings } from '../../contexts/SystemSettingsContext';
-import { useAuth } from '../../contexts/AuthContext_updated';
+import { useAuth } from '../../contexts/AuthContext';
 import styles from './SuperAdminPredictionPanel.module.css';
 
 const today = () => new Date().toISOString().split('T')[0];

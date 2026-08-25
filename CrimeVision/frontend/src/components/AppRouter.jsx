@@ -1,16 +1,16 @@
-import React from 'react';
+﻿import React from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext_updated';
+import { useAuth } from '../contexts/AuthContext';
 import { TokenValidator } from '../contexts/TokenValidator';
 
 // Import components directly
 import UserDashboard from './UserDashboard/UserDashboard';
 import AdminDashboard from './AdminDashboard/AdminDashboard';
-import SuperAdminDashboard from './SuperAdminDashboard/SuperAdminDashboard_updated';
+import SuperAdminDashboard from './SuperAdminDashboard/SuperAdminDashboard';
 import ResetPasswordPage from './ResetPasswordPage';
 import EmailVerificationPage from './EmailVerificationPage';
 import MainWebsite from './MainWebsite';
-import LoginPage from './Modals/LoginModal_updated'; // This component now supports both modal and page rendering
+import LoginPage from './Modals/LoginModal'; // This component now supports both modal and page rendering
 import LogoutConfirmationPage from './LogoutConfirmationPage';
 import AutoLoginPage from './AutoLoginPage';
 

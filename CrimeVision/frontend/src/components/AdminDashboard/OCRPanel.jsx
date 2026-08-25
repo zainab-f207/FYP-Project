@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+﻿import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styles from './OCRPanel.module.css';
-import { apiService } from '../../services/apiService_updated';
-import { useAuth } from '../../contexts/AuthContext_updated';
+import { apiService } from '../../services/apiService';
+import { useAuth } from '../../contexts/AuthContext';
 
 // OCR backend URL — reads from env so production hits the deployed backend.
 const OCR_API_URL =

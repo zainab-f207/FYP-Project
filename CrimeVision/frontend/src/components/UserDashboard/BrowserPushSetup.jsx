@@ -1,7 +1,7 @@
-// src/components/UserDashboard/BrowserPushSetup.jsx
+﻿// src/components/UserDashboard/BrowserPushSetup.jsx
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext_updated';
-import apiService, { API_BASE_URL } from '../../services/apiService_updated';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService, { API_BASE_URL } from '../../services/apiService';
 import styles from './BrowserPushSetup.module.css';
 
 const BrowserPushSetup = ({ onClose, onSuccess }) => {

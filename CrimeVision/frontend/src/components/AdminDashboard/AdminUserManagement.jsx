@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+﻿import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   Badge,
@@ -31,7 +31,7 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import usePaginatedResource from '../SuperAdminDashboard/hooks/usePaginatedResource';
 import styles from '../SuperAdminDashboard/SuperAdminDashboard.module.css';
 

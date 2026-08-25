@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import styles from './AnalyticsPanel.module.css';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 
 const AnalyticsPanel = ({ stats, token, fullView }) => {
   const [trendData, setTrendData] = useState(null);

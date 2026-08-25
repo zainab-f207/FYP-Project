@@ -1,9 +1,9 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+﻿from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from app.password_reset_fixed import forgot_password, reset_password, ForgotPasswordRequest, ResetPasswordRequest
+from app.password_reset import forgot_password, reset_password, ForgotPasswordRequest, ResetPasswordRequest
 from app.two_factor import generate_2fa_secret, verify_2fa_code, setup_2fa, enable_2fa, disable_2fa, get_2fa_uri, get_user_2fa_secret
-from app.auth_updated import verify_token, verify_refresh_token, create_access_token
+from app.auth import verify_token, verify_refresh_token, create_access_token
 from fastapi import Request
 from app.core.database import get_db_connection
 from typing import cast, Dict, Any

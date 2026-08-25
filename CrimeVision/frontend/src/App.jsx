@@ -1,4 +1,4 @@
-/**
+﻿/**
  * App.jsx — root of the entire CrimeVision frontend.
  *
  * What this file is in plain words:
@@ -30,7 +30,7 @@
 
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext_updated';
+import { AuthProvider } from './contexts/AuthContext';
 import { SystemSettingsProvider } from './contexts/SystemSettingsContext';
 import { cleanupInvalidTokens } from './utils/tokenCleanup';
 

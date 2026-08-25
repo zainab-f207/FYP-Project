@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import apiService from '../services/apiService_updated';
+﻿import React, { useEffect, useState } from 'react';
+import apiService from '../services/apiService';
 
 const EmailVerificationPage = () => {
   const [status, setStatus] = useState('verifying'); // verifying, success, error

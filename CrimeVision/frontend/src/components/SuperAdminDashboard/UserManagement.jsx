@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+﻿import React, { useCallback, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Badge,
@@ -30,7 +30,7 @@ import {
   CloseCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import usePaginatedResource from './hooks/usePaginatedResource';
 import { USER_BULK_ACTIONS, USER_PERMISSIONS, USER_ROLES } from './constants/permissions';
 import styles from './SuperAdminDashboard.module.css';

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import apiService from '../../services/apiService_updated';
+﻿import React, { useState, useEffect, useCallback } from 'react';
+import apiService from '../../services/apiService';
 import styles from './SuperAdminMainDashboard.module.css';
 
 const RISK_COLORS = { Critical: '#7c3aed', High: '#dc2626', Medium: '#f97316', Low: '#22c55e' };

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import styles from './NotificationsPanel.module.css';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 
 const iconMap = {
   alert: 'fas fa-exclamation-triangle',

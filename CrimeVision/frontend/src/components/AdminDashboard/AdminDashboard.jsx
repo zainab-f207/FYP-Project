@@ -1,10 +1,10 @@
-// src/components/AdminDashboard/AdminDashboard.js
+﻿// src/components/AdminDashboard/AdminDashboard.js
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuth } from '../../contexts/AuthContext_updated';
+import { useAuth } from '../../contexts/AuthContext';
 import { useSystemSettings } from '../../contexts/SystemSettingsContext';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import styles from './AdminDashboard.module.css';
 import AnalyticsPanel from './AnalyticsPanel';
 import NotificationsPanel from './NotificationsPanel';

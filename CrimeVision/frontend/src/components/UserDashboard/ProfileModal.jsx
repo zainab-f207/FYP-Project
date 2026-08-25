@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext_updated';
-import apiService, { API_BASE_URL } from '../../services/apiService_updated';
+﻿import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService, { API_BASE_URL } from '../../services/apiService';
 import { useSystemSettings, SYSTEM_SETTINGS_DEFAULTS } from '../../contexts/SystemSettingsContext';
 import QRCode from 'qrcode';
 import styles from '../UserDashboard/ProfileModal.module.css';

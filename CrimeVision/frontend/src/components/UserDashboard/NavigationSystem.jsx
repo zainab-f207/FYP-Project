@@ -1,7 +1,7 @@
-
+﻿
 import React, { useState, useEffect, useRef } from "react";
 import styles from "./NavigationSystem.module.css";
-import apiService from "../../services/apiService_updated";
+import apiService from "../../services/apiService";
 import MapDisplay from "./MapDisplay";
 import { requestLocationPermission } from "../../services/LocationPermission";
 

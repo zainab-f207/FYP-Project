@@ -1,13 +1,13 @@
-// src/components/MainWebsite.js
+﻿// src/components/MainWebsite.js
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext_updated';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Introduction from './Introduction';
 import Features from './Features';
 // import CrimeMapInterface from './CrimeMapInterface';
 import Footer from './Footer';
-import LoginModal from './Modals/LoginModal_updated';
+import LoginModal from './Modals/LoginModal';
 import ForgotPasswordModal from './Modals/ForgotPasswordModal';
 import ReportModal from './Modals/ReportModal';
 import BackToTop from './BackToTop';

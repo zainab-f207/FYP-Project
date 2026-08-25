@@ -1,6 +1,6 @@
-// AdminPredictionPanel.jsx — Advanced predictive analytics for Admin dashboard
+﻿// AdminPredictionPanel.jsx — Advanced predictive analytics for Admin dashboard
 import React, { useState, useEffect, useCallback } from 'react';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import styles from './AdminPredictionPanel.module.css';
 
 const today = () => new Date().toISOString().split('T')[0];

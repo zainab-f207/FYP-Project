@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext_updated';
+﻿import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { useSystemSettings } from '../contexts/SystemSettingsContext';
-import apiService from '../services/apiService_updated';
+import apiService from '../services/apiService';
 import './ResetPasswordPage.css';
 
 const ResetPasswordPage = () => {

@@ -1,4 +1,4 @@
-"""
+﻿"""
 dependencies.py — FastAPI "Depends(...)" helpers for authentication.
 
 A lot of CrimeVision endpoints need one of two pieces of information
@@ -24,7 +24,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any, cast
 import logging
 
-from .auth_updated import verify_token
+from .auth import verify_token
 from app.core.database import get_db_connection
 
 logger = logging.getLogger(__name__)

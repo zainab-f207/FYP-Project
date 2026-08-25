@@ -17,7 +17,7 @@ from app.core.config import MODEL_DIR
 from app.utils.risk import calculate_unified_risk_summary
 from app.dependencies import get_username_from_token
 from app.models.schemas import Crime, PredictRiskRequest, CrimeCreate, AIRouteSafetyRequest, AIRouteSafetyResponse
-from app.services.route_safety_analyzer_ai import AIRouteSafetyAnalyzer
+from app.services.route_safety_analyzer_ai import get_ai_analyzer
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/crimes", tags=["crimes"])
@@ -2954,7 +2954,7 @@ def analyze_route_safety_ai(request: AIRouteSafetyRequest):
         logger.info(f"🔍 AI Route Safety Analysis: {len(request.route_points)} points")
 
         # Initialize AI analyzer
-        ai_analyzer = AIRouteSafetyAnalyzer()
+        ai_analyzer = get_ai_analyzer()
 
         # Extract route data
         route_points = [(p.latitude, p.longitude) for p in request.route_points]
@@ -3068,7 +3068,7 @@ def compare_routes(
             db_areas = [row[0] for row in cursor.fetchall()]
             logger.info(f"📊 Loaded {len(db_areas)} areas from database for matching")
             
-            ai_analyzer = AIRouteSafetyAnalyzer()
+            ai_analyzer = get_ai_analyzer()
             # Plug in the Poisson model so route point scoring uses the new predictor
             if _poisson_artifacts:
                 ai_analyzer.set_poisson(_poisson_artifacts, _poisson_predict)

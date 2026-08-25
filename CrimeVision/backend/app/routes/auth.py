@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File, Request
+﻿from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File, Request
 from fastapi.responses import RedirectResponse
 from typing import Dict, Any, Optional, cast
 import secrets
@@ -8,14 +8,14 @@ import os
 import re
 import json
 
-from app.auth_updated import create_access_token, get_password_hash, verify_password, create_refresh_token, verify_refresh_token, verify_google_token, create_or_get_google_user
+from app.auth import create_access_token, get_password_hash, verify_password, create_refresh_token, verify_refresh_token, verify_google_token, create_or_get_google_user
 from app.core.database import get_db_connection, log_user_activity
 from app.utils.validation import validate_name
 from app.utils.geo import get_coordinates
 from app.email_verification import send_verification_email
 from app.two_factor import is_2fa_enabled, get_user_2fa_secret, verify_2fa_code, generate_2fa_secret as generate_2fa_secret_util, get_2fa_uri, enable_2fa, disable_2fa
 from app.rate_limiting import check_rate_limit, record_login_attempt, reset_login_attempts
-from app.password_reset_fixed import forgot_password, reset_password, ForgotPasswordRequest, ResetPasswordRequest
+from app.password_reset import forgot_password, reset_password, ForgotPasswordRequest, ResetPasswordRequest
 from app.email_otp import generate_otp, store_otp, verify_otp, send_otp_email, send_login_alert_email
 
 from app.dependencies import get_username_from_token, get_current_user

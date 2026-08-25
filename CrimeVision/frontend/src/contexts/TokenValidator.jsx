@@ -1,8 +1,8 @@
-// TokenValidator.jsx
+﻿// TokenValidator.jsx
 // Silently watches the JWT expiry and refreshes the token BEFORE it lapses,
 // so API calls never hit a 401 mid-session.
 import { useEffect, useRef } from 'react';
-import { useAuth } from './AuthContext_updated';
+import { useAuth } from './AuthContext';
 
 /** Decode a JWT payload without verifying the signature (client-side only). */
 const getTokenExpiry = (token) => {

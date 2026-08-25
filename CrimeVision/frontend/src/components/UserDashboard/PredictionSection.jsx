@@ -1,7 +1,7 @@
-// src/components/PredictionSection/PredictionSection.jsx
+﻿// src/components/PredictionSection/PredictionSection.jsx
 import React, { useState, useEffect } from 'react';
 import styles from './PredictionSection.module.css';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import PredictionMapView from './PredictionMapView';
 import PredictionVisual from './PredictionVisual';
 

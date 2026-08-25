@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import CrimeMap from '../CrimeMap/CrimeMap_updated';
-import apiService from '../../services/apiService_updated';
+﻿import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import CrimeMap from '../CrimeMap/CrimeMap';
+import apiService from '../../services/apiService';
 import { ppcSimpleLabel } from '../../utils/ppcUtils';
-import { useAuth } from '../../contexts/AuthContext_updated';
+import { useAuth } from '../../contexts/AuthContext';
 import { SYSTEM_SETTINGS_DEFAULTS, useSystemSettings } from '../../contexts/SystemSettingsContext';
 import { calculate_unified_risk_summary } from '../../utils/riskCalculation';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
@@ -21,7 +21,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import './CrimeMapInterface_updated.css';
+import './CrimeMapInterface.css';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';

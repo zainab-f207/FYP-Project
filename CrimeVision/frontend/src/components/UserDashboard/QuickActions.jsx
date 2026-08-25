@@ -1,4 +1,4 @@
-//           `🚒 Fire Department\n` +
+﻿//           `🚒 Fire Department\n` +
 //           `💊 Pharmacy\n\n` +
 //           `Enter the service number (1-4) or name:`;
 
@@ -310,8 +310,8 @@
 
 // src/components/UserDashboard/QuickActions.jsx
 // import React, { useState, useEffect } from 'react';
-// import { useAuth } from '../../contexts/AuthContext_updated';
-// import apiService from '../../services/apiService_updated';
+// import { useAuth } from '../../contexts/AuthContext';
+// import apiService from '../../services/apiService';
 // import BrowserPushSettings from '../UserDashboard/BrowserNotifications';
 // import styles from '../UserDashboard/QuickActions.module.css';
 
@@ -1600,8 +1600,8 @@
 
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../contexts/AuthContext_updated';
-import apiService from '../../services/apiService_updated';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/apiService';
 import BrowserPushSettings from '../UserDashboard/BrowserNotifications';
 import styles from '../UserDashboard/QuickActions.module.css';
 

@@ -48,7 +48,7 @@ from mysql.connector import Error
 # Add the backend directory to Python path for absolute imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from app.auth_updated import create_access_token, get_password_hash, verify_password, verify_token, create_refresh_token, verify_refresh_token
+from app.auth import create_access_token, get_password_hash, verify_password, verify_token, create_refresh_token, verify_refresh_token
 from app.core.database import get_db_connection, initialize_schema, log_user_activity
 from app.auth_routes import router as auth_router
 
@@ -104,7 +104,7 @@ from app.ocr.urdu_location_dictionary import correct_location_text, _normalize_t
 from app.ocr.ppc_sections import get_crime_names
 
 # Import password reset functions and models
-from app.password_reset_fixed import forgot_password, reset_password, ForgotPasswordRequest, ResetPasswordRequest
+from app.password_reset import forgot_password, reset_password, ForgotPasswordRequest, ResetPasswordRequest
 
 # Import route modules
 from app.routes.auth import router as auth_router_extended
@@ -159,13 +159,20 @@ def cleanup_temp_files():
     except Exception as e:
         logger.warning(f"Cleanup failed: {e}")
 
-# Initialize OCR engine
-try:
-    fir_extractor = FIRExtractor()
-    logger.info("✅ FIR OCR extractor initialized successfully")
-except Exception as e:
-    fir_extractor = None
-    logger.warning(f"⚠️ FIR OCR extractor failed to initialize: {e}")
+# Initialize OCR engine lazily to save memory on startup (fixes Render 512MB limit)
+fir_extractor = None
+
+def get_fir_extractor():
+    global fir_extractor
+    if fir_extractor is None:
+        try:
+            logger.info("Initializing FIR OCR extractor on demand...")
+            fir_extractor = FIRExtractor()
+            logger.info("✅ FIR OCR extractor initialized successfully")
+        except Exception as e:
+            logger.warning(f"⚠️ FIR OCR extractor failed to initialize: {e}")
+            raise
+    return fir_extractor
 
 # ========== FORCE CORS MIDDLEWARE ==========
 @app.middleware("http")
@@ -1775,11 +1782,14 @@ async def extract_text_from_image(file: UploadFile = File(...)):
     Extract FIR data using specialized OCR.
     Returns: crime_date, crime_area (thana), sections
     """
-    if fir_extractor is None:
+    # Get extractor lazily
+    try:
+        extractor = get_fir_extractor()
+    except Exception as e:
         return JSONResponse(
             content={
                 "status": "failed",
-                "error": "OCR engine not initialized. Please check server logs.",
+                "error": f"OCR Engine unavailable: {e}",
                 "text": "",
                 "confidence": 0,
                 "crime_date": "",
@@ -1809,7 +1819,7 @@ async def extract_text_from_image(file: UploadFile = File(...)):
         logger.info("=" * 80)
 
         try:
-            result = fir_extractor.extract_fir_data(contents, filename=file.filename or "")
+            result = extractor.extract_fir_data(contents, filename=file.filename or "")
 
             if result["status"] == "success":
                 # Map extracted sections to English crime names (PPC + ATA + CNSA + other laws)

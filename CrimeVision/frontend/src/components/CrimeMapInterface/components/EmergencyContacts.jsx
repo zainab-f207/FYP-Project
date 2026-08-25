@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import './EmergencyContacts.css';
-import apiService from '../../../services/apiService_updated';
+import apiService from '../../../services/apiService';
 
 const EmergencyContacts = () => {
   const [expandedContact, setExpandedContact] = useState(null);

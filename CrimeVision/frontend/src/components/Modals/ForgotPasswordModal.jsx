@@ -1,6 +1,6 @@
-// import React, { useState } from 'react';
+﻿// import React, { useState } from 'react';
 // import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
-// import apiService from '../../services/apiService_updated';
+// import apiService from '../../services/apiService';
 // import './LoginModal.css'; // Ensure we reuse the login modal styles
 
 // const EmailIllustration = () => (
@@ -120,7 +120,7 @@
 
 import React, { useState } from 'react';
 import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import './ForgotPasswordModal.css';
 
 const EmailIllustration = () => (

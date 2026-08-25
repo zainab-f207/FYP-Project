@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from 'react-leaflet';
 import { SYSTEM_SETTINGS_DEFAULTS, useSystemSettings } from '../../contexts/SystemSettingsContext';
 import HeatmapLayer from '../HeatMapLayer';
-import apiService from '../../services/apiService_updated';
+import apiService from '../../services/apiService';
 import { ppcSimpleLabel } from '../../utils/ppcUtils';
 import { calculate_unified_risk_summary } from '../../utils/riskCalculation';
 import L from 'leaflet';
